@@ -273,10 +273,6 @@ class SettingsActivity : SimpleActivity() {
                     launchAccountsConfiguration()
                     true
                 }
-                R.id.whats_new -> {
-                    WhatsNewDialog(this@SettingsActivity, whatsNewList())
-                    true
-                }
                 else -> false
             }
         }

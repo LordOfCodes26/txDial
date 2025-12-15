@@ -133,7 +133,7 @@ class MainActivity : SimpleActivity() {
         val useBottomNavigationBar = config.bottomNavigationBar
         binding.mainMenu.apply {
             updateTitle(getAppLauncherName())
-            searchBeVisibleIf(useBottomNavigationBar)
+            searchBeVisibleIf(false) //hide top search bar
         }
 
         setupTabs()
@@ -306,7 +306,7 @@ class MainActivity : SimpleActivity() {
         val getRecentsFragment = getRecentsFragment()
         val getFavoritesFragment = getFavoritesFragment()
         binding.mainMenu.requireToolbar().menu.apply {
-            findItem(R.id.search).isVisible = !config.bottomNavigationBar
+            findItem(R.id.search).isVisible = /*!config.bottomNavigationBar*/ true // always show the search menu icon
             findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment
             findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment
@@ -355,7 +355,7 @@ class MainActivity : SimpleActivity() {
                     R.id.sort -> showSortingDialog(showCustomSorting = getCurrentFragment() is FavoritesFragment)
                     R.id.filter -> showFilterDialog()
                     R.id.settings -> launchSettings()
-                    R.id.about -> launchAbout()
+//                    R.id.about -> launchAbout()
                     R.id.change_view_type -> changeViewType()
                     R.id.column_count -> changeColumnCount()
                     else -> return@setOnMenuItemClickListener false

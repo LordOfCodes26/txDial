@@ -5,9 +5,4 @@
         android:id="@+id/calling_accounts"
         android:title="@string/calling_accounts"
         app:showAsAction="never" />
-    <item
-        android:id="@+id/whats_new"
-        android:title="@string/whats_new"
-        android:icon="@drawable/ic_restore_vector"
-        app:showAsAction="ifRoom" />
 </menu>
