@@ -97,14 +97,6 @@ class SettingsActivity : SimpleActivity() {
                 subscriptionIdX1, subscriptionIdX2, subscriptionIdX3,
                 subscriptionYearIdX1, subscriptionYearIdX2, subscriptionYearIdX3
             )
-        PurchaseHelper().checkPurchase(
-            this@SettingsActivity,
-            iapList = iapList,
-            subList = subList,
-            ruStoreList = ruStoreList
-        ) { updatePro ->
-            if (updatePro) updatePro()
-        }
     }
 
     @SuppressLint("MissingSuperCall")
@@ -112,11 +104,11 @@ class SettingsActivity : SimpleActivity() {
         super.onResume()
         setupTopAppBar(binding.settingsAppbar, NavigationIcon.Arrow)
 
-        setupPurchaseThankYou()
+//        setupPurchaseThankYou()
 
-        setupCustomizeColors()
+//        setupCustomizeColors()
         setupDialPadOpen()
-        setupOverflowIcon()
+//        setupOverflowIcon()
         setupFloatingButtonStyle()
         setupUseColoredContacts()
         setupContactsColorList()
@@ -235,7 +227,6 @@ class SettingsActivity : SimpleActivity() {
             }
 
             arrayOf(
-                settingsCustomizeColorsChevron,
                 settingsManageShownTabsChevron,
                 settingsExportCallsChevron,
                 settingsImportCallsChevron,
@@ -250,25 +241,25 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun updatePro(isPro: Boolean = checkPro()) {
-        binding.apply {
-            settingsPurchaseThankYouHolder.beGoneIf(isPro)
-            settingsTipJarHolder.beVisibleIf(isPro)
-
-            val stringId =
-                if (isRTLLayout) com.goodwy.strings.R.string.swipe_right_action
-                else com.goodwy.strings.R.string.swipe_left_action
-            settingsSwipeLeftActionLabel.text = addLockedLabelIfNeeded(stringId, isPro)
-
-            arrayOf(
-                settingsSimCardColor1Holder,
-                settingsSimCardColor2Holder,
-                settingsSwipeLeftActionHolder
-            ).forEach {
-                it.alpha = if (isPro) 1f else 0.4f
-            }
-        }
-    }
+//    private fun updatePro(isPro: Boolean = checkPro()) {
+//        binding.apply {
+//            settingsPurchaseThankYouHolder.beGoneIf(isPro)
+//            settingsTipJarHolder.beVisibleIf(isPro)
+//
+//            val stringId =
+//                if (isRTLLayout) com.goodwy.strings.R.string.swipe_right_action
+//                else com.goodwy.strings.R.string.swipe_left_action
+//            settingsSwipeLeftActionLabel.text = addLockedLabelIfNeeded(stringId, isPro)
+//
+//            arrayOf(
+//                settingsSimCardColor1Holder,
+//                settingsSimCardColor2Holder,
+//                settingsSwipeLeftActionHolder
+//            ).forEach {
+//                it.alpha = if (isPro) 1f else 0.4f
+//            }
+//        }
+//    }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         updateMenuItemColors(menu)
@@ -294,26 +285,26 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupPurchaseThankYou() = binding.apply {
-        settingsPurchaseThankYouHolder.beGoneIf(checkPro(false))
-        settingsPurchaseThankYouHolder.onClick = { launchPurchase() }
-    }
+//    private fun setupPurchaseThankYou() = binding.apply {
+//        settingsPurchaseThankYouHolder.beGoneIf(checkPro(false))
+//        settingsPurchaseThankYouHolder.onClick = { launchPurchase() }
+//    }
 
-    private fun setupCustomizeColors() {
-        binding.settingsCustomizeColorsHolder.setOnClickListener {
-            startCustomizationActivity(
-                showAccentColor = true,
-                isCollection = isOrWasThankYouInstalled() || isCollection(),
-                productIdList = arrayListOf(productIdX1, productIdX2, productIdX3),
-                productIdListRu = arrayListOf(productIdX1, productIdX2, productIdX3),
-                subscriptionIdList = arrayListOf(subscriptionIdX1, subscriptionIdX2, subscriptionIdX3),
-                subscriptionIdListRu = arrayListOf(subscriptionIdX1, subscriptionIdX2, subscriptionIdX3),
-                subscriptionYearIdList = arrayListOf(subscriptionYearIdX1, subscriptionYearIdX2, subscriptionYearIdX3),
-                subscriptionYearIdListRu = arrayListOf(subscriptionYearIdX1, subscriptionYearIdX2, subscriptionYearIdX3),
-                showAppIconColor = true
-            )
-        }
-    }
+//    private fun setupCustomizeColors() {
+//        binding.settingsCustomizeColorsHolder.setOnClickListener {
+//            startCustomizationActivity(
+//                showAccentColor = true,
+//                isCollection = isOrWasThankYouInstalled() || isCollection(),
+//                productIdList = arrayListOf(productIdX1, productIdX2, productIdX3),
+//                productIdListRu = arrayListOf(productIdX1, productIdX2, productIdX3),
+//                subscriptionIdList = arrayListOf(subscriptionIdX1, subscriptionIdX2, subscriptionIdX3),
+//                subscriptionIdListRu = arrayListOf(subscriptionIdX1, subscriptionIdX2, subscriptionIdX3),
+//                subscriptionYearIdList = arrayListOf(subscriptionYearIdX1, subscriptionYearIdX2, subscriptionYearIdX3),
+//                subscriptionYearIdListRu = arrayListOf(subscriptionYearIdX1, subscriptionYearIdX2, subscriptionYearIdX3),
+//                showAppIconColor = true
+//            )
+//        }
+//    }
 
     private fun setupUseEnglish() {
         binding.apply {
@@ -1254,36 +1245,36 @@ class SettingsActivity : SimpleActivity() {
         }
     )
 
-    private fun setupOverflowIcon() {
-        binding.apply {
-            settingsOverflowIcon.applyColorFilter(getProperTextColor())
-            settingsOverflowIcon.setImageResource(getOverflowIcon(baseConfig.overflowIcon))
-            settingsOverflowIconHolder.setOnClickListener {
-                val items = arrayListOf(
-                    com.goodwy.commons.R.drawable.ic_more_horiz,
-                    com.goodwy.commons.R.drawable.ic_three_dots_vector,
-                    com.goodwy.commons.R.drawable.ic_more_horiz_round
-                )
-
-                IconListDialog(
-                    activity = this@SettingsActivity,
-                    items = items,
-                    checkedItemId = baseConfig.overflowIcon + 1,
-                    defaultItemId = OVERFLOW_ICON_HORIZONTAL + 1,
-                    titleId = com.goodwy.strings.R.string.overflow_icon,
-                    size = pixels(com.goodwy.commons.R.dimen.normal_icon_size).toInt(),
-                    color = getProperTextColor()
-                ) { wasPositivePressed, newValue ->
-                    if (wasPositivePressed) {
-                        if (baseConfig.overflowIcon != newValue - 1) {
-                            baseConfig.overflowIcon = newValue - 1
-                            settingsOverflowIcon.setImageResource(getOverflowIcon(baseConfig.overflowIcon))
-                        }
-                    }
-                }
-            }
-        }
-    }
+//    private fun setupOverflowIcon() {
+//        binding.apply {
+//            settingsOverflowIcon.applyColorFilter(getProperTextColor())
+//            settingsOverflowIcon.setImageResource(getOverflowIcon(baseConfig.overflowIcon))
+//            settingsOverflowIconHolder.setOnClickListener {
+//                val items = arrayListOf(
+//                    com.goodwy.commons.R.drawable.ic_more_horiz,
+//                    com.goodwy.commons.R.drawable.ic_three_dots_vector,
+//                    com.goodwy.commons.R.drawable.ic_more_horiz_round
+//                )
+//
+//                IconListDialog(
+//                    activity = this@SettingsActivity,
+//                    items = items,
+//                    checkedItemId = baseConfig.overflowIcon + 1,
+//                    defaultItemId = OVERFLOW_ICON_HORIZONTAL + 1,
+//                    titleId = com.goodwy.strings.R.string.overflow_icon,
+//                    size = pixels(com.goodwy.commons.R.dimen.normal_icon_size).toInt(),
+//                    color = getProperTextColor()
+//                ) { wasPositivePressed, newValue ->
+//                    if (wasPositivePressed) {
+//                        if (baseConfig.overflowIcon != newValue - 1) {
+//                            baseConfig.overflowIcon = newValue - 1
+//                            settingsOverflowIcon.setImageResource(getOverflowIcon(baseConfig.overflowIcon))
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     private fun setupFloatingButtonStyle() {
         binding.apply {
@@ -1388,10 +1379,6 @@ class SettingsActivity : SimpleActivity() {
                     settingsSimCardColor2Holder
                 ).forEach {
                     it.setOnClickListener { view ->
-                        RxAnimation.from(binding.settingsPurchaseThankYouHolder)
-                            .shake()
-                            .subscribe()
-
                         RxAnimation.from(view)
                             .shake(shakeTranslation = 2f)
                             .subscribe()

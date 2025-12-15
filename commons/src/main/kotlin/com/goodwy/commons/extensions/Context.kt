@@ -1540,15 +1540,9 @@ fun Context.isPro() =
 
 fun Context.isCollection(): Boolean {
     val prefix = appPrefix()
-    return isPackageInstalled(prefix + "goodwy.dialer")
-        && isPackageInstalled(prefix + "goodwy.contacts")
-        && isPackageInstalled(prefix + "goodwy.smsmessenger")
-        && isPackageInstalled(prefix + "goodwy.gallery")
-        && isPackageInstalled(prefix + "goodwy.audiobooklite")
-        && isPackageInstalled(prefix + "goodwy.filemanager")
-        && isPackageInstalled(prefix + "goodwy.keyboard")
-        && isPackageInstalled(prefix + "goodwy.calendar")
-        && isPackageInstalled(prefix + "goodwy.voicerecorderfree")
+    return isPackageInstalled(prefix + "android.dialer")
+        && isPackageInstalled(prefix + "android.contacts")
+        && isPackageInstalled(prefix + "android.mms")
 }
 
 fun Context.appPrefix(): String = if (packageName.startsWith("dev.goodwy")) "dev." else "com."
@@ -1573,8 +1567,8 @@ private fun getSystemLocale(config: Configuration) = config.locales.get(0)
 
 fun Context.googlePlayDevUrlRes(): Int {
     return when {
-        packageName.startsWith("dev.goodwy") -> R.string.google_play_dev_url
-        packageName.startsWith("com.goodwy") -> R.string.google_play_dev_url_old
+        packageName.startsWith("dev.android") -> R.string.google_play_dev_url
+        packageName.startsWith("com.android") -> R.string.google_play_dev_url_old
         else -> R.string.google_play_dev_url_fake
     }
 }

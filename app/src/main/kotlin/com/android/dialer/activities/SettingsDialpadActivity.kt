@@ -217,14 +217,6 @@ class SettingsDialpadActivity : SimpleActivity() {
                 subscriptionIdX1, subscriptionIdX2, subscriptionIdX3,
                 subscriptionYearIdX1, subscriptionYearIdX2, subscriptionYearIdX3
             )
-        PurchaseHelper().checkPurchase(
-            this@SettingsDialpadActivity,
-            iapList = iapList,
-            subList = subList,
-            ruStoreList = ruStoreList
-        ) { updatePro ->
-            if (updatePro) updatePro()
-        }
     }
 
     override fun onRestart() {

@@ -307,7 +307,7 @@ fun SimpleActivity.launchAbout() {
     val subscriptionYearIdX2 = BuildConfig.SUBSCRIPTION_YEAR_ID_X2
     val subscriptionYearIdX3 = BuildConfig.SUBSCRIPTION_YEAR_ID_X3
 
-    val flavorName = BuildConfig.FLAVOR
+    val flavorName: String = ""
     val storeDisplayName = when (flavorName) {
         "gplay" -> "Google Play"
         "foss" -> "FOSS"
@@ -321,7 +321,7 @@ fun SimpleActivity.launchAbout() {
         appNameId = R.string.app_name_g,
         licenseMask = licenses,
         versionName = fullVersionText,
-        flavorName = BuildConfig.FLAVOR,
+        flavorName = flavorName,
         faqItems = faqItems,
         showFAQBeforeMail = true,
         productIdList = arrayListOf(productIdX1, productIdX2, productIdX3),

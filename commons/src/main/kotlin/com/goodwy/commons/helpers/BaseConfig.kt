@@ -277,7 +277,7 @@ open class BaseConfig(val context: Context) {
         set(isGlobalThemeEnabled) = prefs.edit { putBoolean(IS_GLOBAL_THEME_ENABLED, isGlobalThemeEnabled) }
 
     var isSystemThemeEnabled: Boolean
-        get() = prefs.getBoolean(IS_SYSTEM_THEME_ENABLED, false) //isSPlus()
+        get() = prefs.getBoolean(IS_SYSTEM_THEME_ENABLED, true) //isSPlus()
         set(isSystemThemeEnabled) = prefs.edit { putBoolean(IS_SYSTEM_THEME_ENABLED, isSystemThemeEnabled) }
 
     var isAutoThemeEnabled: Boolean
@@ -671,7 +671,7 @@ open class BaseConfig(val context: Context) {
 
     //Goodwy
     var overflowIcon: Int
-        get() = prefs.getInt(OVERFLOW_ICON, OVERFLOW_ICON_HORIZONTAL)
+        get() = prefs.getInt(OVERFLOW_ICON, OVERFLOW_ICON_VERTICAL)
         set(overflowIcon) = prefs.edit { putInt(OVERFLOW_ICON, overflowIcon) }
 
     var screenSlideAnimation: Int
@@ -712,7 +712,7 @@ open class BaseConfig(val context: Context) {
         set(closeSearch) = prefs.edit { putBoolean(OPEN_SEARCH, closeSearch) }
 
     var isPro: Boolean
-        get() = prefs.getBoolean(IS_PRO_VERSION, false)
+        get() = prefs.getBoolean(IS_PRO_VERSION, true)
         set(isPro) = prefs.edit { putBoolean(IS_PRO_VERSION, isPro) }
 
     var isProSubs: Boolean

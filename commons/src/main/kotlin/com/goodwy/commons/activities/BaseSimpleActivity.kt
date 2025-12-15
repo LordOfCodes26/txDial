@@ -113,13 +113,13 @@ abstract class BaseSimpleActivity : EdgeToEdgeActivity() {
 
         if (isAutoTheme()) changeAutoTheme()
 
-        if (!packageName.startsWith("com.goodwy.", true) &&
-            !packageName.startsWith("dev.goodwy.", true)
-        ) {
-            if ((0..50).random() == 10 || baseConfig.appRunCount % 100 == 0) {
-                showModdedAppWarning()
-            }
-        }
+//        if (!packageName.startsWith("com.goodwy.", true) &&
+//            !packageName.startsWith("dev.goodwy.", true)
+//        ) {
+//            if ((0..50).random() == 10 || baseConfig.appRunCount % 100 == 0) {
+//                showModdedAppWarning()
+//            }
+//        }
 
         if (baseConfig.needInit) {
             lifecycleScope.launch {
@@ -678,20 +678,7 @@ abstract class BaseSimpleActivity : EdgeToEdgeActivity() {
                               showLifebuoy: Boolean = resources.getBoolean(R.bool.show_lifebuoy),
                               showCollection: Boolean = resources.getBoolean(R.bool.show_collection)
     ) {
-        Intent(applicationContext, PurchaseActivity::class.java).apply {
-            putExtra(APP_ICON_IDS, getAppIconIDs())
-            putExtra(APP_LAUNCHER_NAME, getAppLauncherName())
-            putExtra(APP_NAME, getString(appNameId))
-            putExtra(PRODUCT_ID_LIST, productIdList)
-            putExtra(PRODUCT_ID_LIST_RU, productIdListRu)
-            putExtra(SUBSCRIPTION_ID_LIST, subscriptionIdList)
-            putExtra(SUBSCRIPTION_ID_LIST_RU, subscriptionIdListRu)
-            putExtra(SUBSCRIPTION_YEAR_ID_LIST, subscriptionYearIdList)
-            putExtra(SUBSCRIPTION_YEAR_ID_LIST_RU, subscriptionYearIdListRu)
-            putExtra(SHOW_LIFEBUOY, showLifebuoy)
-            putExtra(SHOW_COLLECTION, showCollection)
-            startActivity(this)
-        }
+        // PurchaseActivity is not available
     }
 
     fun startCustomizationActivity(showAccentColor : Boolean = false, isCollection : Boolean = false,
@@ -703,12 +690,6 @@ abstract class BaseSimpleActivity : EdgeToEdgeActivity() {
                                    subscriptionYearIdListRu: ArrayList<String> = arrayListOf("", "", ""),
                                    showAppIconColor : Boolean = false
     ) {
-        if (!packageName.contains("ywdoog".reversed(), true)) {
-            if (baseConfig.appRunCount > 100) {
-                showModdedAppWarning()
-                return
-            }
-        }
 
         Intent(applicationContext, CustomizationActivity::class.java).apply {
             putExtra(APP_ICON_IDS, getAppIconIDs())
