@@ -117,6 +117,13 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                 fragmentPlaceholder2.beGone()
                 fragmentList.beVisible()
 
+                // Optimize RecyclerView for large, mostly-static contact lists
+                fragmentList.setHasFixedSize(true)
+                if (contacts.size > 2000) {
+                    // Disable item change animations for very large lists to avoid jank
+                    fragmentList.itemAnimator = null
+                }
+
 //                fragmentList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
 //                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
 //                        super.onScrollStateChanged(recyclerView, newState)
@@ -193,29 +200,42 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
 
     override fun onSearchQueryChanged(text: String) {
         val fixedText = text.trim().replace("\\s+".toRegex(), " ")
-        val shouldNormalize = fixedText.normalizeString() == fixedText
-        val filtered = allContacts.filter { contact ->
-            getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
-                getProperText(contact.nickname, shouldNormalize).contains(fixedText, true) ||
-                (fixedText.toLongOrNull() != null && contact.doesContainPhoneNumber(fixedText, true)) ||
-                contact.emails.any { it.value.contains(fixedText, true) } ||
-                contact.relations.any { it.name.contains(fixedText, true) } ||
-                contact.addresses.any { getProperText(it.value, shouldNormalize).contains(fixedText, true) } ||
-                contact.IMs.any { it.value.contains(fixedText, true) } ||
-                getProperText(contact.notes, shouldNormalize).contains(fixedText, true) ||
-                getProperText(contact.organization.company, shouldNormalize).contains(fixedText, true) ||
-                getProperText(contact.organization.jobPosition, shouldNormalize).contains(fixedText, true) ||
-                contact.websites.any { it.contains(fixedText, true) }
-        } as ArrayList
 
-        filtered.sortBy {
-            val nameToDisplay = it.getNameToDisplay()
-            !getProperText(nameToDisplay, shouldNormalize).startsWith(fixedText, true) && !nameToDisplay.contains(fixedText, true)
+        if (fixedText.isEmpty()) {
+            // Reset to full list quickly on main thread
+            binding.fragmentPlaceholder.beVisibleIf(allContacts.isEmpty())
+            (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(allContacts)
+            setupLetterFastScroller(allContacts)
+            return
         }
 
-        binding.fragmentPlaceholder.beVisibleIf(filtered.isEmpty())
-        (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(filtered, fixedText)
-        setupLetterFastScroller(filtered)
+        ensureBackgroundThread {
+            val shouldNormalize = fixedText.normalizeString() == fixedText
+            val filtered = allContacts.filter { contact ->
+                getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
+                    getProperText(contact.nickname, shouldNormalize).contains(fixedText, true) ||
+                    (fixedText.toLongOrNull() != null && contact.doesContainPhoneNumber(fixedText, true)) ||
+                    contact.emails.any { it.value.contains(fixedText, true) } ||
+                    contact.relations.any { it.name.contains(fixedText, true) } ||
+                    contact.addresses.any { getProperText(it.value, shouldNormalize).contains(fixedText, true) } ||
+                    contact.IMs.any { it.value.contains(fixedText, true) } ||
+                    getProperText(contact.notes, shouldNormalize).contains(fixedText, true) ||
+                    getProperText(contact.organization.company, shouldNormalize).contains(fixedText, true) ||
+                    getProperText(contact.organization.jobPosition, shouldNormalize).contains(fixedText, true) ||
+                    contact.websites.any { it.contains(fixedText, true) }
+            } as ArrayList
+
+            filtered.sortBy {
+                val nameToDisplay = it.getNameToDisplay()
+                !getProperText(nameToDisplay, shouldNormalize).startsWith(fixedText, true) && !nameToDisplay.contains(fixedText, true)
+            }
+
+            activity?.runOnUiThread {
+                binding.fragmentPlaceholder.beVisibleIf(filtered.isEmpty())
+                (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(filtered, fixedText)
+                setupLetterFastScroller(filtered)
+            }
+        }
     }
 
     private fun requestReadContactsPermission() {

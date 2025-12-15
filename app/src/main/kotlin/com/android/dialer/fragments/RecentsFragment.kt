@@ -213,12 +213,12 @@ class RecentsFragment(
                 recentsPlaceholder2.beGone()
                 recentsList.beVisible()
 
-//                recentsList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-//                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-//                        super.onScrollStateChanged(recyclerView, newState)
-//                        activity?.hideKeyboard()
-//                    }
-//                })
+                // Optimize RecyclerView for large lists
+                recentsList.setHasFixedSize(true)
+                if (recents.size > 2000) {
+                    recentsList.itemAnimator = null
+                }
+
                 recentsList.setOnTouchListener { _, _ ->
                     activity?.hideKeyboard()
                     false
@@ -354,14 +354,23 @@ class RecentsFragment(
     private fun updateNamesIfEmpty(calls: List<RecentCall>, contacts: List<Contact>): List<RecentCall> {
         if (calls.isEmpty()) return mutableListOf()
 
+        // Create a map for O(1) contact lookups instead of O(n) linear search
         val contactsWithNumbers = contacts.filter { it.phoneNumbers.isNotEmpty() }
+        val phoneNumberToContact = HashMap<String, Contact>(contactsWithNumbers.size)
+        
+        contactsWithNumbers.forEach { contact ->
+            contact.phoneNumbers.forEach { phoneNumber ->
+                phoneNumberToContact[phoneNumber.normalizedNumber] = contact
+            }
+        }
+
         return calls.map { call ->
             if (call.phoneNumber == call.name) {
-                val contact = contactsWithNumbers.firstOrNull { it.phoneNumbers.first().normalizedNumber == call.phoneNumber }
-
-                when {
-                    contact != null -> withUpdatedName(call = call, name = contact.getNameToDisplay())
-                    else -> call
+                val contact = phoneNumberToContact[call.phoneNumber]
+                if (contact != null) {
+                    withUpdatedName(call = call, name = contact.getNameToDisplay())
+                } else {
+                    call
                 }
             } else {
                 call

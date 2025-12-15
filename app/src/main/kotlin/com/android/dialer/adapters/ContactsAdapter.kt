@@ -16,10 +16,12 @@ import android.util.TypedValue
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.PopupMenu
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.res.ResourcesCompat
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -77,6 +79,7 @@ class ContactsAdapter(
     private var startReorderDragListener: StartReorderDragListener? = null
     var onDragEndListener: (() -> Unit)? = null
     var onSpanCountListener: (Int) -> Unit = {}
+    private var isBouncing = false
 
     init {
         setupDragListener(true)
@@ -169,9 +172,32 @@ class ContactsAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val contact = contacts[position]
-        holder.bindView(contact, true, allowLongClick) { itemView, _ ->
+        var lastTouchX: Float = -1f
+
+        holder.bindView(contact, true, false) { itemView, _ ->  // Disable default action mode, we'll show popup menu instead
             val viewType = getItemViewType(position)
             setupView(Binding.getByItemViewType(viewType, activity.config.useSwipeToAction).bind(itemView), contact, holder)
+
+            // Track touch position for popup menu positioning
+            if (allowLongClick) {
+                itemView.setOnTouchListener { view, event ->
+                    if (event.action == android.view.MotionEvent.ACTION_DOWN ||
+                        event.action == android.view.MotionEvent.ACTION_MOVE) {
+                        lastTouchX = event.x
+                        // Store in view tag
+                        view.tag = lastTouchX
+                    }
+                    false  // Don't consume the event
+                }
+            }
+        }
+        // Set long click listener AFTER bindView to override the default behavior
+        if (allowLongClick) {
+            holder.itemView.setOnLongClickListener { view ->
+                val touchX = (view.tag as? Float) ?: lastTouchX
+                showPopupMenu(holder.itemView, contact, touchX)
+                true
+            }
         }
         bindViewHolder(holder)
     }
@@ -241,16 +267,34 @@ class ContactsAdapter(
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     fun updateItems(newItems: List<Contact>, highlightText: String = "") {
-        if (newItems.hashCode() != contacts.hashCode()) {
-            contacts = ArrayList(newItems)
+        val oldItems = contacts.toList()
+        val highlightChanged = textToHighlight != highlightText
+
+        if (newItems.hashCode() != contacts.hashCode() || highlightChanged) {
             textToHighlight = highlightText
-            notifyDataSetChanged()
-            finishActMode()
-        } else if (textToHighlight != highlightText) {
-            textToHighlight = highlightText
-            notifyDataSetChanged()
+
+            if (newItems.hashCode() != contacts.hashCode()) {
+                val diffCallback = ContactDiffCallback(oldItems, newItems)
+                val diffResult = DiffUtil.calculateDiff(diffCallback, false)
+                contacts = ArrayList(newItems)
+                diffResult.dispatchUpdatesTo(this)
+                finishActMode()
+            } else {
+                // Only highlight changed, notify visible items
+                val layoutManager = recyclerView.layoutManager
+                if (layoutManager is androidx.recyclerview.widget.LinearLayoutManager) {
+                    val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                    val lastVisible = layoutManager.findLastVisibleItemPosition()
+                    if (firstVisible != RecyclerView.NO_POSITION && lastVisible != RecyclerView.NO_POSITION) {
+                        for (i in firstVisible..lastVisible) {
+                            notifyItemChanged(i, "highlight")
+                        }
+                    }
+                } else {
+                    notifyDataSetChanged()
+                }
+            }
         }
     }
 
@@ -281,7 +325,7 @@ class ContactsAdapter(
         finishActMode()
     }
 
-    private fun sendSMS() {
+    private fun sendSMS(isSwipe: Boolean = false) {
         val numbers = ArrayList<String>()
         getSelectedItems().map { simpleContact ->
             val contactNumbers = simpleContact.phoneNumbers
@@ -295,6 +339,7 @@ class ContactsAdapter(
 
         val recipient = TextUtils.join(";", numbers)
         activity.launchSendSMSIntentRecommendation(recipient)
+        if (isSwipe) selectedKeys.clear()
     }
 
     private fun viewContactDetails() {
@@ -431,8 +476,17 @@ class ContactsAdapter(
                             holder.viewClicked(contact)
                         }
                     }
+                    // Track touch position for popup menu positioning
+                    var imageTouchX: Float = -1f
+                    setOnTouchListener { view, event ->
+                        if (event.action == android.view.MotionEvent.ACTION_DOWN ||
+                            event.action == android.view.MotionEvent.ACTION_MOVE) {
+                            imageTouchX = event.x
+                        }
+                        false  // Don't consume the event
+                    }
                     setOnLongClickListener {
-                        holder.viewLongClicked()
+                        showPopupMenu(holder.itemView, contact, imageTouchX)
                         true
                     }
                 }
@@ -560,6 +614,9 @@ class ContactsAdapter(
                 swipeRightIcon!!.setColorFilter(properPrimaryColor.getContrastColor())
                 swipeRightIconHolder!!.setBackgroundColor(swipeActionColor(swipeRightAction))
 
+                // Hide swipe icon holders when bouncing
+                updateSwipeIconHolderVisibility(swipeLeftIconHolder, swipeRightIconHolder)
+
                 itemContactSwipe!!.setDirectionEnabled(SwipeDirection.Left, swipeLeftAction != SWIPE_ACTION_NONE)
                 itemContactSwipe!!.setDirectionEnabled(SwipeDirection.Right, swipeRightAction != SWIPE_ACTION_NONE)
 
@@ -590,7 +647,7 @@ class ContactsAdapter(
                         val swipeLeftOrRightAction =
                             if (activity.isRTLLayout) activity.config.swipeRightAction else activity.config.swipeLeftAction
                         swipeAction(swipeLeftOrRightAction, contact)
-                        swipeLeftIcon!!.slideLeftReturn(swipeLeftIconHolder!!)
+                        slideLeftReturn(swipeLeftIcon!!, swipeLeftIconHolder!!)
                         return true
                     }
 
@@ -599,26 +656,46 @@ class ContactsAdapter(
                         val swipeRightOrLeftAction =
                             if (activity.isRTLLayout) activity.config.swipeLeftAction else activity.config.swipeRightAction
                         swipeAction(swipeRightOrLeftAction, contact)
-                        swipeRightIcon!!.slideRightReturn(swipeRightIconHolder!!)
+                        slideRightReturn(swipeRightIcon!!, swipeRightIconHolder!!)
                         return true
                     }
 
                     override fun onSwipedActivated(swipedRight: Boolean) {
                         if (viewType != VIEW_TYPE_GRID) {
-                            if (swipedRight) swipeRightIcon!!.slideRight(swipeRightIconHolder!!)
-                            else swipeLeftIcon!!.slideLeft()
+                            if (swipedRight) slideRight(swipeRightIcon!!, swipeRightIconHolder!!)
+                            else slideLeft(swipeLeftIcon!!)
                         }
                     }
 
                     override fun onSwipedDeactivated(swipedRight: Boolean) {
                         if (viewType != VIEW_TYPE_GRID) {
-                            if (swipedRight) swipeRightIcon!!.slideRightReturn(swipeRightIconHolder!!)
-                            else swipeLeftIcon!!.slideLeftReturn(swipeLeftIconHolder!!)
+                            if (swipedRight) slideRightReturn(swipeRightIcon!!, swipeRightIconHolder!!)
+                            else slideLeftReturn(swipeLeftIcon!!, swipeLeftIconHolder!!)
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun slideRight(view: View, parent: View) {
+        view.animate()
+            .x(parent.right - activity.resources.getDimension(com.goodwy.commons.R.dimen.big_margin) - view.width)
+    }
+
+    private fun slideLeft(view: View) {
+        view.animate()
+            .x(activity.resources.getDimension(com.goodwy.commons.R.dimen.big_margin))
+    }
+
+    private fun slideRightReturn(view: View, parent: View) {
+        view.animate()
+            .x(parent.left + activity.resources.getDimension(com.goodwy.commons.R.dimen.big_margin))
+    }
+
+    private fun slideLeftReturn(view: View, parent: View) {
+        view.animate()
+            .x(parent.width - activity.resources.getDimension(com.goodwy.commons.R.dimen.big_margin) - view.width)
     }
 
     override fun onRowMoved(fromPosition: Int, toPosition: Int) {
@@ -816,6 +893,173 @@ class ContactsAdapter(
         activity.startContactDetailsIntentRecommendation(contact)
     }
 
+    private fun showPopupMenu(view: View, contact: Contact, touchX: Float = -1f) {
+        finishActMode()
+        val theme = activity.getPopupMenuTheme()
+        val contextTheme = android.view.ContextThemeWrapper(activity, theme)
+        val hasMultipleSIMs = activity.areMultipleSIMsAvailable()
+        val selectedNumber = getContactPhoneNumber(contact)?.replace("+","%2B") ?: ""
+
+        // Determine gravity based on touch position: left side = START, right side = END
+        val gravity = if (touchX >= 0 && touchX < view.width / 2) {
+            Gravity.START
+        } else {
+            Gravity.END
+        }
+
+        PopupMenu(contextTheme, view, gravity).apply {
+            inflate(R.menu.cab_contacts)
+            menu.apply {
+                findItem(R.id.cab_call).isVisible = !hasMultipleSIMs
+                findItem(R.id.cab_call_sim_1).isVisible = hasMultipleSIMs
+                findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs
+                findItem(R.id.cab_remove_default_sim).isVisible = (activity.config.getCustomSIM(selectedNumber) ?: "") != ""
+                findItem(R.id.cab_delete).isVisible = showDeleteButton
+                findItem(R.id.cab_create_shortcut).isVisible = true
+                findItem(R.id.cab_view_details).isVisible = true
+                findItem(R.id.cab_block_unblock_contact).isVisible = true
+                findItem(R.id.cab_select_all).isVisible = false  // Hide select all in popup menu
+
+                // Update block/unblock title asynchronously
+                activity.isContactBlocked(contact) { blocked ->
+                    val titleRes = if (blocked) R.string.unblock_contact else R.string.block_contact
+                    findItem(R.id.cab_block_unblock_contact)?.title = activity.getString(titleRes)
+                }
+            }
+            setOnMenuItemClickListener { item ->
+                selectedKeys.add(contact.rawId)
+                when (item.itemId) {
+                    R.id.cab_call -> {
+                        executeItemMenuOperation(contact.rawId) {
+                            callContact()
+                        }
+                    }
+                    R.id.cab_call_sim_1 -> {
+                        executeItemMenuOperation(contact.rawId) {
+                            callContact(true)
+                        }
+                    }
+                    R.id.cab_call_sim_2 -> {
+                        executeItemMenuOperation(contact.rawId) {
+                            callContact(false)
+                        }
+                    }
+                    R.id.cab_remove_default_sim -> {
+                        executeItemMenuOperation(contact.rawId) {
+                            removeDefaultSIM()
+                        }
+                    }
+                    R.id.cab_send_sms -> {
+                        executeItemMenuOperation(contact.rawId) {
+                            sendSMS()
+                        }
+                    }
+                    R.id.cab_view_details -> {
+                        executeItemMenuOperation(contact.rawId) {
+                            viewContactDetails()
+                        }
+                    }
+                    R.id.cab_create_shortcut -> {
+                        executeItemMenuOperation(contact.rawId) {
+                            createShortcut()
+                        }
+                    }
+                    R.id.cab_block_unblock_contact -> {
+                        tryBlockingUnblocking()
+                    }
+                    R.id.cab_delete -> {
+                        askConfirmDelete()
+                    }
+                }
+                true
+            }
+            show()
+
+            // Adjust X position based on touch location using reflection
+            if (touchX >= 0) {
+                try {
+                    // Access PopupMenu's internal PopupWindow to adjust X position
+                    val popupField = PopupMenu::class.java.getDeclaredField("mPopup")
+                    popupField.isAccessible = true
+                    val menuPopup = popupField.get(this)
+
+                    val popupWindowField = menuPopup.javaClass.getDeclaredField("mPopup")
+                    popupWindowField.isAccessible = true
+                    val popupWindow = popupWindowField.get(menuPopup) as android.widget.PopupWindow
+
+                    // Calculate X offset: center menu on touch point
+                    view.post {
+                        val location = IntArray(2)
+                        view.getLocationOnScreen(location)
+                        val viewX = location[0]
+                        val screenWidth = activity.resources.displayMetrics.widthPixels
+
+                        // Get menu width (approximate or measure)
+                        val menuWidth = (screenWidth * 0.6).toInt()
+                        val offset = activity.resources.getDimensionPixelSize(com.goodwy.commons.R.dimen.smaller_margin)
+
+                        // Calculate desired X position based on touch location
+                        val touchXInt = touchX.toInt()
+                        val isLeftSide = touchXInt < view.width / 2
+                        var menuX: Int = if (isLeftSide) {
+                            // Menu starts at touchX with offset
+                            viewX + touchXInt + offset
+                        } else {
+                            // Menu ends at touchX with offset
+                            viewX + touchXInt - menuWidth - offset
+                        }
+
+                        // Keep within screen bounds
+                        if (menuX < 0) menuX = 0
+                        if (menuX + menuWidth > screenWidth) menuX = screenWidth - menuWidth
+
+                        // Get current Y position
+                        val yLocation = IntArray(2)
+                        view.getLocationOnScreen(yLocation)
+                        val yOffset = yLocation[1] + view.height
+
+                        // Update popup position
+                        popupWindow.update(menuX, yOffset, -1, -1)
+                    }
+                } catch (e: Exception) {
+                    // If reflection fails, use default positioning
+                }
+            }
+        }
+    }
+
+    private fun executeItemMenuOperation(contactId: Int, callback: () -> Unit) {
+        selectedKeys.add(contactId)
+        callback()
+        selectedKeys.remove(contactId)
+    }
+
+    private fun getContactPhoneNumber(contact: Contact): String? {
+        return contact.getPrimaryNumber()
+    }
+
+    private fun updateSwipeIconHoldersVisibility() {
+        // Update all visible holders
+        for (i in 0 until recyclerView.childCount) {
+            val child = recyclerView.getChildAt(i)
+            val holder = recyclerView.getChildViewHolder(child)
+            if (holder != null) {
+                val binding = Binding.getByItemViewType(holder.itemViewType, activity.config.useSwipeToAction).bind(holder.itemView)
+                updateSwipeIconHolderVisibility(binding.swipeLeftIconHolder, binding.swipeRightIconHolder)
+            }
+        }
+    }
+
+    private fun updateSwipeIconHolderVisibility(swipeLeftIconHolder: RelativeLayout?, swipeRightIconHolder: RelativeLayout?) {
+        if (isBouncing) {
+            swipeLeftIconHolder?.beGone()
+            swipeRightIconHolder?.beGone()
+        } else {
+            swipeLeftIconHolder?.beVisible()
+            swipeRightIconHolder?.beVisible()
+        }
+    }
+
     private fun swipeActionImageResource(swipeAction: Int): Int {
         return when (swipeAction) {
             SWIPE_ACTION_DELETE -> com.goodwy.commons.R.drawable.ic_delete_outline
@@ -855,7 +1099,8 @@ class ContactsAdapter(
     }
 
     private fun swipedSMS(contact: Contact) {
-        activity.initiateCall(contact) { activity.launchSendSMSIntentRecommendation(it) }
+        selectedKeys.add(contact.rawId)
+        sendSMS(true)
     }
 
     private fun swipedBlock(contact: Contact) {
@@ -875,5 +1120,28 @@ class ContactsAdapter(
                 initiateCall(contact) { launchCallIntent(it, key = BuildConfig.RIGHT_APP_KEY) }
             }
         }
+    }
+}
+
+class ContactDiffCallback(
+    private val oldList: List<Contact>,
+    private val newList: List<Contact>
+) : DiffUtil.Callback() {
+
+    override fun getOldListSize(): Int = oldList.size
+
+    override fun getNewListSize(): Int = newList.size
+
+    override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+        return oldList[oldItemPosition].rawId == newList[newItemPosition].rawId
+    }
+
+    override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+        val oldItem = oldList[oldItemPosition]
+        val newItem = newList[newItemPosition]
+        return oldItem.getNameToDisplay() == newItem.getNameToDisplay() &&
+            oldItem.photoUri == newItem.photoUri &&
+            oldItem.starred == newItem.starred &&
+            oldItem.phoneNumbers.firstOrNull()?.value == newItem.phoneNumbers.firstOrNull()?.value
     }
 }
