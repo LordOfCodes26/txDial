@@ -44,13 +44,8 @@ class RecentsHelper(private val context: Context) {
             return
         }
 
-        val privateCursor = context.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
         ContactsHelper(context).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
             ensureBackgroundThread {
-                val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
-                if (privateContacts.isNotEmpty()) {
-                    contacts.addAll(privateContacts)
-                }
 
                 this.queryLimit = queryLimit
                 //Do not use the current list if the recent ones have been changed in another activity
@@ -168,17 +163,29 @@ class RecentsHelper(private val context: Context) {
         val contactPhotosMap = HashMap<String, String>()
         val contactsMap = HashMap<String, Contact>()
 
-        val accountIdToSimIDMap = HashMap<String, Int>()
-        context.getAvailableSIMCardLabels().forEach {
+        // Cache SIM card labels to avoid calling getAvailableSIMCardLabels() twice
+        val simCardLabels = context.getAvailableSIMCardLabels()
+        val accountIdToSimIDMap = HashMap<String, Int>(simCardLabels.size)
+        val accountIdToSimColorMap = HashMap<String, Int>(simCardLabels.size)
+        simCardLabels.forEach {
             accountIdToSimIDMap[it.handle.id] = it.id
-        }
-        val accountIdToSimColorMap = HashMap<String, Int>()
-        context.getAvailableSIMCardLabels().forEach {
             accountIdToSimColorMap[it.handle.id] = it.color
         }
 
         val isHuawei = context.config.isEmui
         val voiceMailNumbers = loadVoiceMailNumbers()
+        
+        // Pre-build a map of normalized phone numbers to contacts for faster lookup
+        // This avoids O(n) search for each call in the loop
+        val phoneNumberToContactMap = HashMap<String, Contact>(contacts.size * 2)
+        contacts.forEach { contact ->
+            contact.phoneNumbers.forEach { phoneNumber ->
+                val normalized = phoneNumber.normalizedNumber
+                if (normalized.isNotEmpty() && !phoneNumberToContactMap.containsKey(normalized)) {
+                    phoneNumberToContactMap[normalized] = contact
+                }
+            }
+        }
 
         val projection = if (isQPlus()) {
             arrayOf(
@@ -245,7 +252,10 @@ class RecentsHelper(private val context: Context) {
                     if (contactsMap.containsKey(number)) {
                         contact = contactsMap[number]!!
                     } else {
-                        contact = contacts.firstOrNull { it.doesContainPhoneNumber(number) } //contacts.firstOrNull { it.doesHavePhoneNumber(number) }
+                        // Try fast lookup first using normalized number map
+                        val normalizedNumber = number.normalizePhoneNumber()
+                        contact = phoneNumberToContactMap[normalizedNumber]
+                            ?: contacts.firstOrNull { it.doesContainPhoneNumber(number) }
                         if (contact != null) contactsMap[number] = contact
                     }
                 }
@@ -289,24 +299,13 @@ class RecentsHelper(private val context: Context) {
                 // Some users do not correctly detect the second ESIM card
                 // https://stackoverflow.com/questions/63834168/identifying-a-sim-card-slot-with-phone-account-id-in-android-calllogcalls
                 // On some devices PHONE_ACCOUNT_ID just returns the SIM card slot index
-                var simID = -1
-                if (isHuawei) {
-                    if (accountId != null) {
-                        if (accountId.length == 1) {
-                            accountId.toIntOrNull()?.let {
-                                simID = if (it >= 0) it + 1 else -1 //Huawei's sim card index returns (0,1...)
-                            }
-                        }
-                    }
-                    if (simID == -1) simID = accountIdToSimIDMap[accountId] ?: -1
-                } else {
-                    simID = accountIdToSimIDMap[accountId] ?: -1
-                    if (simID == -1 && accountId != null) {
-                        if (accountId.length == 1) {
-                            accountId.toIntOrNull()?.let {
-                                simID = if (it >= 0) it else -1
-                            }
-                        }
+                var simID = accountIdToSimIDMap[accountId] ?: -1
+                // Fallback: On some devices PHONE_ACCOUNT_ID just returns the SIM card slot index
+                if (simID == -1 && accountId != null && accountId.length == 1) {
+                    accountId.toIntOrNull()?.let {
+                        simID = if (it >= 0) {
+                            if (isHuawei) it + 1 else it // Huawei's sim card index returns (0,1...)
+                        } else -1
                     }
                 }
                 val simColor = accountIdToSimColorMap[accountId] ?: context.config.simIconsColors[0]
@@ -330,10 +329,10 @@ class RecentsHelper(private val context: Context) {
                 var jobPosition = ""
                 var contactID: Int? = null
                 if (contact != null) {
-                    val phoneNumbers = contact.phoneNumbers.firstOrNull { it.normalizedNumber == number }
-                    if (phoneNumbers != null) {
-                        specificNumber = contact.phoneNumbers.first { it.normalizedNumber == number }.value
-                        specificType = context.getPhoneNumberTypeText(phoneNumbers.type, phoneNumbers.label)
+                    val phoneNumber = contact.phoneNumbers.firstOrNull { it.normalizedNumber == number }
+                    if (phoneNumber != null) {
+                        specificNumber = phoneNumber.value
+                        specificType = context.getPhoneNumberTypeText(phoneNumber.type, phoneNumber.label)
                     }
 
                     nickname = contact.nickname
@@ -380,8 +379,10 @@ class RecentsHelper(private val context: Context) {
             } while (cursor.moveToNext() && recentCalls.size < queryLimit)
         }
 
-        return if (context.config.showBlockedNumbers) recentCalls
-        else {
+        return if (context.config.showBlockedNumbers) {
+            recentCalls
+        } else {
+            // Only get blocked numbers if we need to filter them
             val blockedNumbers = context.getBlockedNumbers()
             recentCalls.filter { !context.isNumberBlocked(it.phoneNumber, blockedNumbers) }
         }

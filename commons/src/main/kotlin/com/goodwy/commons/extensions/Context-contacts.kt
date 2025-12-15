@@ -24,6 +24,7 @@ import com.goodwy.commons.models.contacts.SocialAction
 import java.io.File
 import java.util.ArrayList
 import androidx.core.net.toUri
+import java.util.Locale
 
 val Context.contactsDB: ContactsDao get() = ContactsDatabase.getInstance(applicationContext).ContactsDao()
 
@@ -283,12 +284,14 @@ fun Context.getVisibleContactSources(): ArrayList<String> {
 }
 
 fun Context.getAllContactSources(): ArrayList<ContactSource> {
-    val sources = ContactsHelper(this).getDeviceContactSources()
-    sources.add(getPrivateContactSource())
-    return sources.toMutableList() as ArrayList<ContactSource>
+    val allSources = ContactsHelper(this).getDeviceContactSources()
+    // Only return system contacts (empty account name/type or "Phone" account)
+    val systemSources = allSources.filter { source ->
+        (source.name.isEmpty() && source.type.isEmpty()) || 
+        (source.name.lowercase(Locale.getDefault()) == "phone" && source.type.isEmpty())
+    }
+    return systemSources.toMutableList() as ArrayList<ContactSource>
 }
-
-fun Context.getPrivateContactSource() = ContactSource(SMT_PRIVATE, SMT_PRIVATE, getString(R.string.phone_storage_hidden))
 
 fun Context.getSocialActions(id: Int): ArrayList<SocialAction> {
     val uri = ContactsContract.Data.CONTENT_URI

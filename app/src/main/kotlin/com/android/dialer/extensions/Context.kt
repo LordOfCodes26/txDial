@@ -37,7 +37,6 @@ import androidx.core.net.toUri
 import androidx.core.graphics.drawable.toDrawable
 import com.goodwy.commons.extensions.getDefaultAlarmSound
 import com.goodwy.commons.extensions.getLaunchIntent
-import com.goodwy.commons.extensions.getMyContactsCursor
 import com.goodwy.commons.extensions.getProperPrimaryColor
 import com.goodwy.commons.extensions.grantReadUriPermission
 import com.goodwy.commons.extensions.notificationManager
@@ -46,7 +45,6 @@ import com.goodwy.commons.extensions.setText
 import com.goodwy.commons.extensions.startCallPendingIntent
 import com.goodwy.commons.extensions.telecomManager
 import com.goodwy.commons.helpers.IS_RIGHT_APP
-import com.goodwy.commons.helpers.MyContactsContentProvider
 import com.goodwy.commons.helpers.SIGNAL_PACKAGE
 import com.goodwy.commons.helpers.SILENT
 import com.goodwy.commons.helpers.SimpleContactsHelper
@@ -387,17 +385,9 @@ val Context.statusBarHeight: Int
     }
 
 fun Context.getContactFromAddress(address: String, callback: ((contact: SimpleContact?) -> Unit)) {
-    val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
     SimpleContactsHelper(this).getAvailableContacts(false) {
-        var contact = it.firstOrNull { it.doesHavePhoneNumber(address) }
-        if (contact == null) {
-            val privateContacts = MyContactsContentProvider.getSimpleContacts(this, privateCursor)
-            val privateContact = privateContacts.firstOrNull { it.doesHavePhoneNumber(address) }
-            contact = privateContact
-        }
-        if (contact == null) {
-            contact = it.firstOrNull { it.phoneNumbers.map { it.value }.any { it == address } }
-        }
+        val contact = it.firstOrNull { it.doesHavePhoneNumber(address) }
+            ?: it.firstOrNull { it.phoneNumbers.map { phoneNumber -> phoneNumber.value }.any { phoneValue -> phoneValue == address } }
         callback(contact)
     }
 }

@@ -6,7 +6,6 @@ import com.google.gson.Gson
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
 import com.goodwy.commons.dialogs.RadioGroupIconDialog
-import com.goodwy.commons.extensions.getMyContactsCursor
 import com.goodwy.commons.extensions.getPhoneNumberTypeText
 import com.goodwy.commons.extensions.hideKeyboard
 import com.goodwy.commons.extensions.telecomManager
@@ -14,7 +13,6 @@ import com.goodwy.commons.extensions.toast
 import com.goodwy.commons.extensions.updateTextColors
 import com.goodwy.commons.extensions.viewBinding
 import com.goodwy.commons.helpers.ContactsHelper
-import com.goodwy.commons.helpers.MyContactsContentProvider
 import com.goodwy.commons.helpers.NavigationIcon
 import com.goodwy.commons.helpers.PERMISSION_READ_PHONE_STATE
 import com.goodwy.commons.models.PhoneNumber
@@ -53,10 +51,6 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
 
         ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
             allContacts.addAll(contacts)
-
-            val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-            val privateContacts = MyContactsContentProvider.getContacts(this, privateCursor)
-            allContacts.addAll(privateContacts)
             allContacts.sort()
         }
 

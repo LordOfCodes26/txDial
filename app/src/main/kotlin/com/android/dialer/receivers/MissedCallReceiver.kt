@@ -68,7 +68,6 @@ class MissedCallReceiver : BroadcastReceiver() {
 
                     createNotificationChannel(context)
 
-                    val privateCursor = context.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
                     try {
                         //ensureBackgroundThread is needed to generate a round contact icon
                         context.getContactFromAddress(phoneNumber) { simpleContact ->

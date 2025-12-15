@@ -924,16 +924,7 @@ class MainActivity : SimpleActivity() {
     }
 
     fun cacheContacts() {
-        val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
         ContactsHelper(this).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
-            if (SMT_PRIVATE !in config.ignoredContactSources) {
-                val privateContacts = MyContactsContentProvider.getContacts(this, privateCursor)
-                if (privateContacts.isNotEmpty()) {
-                    contacts.addAll(privateContacts)
-                    contacts.sort()
-                }
-            }
-
             try {
                 cachedContacts.clear()
                 cachedContacts.addAll(contacts)

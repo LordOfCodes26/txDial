@@ -3,7 +3,6 @@ package com.android.dialer.services
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import com.goodwy.commons.extensions.baseConfig
-import com.goodwy.commons.extensions.getMyContactsCursor
 import com.goodwy.commons.extensions.isNumberBlocked
 import com.goodwy.commons.extensions.normalizePhoneNumber
 import com.goodwy.commons.helpers.BLOCKING_TYPE_REJECT
@@ -27,8 +26,7 @@ class SimpleCallScreeningService : CallScreeningService() {
             number != null && isNumberBlocked(number.normalizePhoneNumber()) && baseConfig.blockingEnabled -> {
                 if (baseConfig.doNotBlockContactsAndRecent) {
                     val simpleContactsHelper = SimpleContactsHelper(this)
-                    val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-                    simpleContactsHelper.exists(number, privateCursor) { exists ->
+                    simpleContactsHelper.exists(number) { exists ->
                         if (number in config.recentOutgoingNumbers) respondToCall(callDetails, isBlocked = false)
                         else respondToCall(callDetails, isBlocked = !exists)
                     }
@@ -39,8 +37,7 @@ class SimpleCallScreeningService : CallScreeningService() {
 
             number != null && baseConfig.blockUnknownNumbers && baseConfig.blockingEnabled -> {
                 val simpleContactsHelper = SimpleContactsHelper(this)
-                val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-                simpleContactsHelper.exists(number, privateCursor) { exists ->
+                simpleContactsHelper.exists(number) { exists ->
                     if (number in config.recentOutgoingNumbers) respondToCall(callDetails, isBlocked = false)
                     else respondToCall(callDetails, isBlocked = !exists)
                 }

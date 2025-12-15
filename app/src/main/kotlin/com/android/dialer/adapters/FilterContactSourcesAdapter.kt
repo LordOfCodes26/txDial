@@ -25,9 +25,6 @@ class FilterContactSourcesAdapter(
                 selectedKeys.add(contactSource.hashCode())
             }
 
-            if (contactSource.type == SMT_PRIVATE && displayContactSources.contains(SMT_PRIVATE)) {
-                selectedKeys.add(contactSource.hashCode())
-            }
         }
     }
 

@@ -60,7 +60,6 @@ class DialpadActivity : SimpleActivity() {
 
     var allContacts = ArrayList<Contact>()
     private var speedDialValues = ArrayList<SpeedDial>()
-    private var privateCursor: Cursor? = null
     private var toneGeneratorHelper: ToneGeneratorHelper? = null
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val longPressHandler = Handler(Looper.getMainLooper())
@@ -143,7 +142,6 @@ class DialpadActivity : SimpleActivity() {
         }
 
         speedDialValues = config.getSpeedDialValues()
-        privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
 
         toneGeneratorHelper = ToneGeneratorHelper(this, DIALPAD_TONE_LENGTH_MS)
 
@@ -1111,12 +1109,6 @@ class DialpadActivity : SimpleActivity() {
     private fun gotContacts(newContacts: ArrayList<Contact>) {
         allContacts = newContacts
 
-        val privateContacts = MyContactsContentProvider.getContacts(this, privateCursor)
-        if (privateContacts.isNotEmpty()) {
-            allContacts.addAll(privateContacts)
-            allContacts.sort()
-        }
-
         runOnUiThread {
             if (!checkDialIntent() && binding.dialpadInput.value.isEmpty()) {
                 dialpadValueChanged("")
@@ -1502,11 +1494,9 @@ class DialpadActivity : SimpleActivity() {
 
         ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
             ensureBackgroundThread {
-                val privateContacts = getPrivateContacts()
                 val updatedCalls = updateNamesIfEmpty(
-                    calls = maybeFilterPrivateCalls(calls, privateContacts),
-                    contacts = contacts,
-                    privateContacts = privateContacts
+                    calls = calls,
+                    contacts = contacts
                 )
 
                 callback(
@@ -1516,32 +1506,15 @@ class DialpadActivity : SimpleActivity() {
         }
     }
 
-    private fun getPrivateContacts(): ArrayList<Contact> {
-        val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-        return MyContactsContentProvider.getContacts(this, privateCursor)
-    }
-
-    private fun maybeFilterPrivateCalls(calls: List<RecentCall>, privateContacts: List<Contact>): List<RecentCall> {
-        val ignoredSources = baseConfig.ignoredContactSources
-        return if (SMT_PRIVATE in ignoredSources) {
-            val privateNumbers = privateContacts.flatMap { it.phoneNumbers }.map { it.value }
-            calls.filterNot { it.phoneNumber in privateNumbers }
-        } else {
-            calls
-        }
-    }
-
-    private fun updateNamesIfEmpty(calls: List<RecentCall>, contacts: List<Contact>, privateContacts: List<Contact>): List<RecentCall> {
+    private fun updateNamesIfEmpty(calls: List<RecentCall>, contacts: List<Contact>): List<RecentCall> {
         if (calls.isEmpty()) return mutableListOf()
 
         val contactsWithNumbers = contacts.filter { it.phoneNumbers.isNotEmpty() }
         return calls.map { call ->
             if (call.phoneNumber == call.name) {
-                val privateContact = privateContacts.firstOrNull { it.doesContainPhoneNumber(call.phoneNumber) }
                 val contact = contactsWithNumbers.firstOrNull { it.phoneNumbers.first().normalizedNumber == call.phoneNumber }
 
                 when {
-                    privateContact != null -> withUpdatedName(call = call, name = privateContact.getNameToDisplay())
                     contact != null -> withUpdatedName(call = call, name = contact.getNameToDisplay())
                     else -> call
                 }

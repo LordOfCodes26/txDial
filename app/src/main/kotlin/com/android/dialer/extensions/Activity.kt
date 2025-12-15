@@ -36,7 +36,6 @@ import com.goodwy.commons.extensions.openNotificationSettings
 import com.goodwy.commons.extensions.performHapticFeedback
 import com.goodwy.commons.extensions.telecomManager
 import com.goodwy.commons.helpers.CONTACT_ID
-import com.goodwy.commons.helpers.IS_PRIVATE
 import com.goodwy.commons.helpers.LICENSE_AUTOFITTEXTVIEW
 import com.goodwy.commons.helpers.LICENSE_EVENT_BUS
 import com.goodwy.commons.helpers.LICENSE_GLIDE
@@ -144,7 +143,6 @@ fun Activity.startContactDetailsIntent(contact: Contact) {
         Intent().apply {
             action = Intent.ACTION_VIEW
             putExtra(CONTACT_ID, contact.rawId)
-            putExtra(IS_PRIVATE, true)
             `package` =
                 if (isPackageInstalled(simpleContacts)) simpleContacts else simpleContactsDebug
             setDataAndType(

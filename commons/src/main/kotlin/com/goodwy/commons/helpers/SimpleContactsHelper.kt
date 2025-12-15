@@ -25,6 +25,7 @@ import com.goodwy.commons.models.SimpleContact
 import com.goodwy.commons.models.contacts.Organization as MyOrganization
 import android.graphics.Bitmap
 import java.text.Collator
+import java.util.Locale
 import kotlin.math.abs
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.graphics.createBitmap
@@ -124,7 +125,9 @@ class SimpleContactsHelper(val context: Context) {
             StructuredName.PHOTO_THUMBNAIL_URI,
             Organization.COMPANY,
             Organization.TITLE,
-            Data.MIMETYPE
+            Data.MIMETYPE,
+            RawContacts.ACCOUNT_NAME,
+            RawContacts.ACCOUNT_TYPE
         )
 
         var selection = "(${Data.MIMETYPE} = ? OR ${Data.MIMETYPE} = ?)"
@@ -139,6 +142,17 @@ class SimpleContactsHelper(val context: Context) {
         )
 
         context.queryCursor(uri, projection, selection, selectionArgs) { cursor ->
+            val accountName = cursor.getStringValue(RawContacts.ACCOUNT_NAME) ?: ""
+            val accountType = cursor.getStringValue(RawContacts.ACCOUNT_TYPE) ?: ""
+            
+            // Only load system contacts (empty account name/type or "Phone" account)
+            val isSystemContact = (accountName.isEmpty() && accountType.isEmpty()) ||
+                (accountName.lowercase(Locale.getDefault()) == "phone" && accountType.isEmpty())
+            
+            if (!isSystemContact) {
+                return@queryCursor
+            }
+            
             val rawId = cursor.getIntValue(Data.RAW_CONTACT_ID)
             val contactId = cursor.getIntValue(Data.CONTACT_ID)
             val mimetype = cursor.getStringValue(Data.MIMETYPE)
@@ -198,12 +212,25 @@ class SimpleContactsHelper(val context: Context) {
             Phone.LABEL,
             Phone.IS_PRIMARY,
             Phone.PHOTO_URI,
-            Data.STARRED
+            Data.STARRED,
+            RawContacts.ACCOUNT_NAME,
+            RawContacts.ACCOUNT_TYPE
         )
 
         val selection = if (favoritesOnly) "${Data.STARRED} = 1" else null
 
         context.queryCursor(uri, projection, selection) { cursor ->
+            val accountName = cursor.getStringValue(RawContacts.ACCOUNT_NAME) ?: ""
+            val accountType = cursor.getStringValue(RawContacts.ACCOUNT_TYPE) ?: ""
+            
+            // Only load system contacts (empty account name/type or "Phone" account)
+            val isSystemContact = (accountName.isEmpty() && accountType.isEmpty()) ||
+                (accountName.lowercase(Locale.getDefault()) == "phone" && accountType.isEmpty())
+            
+            if (!isSystemContact) {
+                return@queryCursor
+            }
+            
             val number = cursor.getStringValue(Phone.NUMBER) ?: return@queryCursor
             val normalizedNumber = cursor.getStringValue(Phone.NORMALIZED_NUMBER)
                 ?: cursor.getStringValue(Phone.NUMBER)?.normalizePhoneNumber() ?: return@queryCursor
@@ -555,16 +582,10 @@ class SimpleContactsHelper(val context: Context) {
         }
     }
 
-    fun exists(number: String, privateCursor: Cursor?, callback: (Boolean) -> Unit) {
+    fun exists(number: String, callback: (Boolean) -> Unit) {
         SimpleContactsHelper(context).getAvailableContacts(false) { contacts ->
             val contact = contacts.firstOrNull { it.doesHavePhoneNumber(number) }
-            if (contact != null) {
-                callback.invoke(true)
-            } else {
-                val privateContacts = MyContactsContentProvider.getSimpleContacts(context, privateCursor)
-                val privateContact = privateContacts.firstOrNull { it.doesHavePhoneNumber(number) }
-                callback.invoke(privateContact != null)
-            }
+            callback.invoke(contact != null)
         }
     }
 }

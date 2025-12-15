@@ -592,10 +592,6 @@ open class BaseConfig(val context: Context) {
         get() = prefs.getString(SPEED_DIAL, "")!!
         set(speedDial) = prefs.edit { putString(SPEED_DIAL, speedDial) }
 
-    var showPrivateContacts: Boolean
-        get() = prefs.getBoolean(SHOW_PRIVATE_CONTACTS, true)
-        set(showPrivateContacts) = prefs.edit { putBoolean(SHOW_PRIVATE_CONTACTS, showPrivateContacts) }
-
     var mergeDuplicateContacts: Boolean
         get() = prefs.getBoolean(MERGE_DUPLICATE_CONTACTS, true)
         set(mergeDuplicateContacts) = prefs.edit { putBoolean(MERGE_DUPLICATE_CONTACTS, mergeDuplicateContacts) }

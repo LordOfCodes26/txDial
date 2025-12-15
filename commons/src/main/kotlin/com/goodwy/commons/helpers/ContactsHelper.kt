@@ -55,24 +55,20 @@ class ContactsHelper(val context: Context) {
 
             getDeviceContacts(contacts, ignoredContactSources, gettingDuplicates)
 
-            if (displayContactSources.contains(SMT_PRIVATE)) {
-                LocalContactsHelper(context).getAllContacts().forEach {
-                    contacts.put(it.id, it)
-                }
-            }
-
             val contactsSize = contacts.size
             val tempContacts = ArrayList<Contact>(contactsSize)
             val resultContacts = ArrayList<Contact>(contactsSize)
 
-            (0 until contactsSize).filter {
+            // Optimize filtering by avoiding intermediate collections
+            for (i in 0 until contactsSize) {
+                val contact = contacts.valueAt(i)
                 if (ignoredContactSources.isEmpty() && showOnlyContactsWithNumbers) {
-                    contacts.valueAt(it).phoneNumbers.isNotEmpty()
+                    if (contact.phoneNumbers.isNotEmpty()) {
+                        tempContacts.add(contact)
+                    }
                 } else {
-                    true
+                    tempContacts.add(contact)
                 }
-            }.mapTo(tempContacts) {
-                contacts.valueAt(it)
             }
 
             if (context.baseConfig.mergeDuplicateContacts && ignoredContactSources.isEmpty() && !getAll) {
@@ -91,11 +87,14 @@ class ContactsHelper(val context: Context) {
             }
 
             // groups are obtained with contactID, not rawID, so assign them to proper contacts like this
-            val groups = getContactGroups(getStoredGroupsSync())
-            val size = groups.size
-            for (i in 0 until size) {
+            // Cache stored groups and use map for O(1) lookup instead of firstOrNull
+            val storedGroups = getStoredGroupsSync()
+            val groups = getContactGroups(storedGroups)
+            val contactIdToContactMap = resultContacts.associateBy { it.contactId }
+            val groupsSize = groups.size
+            for (i in 0 until groupsSize) {
                 val key = groups.keyAt(i)
-                resultContacts.firstOrNull { it.contactId == key }?.groups = groups.valueAt(i)
+                contactIdToContactMap[key]?.groups = groups.valueAt(i)
             }
 
             Contact.sorting = context.baseConfig.sorting
@@ -159,7 +158,11 @@ class ContactsHelper(val context: Context) {
                 val accountName = cursor.getStringValue(RawContacts.ACCOUNT_NAME) ?: ""
                 val accountType = cursor.getStringValue(RawContacts.ACCOUNT_TYPE) ?: ""
 
-                if (ignoredSources.contains("$accountName:$accountType")) {
+                // Only load system contacts (empty account name/type or "Phone" account)
+                val isSystemContact = (accountName.isEmpty() && accountType.isEmpty()) ||
+                    (accountName.lowercase(Locale.getDefault()) == "phone" && accountType.isEmpty())
+                
+                if (!isSystemContact || ignoredSources.contains("$accountName:$accountType")) {
                     return@queryCursor
                 }
 
@@ -215,19 +218,17 @@ class ContactsHelper(val context: Context) {
             }
         }
 
-        val emails = getEmails()
-        var size = emails.size
-        for (i in 0 until size) {
-            val key = emails.keyAt(i)
-            contacts[key]?.emails = emails.valueAt(i)
+        // Helper function to apply SparseArray values to contacts
+        fun <T> applySparseArrayToContacts(sparseArray: SparseArray<T>, apply: (Contact, T) -> Unit) {
+            val size = sparseArray.size
+            for (i in 0 until size) {
+                val key = sparseArray.keyAt(i)
+                contacts[key]?.let { apply(it, sparseArray.valueAt(i)) }
+            }
         }
 
-        val organizations = getOrganizations()
-        size = organizations.size()
-        for (i in 0 until size) {
-            val key = organizations.keyAt(i)
-            contacts[key]?.organization = organizations.valueAt(i)
-        }
+        applySparseArrayToContacts(getEmails()) { contact, emails -> contact.emails = emails }
+        applySparseArrayToContacts(getOrganizations()) { contact, org -> contact.organization = org }
 
         // no need to fetch some fields if we are only getting duplicates of the current contact
         if (gettingDuplicates) {
@@ -235,63 +236,19 @@ class ContactsHelper(val context: Context) {
         }
 
         val phoneNumbers = getPhoneNumbers(null)
-        size = phoneNumbers.size
-        for (i in 0 until size) {
+        val phoneSize = phoneNumbers.size
+        for (i in 0 until phoneSize) {
             val key = phoneNumbers.keyAt(i)
-            if (contacts[key] != null) {
-                val numbers = phoneNumbers.valueAt(i)
-                contacts[key].phoneNumbers = numbers
-            }
+            contacts[key]?.let { it.phoneNumbers = phoneNumbers.valueAt(i) }
         }
 
-        val addresses = getAddresses()
-        size = addresses.size
-        for (i in 0 until size) {
-            val key = addresses.keyAt(i)
-            contacts[key]?.addresses = addresses.valueAt(i)
-        }
-
-        val IMs = getIMs()
-        size = IMs.size
-        for (i in 0 until size) {
-            val key = IMs.keyAt(i)
-            contacts[key]?.IMs = IMs.valueAt(i)
-        }
-
-        val events = getEvents()
-        size = events.size
-        for (i in 0 until size) {
-            val key = events.keyAt(i)
-            contacts[key]?.events = events.valueAt(i)
-        }
-
-        val notes = getNotes()
-        size = notes.size
-        for (i in 0 until size) {
-            val key = notes.keyAt(i)
-            contacts[key]?.notes = notes.valueAt(i)
-        }
-
-        val nicknames = getNicknames()
-        size = nicknames.size
-        for (i in 0 until size) {
-            val key = nicknames.keyAt(i)
-            contacts[key]?.nickname = nicknames.valueAt(i)
-        }
-
-        val websites = getWebsites()
-        size = websites.size
-        for (i in 0 until size) {
-            val key = websites.keyAt(i)
-            contacts[key]?.websites = websites.valueAt(i)
-        }
-
-        val relations = getRelations()
-        size = relations.size
-        for (i in 0 until size) {
-            val key = relations.keyAt(i)
-            contacts[key]?.relations = relations.valueAt(i)
-        }
+        applySparseArrayToContacts(getAddresses()) { contact, addresses -> contact.addresses = addresses }
+        applySparseArrayToContacts(getIMs()) { contact, ims -> contact.IMs = ims }
+        applySparseArrayToContacts(getEvents()) { contact, events -> contact.events = events }
+        applySparseArrayToContacts(getNotes()) { contact, note -> contact.notes = note }
+        applySparseArrayToContacts(getNicknames()) { contact, nickname -> contact.nickname = nickname }
+        applySparseArrayToContacts(getWebsites()) { contact, websites -> contact.websites = websites }
+        applySparseArrayToContacts(getRelations()) { contact, relations -> contact.relations = relations }
     }
 
     private fun getPhoneNumbers(contactId: Int? = null): SparseArray<ArrayList<PhoneNumber>> {
@@ -731,11 +688,13 @@ class ContactsHelper(val context: Context) {
         val selection = getSourcesSelection(true, contactId != null, false)
         val selectionArgs = getSourcesSelectionArgs(CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE, contactId)
 
+        // Use map for O(1) lookup instead of firstOrNull in loop
+        val storedGroupsMap = storedGroups.associateBy { it.id }
         context.queryCursor(uri, projection, selection, selectionArgs, showErrors = true) { cursor ->
             val id = cursor.getIntValue(Data.CONTACT_ID)
             val newRowId = cursor.getLongValue(Data.DATA1)
 
-            val groupTitle = storedGroups.firstOrNull { it.id == newRowId }?.title ?: return@queryCursor
+            val groupTitle = storedGroupsMap[newRowId]?.title ?: return@queryCursor
             val group = Group(newRowId, groupTitle)
             if (groups[id] == null) {
                 groups.put(id, ArrayList())
@@ -834,13 +793,6 @@ class ContactsHelper(val context: Context) {
     }
 
     fun createNewGroup(title: String, accountName: String, accountType: String): Group? {
-        if (accountType == SMT_PRIVATE) {
-            val newGroup = Group(null, title)
-            val id = context.groupsDB.insertOrUpdate(newGroup)
-            newGroup.id = id
-            return newGroup
-        }
-
         val operations = ArrayList<ContentProviderOperation>()
         ContentProviderOperation.newInsert(Groups.CONTENT_URI).apply {
             withValue(Groups.TITLE, title)
@@ -892,11 +844,9 @@ class ContactsHelper(val context: Context) {
         }
     }
 
-    fun getContactWithId(id: Int, isLocalPrivate: Boolean): Contact? {
+    fun getContactWithId(id: Int): Contact? {
         if (id == 0) {
             return null
-        } else if (isLocalPrivate) {
-            return LocalContactsHelper(context).getContactWithId(id)
         }
 
         val selection = "(${Data.MIMETYPE} = ? OR ${Data.MIMETYPE} = ?) AND ${Data.RAW_CONTACT_ID} = ?"
@@ -1005,7 +955,6 @@ class ContactsHelper(val context: Context) {
 
     private fun getContactSourcesSync(): ArrayList<ContactSource> {
         val sources = getDeviceContactSources()
-        sources.add(context.getPrivateContactSource())
         return ArrayList(sources)
     }
 
@@ -1166,9 +1115,6 @@ class ContactsHelper(val context: Context) {
 
     fun updateContact(contact: Contact, photoUpdateStatus: Int): Boolean {
         context.toast(R.string.updating)
-        if (contact.isPrivate()) {
-            return LocalContactsHelper(context).insertOrUpdateContact(contact)
-        }
 
         try {
             val operations = ArrayList<ContentProviderOperation>()
@@ -1515,10 +1461,6 @@ class ContactsHelper(val context: Context) {
     }
 
     fun insertContact(contact: Contact): Boolean {
-        if (contact.isPrivate()) {
-            return LocalContactsHelper(context).insertOrUpdateContact(contact)
-        }
-
         try {
             val operations = ArrayList<ContentProviderOperation>()
             ContentProviderOperation.newInsert(RawContacts.CONTENT_URI).apply {
@@ -1742,7 +1684,6 @@ class ContactsHelper(val context: Context) {
 
     fun addFavorites(contacts: ArrayList<Contact>) {
         ensureBackgroundThread {
-            toggleLocalFavorites(contacts, true)
             if (context.hasContactPermissions()) {
                 toggleFavorites(contacts, true)
             }
@@ -1751,7 +1692,6 @@ class ContactsHelper(val context: Context) {
 
     fun removeFavorites(contacts: ArrayList<Contact>) {
         ensureBackgroundThread {
-            toggleLocalFavorites(contacts, false)
             if (context.hasContactPermissions()) {
                 toggleFavorites(contacts, false)
             }
@@ -1761,7 +1701,7 @@ class ContactsHelper(val context: Context) {
     private fun toggleFavorites(contacts: ArrayList<Contact>, addToFavorites: Boolean) {
         try {
             val operations = ArrayList<ContentProviderOperation>()
-            contacts.filter { !it.isPrivate() }.map { it.contactId.toString() }.forEach {
+            contacts.map { it.contactId.toString() }.forEach {
                 val uri = Uri.withAppendedPath(Contacts.CONTENT_URI, it)
                 ContentProviderOperation.newUpdate(uri).apply {
                     withValue(Contacts.STARRED, if (addToFavorites) 1 else 0)
@@ -1777,11 +1717,6 @@ class ContactsHelper(val context: Context) {
         } catch (e: Exception) {
             context.showErrorToast(e)
         }
-    }
-
-    private fun toggleLocalFavorites(contacts: ArrayList<Contact>, addToFavorites: Boolean) {
-        val localContacts = contacts.filter { it.isPrivate() }.map { it.id }.toTypedArray()
-        LocalContactsHelper(context).toggleFavorites(localContacts, addToFavorites)
     }
 
     fun updateRingtone(contactId: String, newUri: String) {
@@ -1818,13 +1753,10 @@ class ContactsHelper(val context: Context) {
     }
 
     fun deleteContacts(contacts: ArrayList<Contact>): Boolean {
-        val localContacts = contacts.filter { it.isPrivate() }.map { it.id.toLong() }.toMutableList()
-        LocalContactsHelper(context).deleteContactIds(localContacts)
-
         return try {
             val operations = ArrayList<ContentProviderOperation>()
             val selection = "${RawContacts._ID} = ?"
-            contacts.filter { !it.isPrivate() }.forEach {
+            contacts.forEach {
                 ContentProviderOperation.newDelete(RawContacts.CONTENT_URI).apply {
                     val selectionArgs = arrayOf(it.id.toString())
                     withSelection(selection, selectionArgs)
@@ -1888,20 +1820,16 @@ class ContactsHelper(val context: Context) {
 
             getDeviceContactsForRecents(contacts)
 
-            if (displayContactSources.contains(SMT_PRIVATE)) {
-                LocalContactsHelper(context).getAllContacts().forEach {
-                    contacts.put(it.id, it)
-                }
-            }
-
             val contactsSize = contacts.size
             val tempContacts = ArrayList<Contact>(contactsSize)
             val resultContacts = ArrayList<Contact>(contactsSize)
 
-            (0 until contactsSize).filter {
-                contacts.valueAt(it).phoneNumbers.isNotEmpty()
-            }.mapTo(tempContacts) {
-                contacts.valueAt(it)
+            // Optimize filtering by avoiding intermediate collections
+            for (i in 0 until contactsSize) {
+                val contact = contacts.valueAt(i)
+                if (contact.phoneNumbers.isNotEmpty()) {
+                    tempContacts.add(contact)
+                }
             }
 
             if (context.baseConfig.mergeDuplicateContacts) {
@@ -1918,11 +1846,14 @@ class ContactsHelper(val context: Context) {
             }
 
             // groups are obtained with contactID, not rawID, so assign them to proper contacts like this
-            val groups = getContactGroups(getStoredGroupsSync())
-            val size = groups.size
-            for (i in 0 until size) {
+            // Cache stored groups and use map for O(1) lookup instead of firstOrNull
+            val storedGroups = getStoredGroupsSync()
+            val groups = getContactGroups(storedGroups)
+            val contactIdToContactMap = resultContacts.associateBy { it.contactId }
+            val groupsSize = groups.size
+            for (i in 0 until groupsSize) {
                 val key = groups.keyAt(i)
-                resultContacts.firstOrNull { it.contactId == key }?.groups = groups.valueAt(i)
+                contactIdToContactMap[key]?.groups = groups.valueAt(i)
             }
 
             Contact.sorting = context.baseConfig.sorting
@@ -1953,7 +1884,11 @@ class ContactsHelper(val context: Context) {
                 val accountName = cursor.getStringValue(RawContacts.ACCOUNT_NAME) ?: ""
                 val accountType = cursor.getStringValue(RawContacts.ACCOUNT_TYPE) ?: ""
 
-                if (ignoredSources.contains("$accountName:$accountType")) {
+                // Only load system contacts (empty account name/type or "Phone" account)
+                val isSystemContact = (accountName.isEmpty() && accountType.isEmpty()) ||
+                    (accountName.lowercase(Locale.getDefault()) == "phone" && accountType.isEmpty())
+                
+                if (!isSystemContact || ignoredSources.contains("$accountName:$accountType")) {
                     return@queryCursor
                 }
 
@@ -2007,21 +1942,22 @@ class ContactsHelper(val context: Context) {
             }
         }
 
-        val phoneNumbers = getPhoneNumbers(null)
-        var size = phoneNumbers.size
-        for (i in 0 until size) {
-            val key = phoneNumbers.keyAt(i)
-            if (contacts[key] != null) {
-                val numbers = phoneNumbers.valueAt(i)
-                contacts[key].phoneNumbers = numbers
+        // Helper function to apply SparseArray values to contacts
+        fun <T> applySparseArrayToContacts(sparseArray: SparseArray<T>, apply: (Contact, T) -> Unit) {
+            val size = sparseArray.size
+            for (i in 0 until size) {
+                val key = sparseArray.keyAt(i)
+                contacts[key]?.let { apply(it, sparseArray.valueAt(i)) }
             }
         }
 
-        val nicknames = getNicknames()
-        size = nicknames.size
-        for (i in 0 until size) {
-            val key = nicknames.keyAt(i)
-            contacts[key]?.nickname = nicknames.valueAt(i)
+        val phoneNumbers = getPhoneNumbers(null)
+        val phoneSize = phoneNumbers.size
+        for (i in 0 until phoneSize) {
+            val key = phoneNumbers.keyAt(i)
+            contacts[key]?.let { it.phoneNumbers = phoneNumbers.valueAt(i) }
         }
+
+        applySparseArrayToContacts(getNicknames()) { contact, nickname -> contact.nickname = nickname }
     }
 }

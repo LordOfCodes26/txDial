@@ -59,7 +59,6 @@ import com.goodwy.commons.extensions.slideRightReturn
 import com.goodwy.commons.extensions.toast
 import com.goodwy.commons.extensions.updateMarginWithBase
 import com.goodwy.commons.helpers.CONTACT_ID
-import com.goodwy.commons.helpers.IS_PRIVATE
 import com.goodwy.commons.helpers.IS_RIGHT_APP
 import com.goodwy.commons.helpers.PERMISSION_WRITE_CALL_LOG
 import com.goodwy.commons.helpers.SimpleContactsHelper
@@ -1193,9 +1192,6 @@ class RecentCallsAdapter(
             putExtra(CURRENT_RECENT_CALL, call)
             putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
             putExtra(CONTACT_ID, call.contactID)
-            if (matchingContact != null) {
-                putExtra(IS_PRIVATE, matchingContact.isPrivate())
-            }
             activity.launchActivityIntent(this)
         }
     }

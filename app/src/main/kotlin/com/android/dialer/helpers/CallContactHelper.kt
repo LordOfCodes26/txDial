@@ -6,7 +6,6 @@ import android.net.Uri
 import android.telecom.Call
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.ContactsHelper
-import com.goodwy.commons.helpers.MyContactsContentProvider
 import com.goodwy.commons.helpers.PERMISSION_READ_PHONE_STATE
 import com.goodwy.commons.helpers.ensureBackgroundThread
 import com.android.dialer.R
@@ -20,7 +19,6 @@ fun getCallContact(context: Context, call: Call?, callback: (CallContact) -> Uni
         return
     }
 
-    val privateCursor = context.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
     ensureBackgroundThread {
         val callContact = CallContact("", "", "", "", "")
         val handle = try {
@@ -54,10 +52,6 @@ fun getCallContact(context: Context, call: Call?, callback: (CallContact) -> Uni
             }
 
             ContactsHelper(context).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
-                val privateContacts = MyContactsContentProvider.getContacts(context, privateCursor)
-                if (privateContacts.isNotEmpty()) {
-                    contacts.addAll(privateContacts)
-                }
 
                 val contactsWithMultipleNumbers = contacts.filter { it.phoneNumbers.size > 1 }
                 val numbersToContactIDMap = HashMap<String, Int>()

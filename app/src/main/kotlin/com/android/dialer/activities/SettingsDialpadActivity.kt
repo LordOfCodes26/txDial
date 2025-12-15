@@ -54,7 +54,6 @@ class SettingsDialpadActivity : SimpleActivity() {
     private val subscriptionYearIdX3 = BuildConfig.SUBSCRIPTION_YEAR_ID_X3
 
     private var speedDialValues = ArrayList<SpeedDial>()
-    private var privateCursor: Cursor? = null
     private var toneGeneratorHelper: ToneGeneratorHelper? = null
     private val hideDialpadHandler = Handler(Looper.getMainLooper())
 
@@ -126,7 +125,6 @@ class SettingsDialpadActivity : SimpleActivity() {
         }
 
         speedDialValues = config.getSpeedDialValues()
-        privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
 
         toneGeneratorHelper = ToneGeneratorHelper(this, DIALPAD_TONE_LENGTH_MS)
     }

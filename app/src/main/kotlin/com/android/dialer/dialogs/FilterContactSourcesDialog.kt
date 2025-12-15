@@ -3,8 +3,6 @@ package com.android.dialer.dialogs
 import androidx.appcompat.app.AlertDialog
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.ContactsHelper
-import com.goodwy.commons.helpers.MyContactsContentProvider
-import com.goodwy.commons.helpers.SMT_PRIVATE
 import com.goodwy.commons.models.contacts.Contact
 import com.goodwy.commons.models.contacts.ContactSource
 import com.android.dialer.R
@@ -33,9 +31,6 @@ class FilterContactSourcesDialog(val activity: SimpleActivity, private val callb
 
         contactHelper.getContacts(getAll = true) {
             it.mapTo(contacts) { contact -> contact.copy() }
-            val privateCursor = activity.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-            val privateContacts = MyContactsContentProvider.getContacts(activity, privateCursor)
-            this.contacts.addAll(privateContacts)
             isContactsReady = true
             processDataIfReady()
         }
@@ -79,7 +74,7 @@ class FilterContactSourcesDialog(val activity: SimpleActivity, private val callb
     private fun confirmContactSources() {
         val selectedContactSources = (binding.filterContactSourcesList.adapter as FilterContactSourcesAdapter).getSelectedContactSources()
         val ignoredContactSources = contactSources.filter { !selectedContactSources.contains(it) }.map {
-            if (it.type == SMT_PRIVATE) SMT_PRIVATE else it.getFullIdentifier()
+            it.getFullIdentifier()
         }.toHashSet()
 
         if (activity.getVisibleContactSources() != ignoredContactSources) {

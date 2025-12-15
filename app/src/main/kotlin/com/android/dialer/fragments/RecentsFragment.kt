@@ -13,7 +13,6 @@ import com.goodwy.commons.extensions.baseConfig
 import com.goodwy.commons.extensions.beGone
 import com.goodwy.commons.extensions.beGoneIf
 import com.goodwy.commons.extensions.beVisible
-import com.goodwy.commons.extensions.getMyContactsCursor
 import com.goodwy.commons.extensions.getProperBackgroundColor
 import com.goodwy.commons.extensions.getSurfaceColor
 import com.goodwy.commons.extensions.hasPermission
@@ -25,10 +24,7 @@ import com.goodwy.commons.extensions.launchCallIntent
 import com.goodwy.commons.extensions.underlineText
 import com.goodwy.commons.helpers.CONTACT_ID
 import com.goodwy.commons.helpers.ContactsHelper
-import com.goodwy.commons.helpers.IS_PRIVATE
-import com.goodwy.commons.helpers.MyContactsContentProvider
 import com.goodwy.commons.helpers.PERMISSION_READ_CALL_LOG
-import com.goodwy.commons.helpers.SMT_PRIVATE
 import com.goodwy.commons.helpers.ensureBackgroundThread
 import com.goodwy.commons.models.contacts.Contact
 import com.android.dialer.BuildConfig
@@ -342,11 +338,9 @@ class RecentsFragment(
 
         ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
             ensureBackgroundThread {
-                val privateContacts = getPrivateContacts()
                 val updatedCalls = updateNamesIfEmpty(
-                    calls = maybeFilterPrivateCalls(calls, privateContacts),
-                    contacts = contacts,
-                    privateContacts = privateContacts
+                    calls = calls,
+                    contacts = contacts
                 )
 
                 callback(
@@ -356,32 +350,15 @@ class RecentsFragment(
         }
     }
 
-    private fun getPrivateContacts(): ArrayList<Contact> {
-        val privateCursor = context.getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-        return MyContactsContentProvider.getContacts(context, privateCursor)
-    }
-
-    private fun maybeFilterPrivateCalls(calls: List<RecentCall>, privateContacts: List<Contact>): List<RecentCall> {
-        val ignoredSources = context.baseConfig.ignoredContactSources
-        return if (SMT_PRIVATE in ignoredSources) {
-            val privateNumbers = privateContacts.flatMap { it.phoneNumbers }.map { it.value }
-            calls.filterNot { it.phoneNumber in privateNumbers }
-        } else {
-            calls
-        }
-    }
-
-    private fun updateNamesIfEmpty(calls: List<RecentCall>, contacts: List<Contact>, privateContacts: List<Contact>): List<RecentCall> {
+    private fun updateNamesIfEmpty(calls: List<RecentCall>, contacts: List<Contact>): List<RecentCall> {
         if (calls.isEmpty()) return mutableListOf()
 
         val contactsWithNumbers = contacts.filter { it.phoneNumbers.isNotEmpty() }
         return calls.map { call ->
             if (call.phoneNumber == call.name) {
-                val privateContact = privateContacts.firstOrNull { it.doesContainPhoneNumber(call.phoneNumber) }
                 val contact = contactsWithNumbers.firstOrNull { it.phoneNumbers.first().normalizedNumber == call.phoneNumber }
 
                 when {
-                    privateContact != null -> withUpdatedName(call = call, name = privateContact.getNameToDisplay())
                     contact != null -> withUpdatedName(call = call, name = contact.getNameToDisplay())
                     else -> call
                 }
@@ -455,9 +432,6 @@ class RecentsFragment(
             putExtra(CURRENT_RECENT_CALL, call)
             putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
             putExtra(CONTACT_ID, call.contactID)
-            if (contact != null) {
-                putExtra(IS_PRIVATE, contact.isPrivate())
-            }
             activity?.launchActivityIntent(this)
         }
     }

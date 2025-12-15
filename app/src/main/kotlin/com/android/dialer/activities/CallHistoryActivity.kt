@@ -472,17 +472,8 @@ class CallHistoryActivity : SimpleActivity() {
         if (contactId != 0 && !wasLookupKeyUsed) {
 
             handlePermission(PERMISSION_READ_CONTACTS) { granted ->
-                val isPrivate = intent.getBooleanExtra(IS_PRIVATE, false)
                 if (granted) contact =
-                    ContactsHelper(this).getContactWithId(contactId, isPrivate)
-
-                if (contact == null && isPrivate) {
-                    ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { _ ->
-                        val privateCursor = getMyContactsCursor(favoritesOnly = false, withPhoneNumbersOnly = true)
-                        val privateContacts = MyContactsContentProvider.getContacts(this, privateCursor)
-                        contact = privateContacts.firstOrNull { it.id == contactId }
-                    }
-                }
+                    ContactsHelper(this).getContactWithId(contactId)
             }
 
             if (contact == null) {
@@ -597,7 +588,7 @@ class CallHistoryActivity : SimpleActivity() {
                 duplicateContacts.clear()
                 val displayContactSources = getVisibleContactSources()
                 contacts.filter { displayContactSources.contains(it.source) }.forEach {
-                    val duplicate = ContactsHelper(this).getContactWithId(it.id, it.isPrivate())
+                    val duplicate = ContactsHelper(this).getContactWithId(it.id)
                     if (duplicate != null) {
                         duplicateContacts.add(duplicate)
                     }
