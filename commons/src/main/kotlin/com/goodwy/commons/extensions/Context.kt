@@ -1041,10 +1041,10 @@ val Context.realScreenSize: Point
 
 // we need the Default Dialer functionality only in Simple Dialer and in Simple Contacts for now
 fun Context.isDefaultDialer(): Boolean {
-    return if (!packageName.startsWith("com.goodwy.contacts") && !packageName.startsWith("com.goodwy.dialer") &&
+    return if (!packageName.startsWith("com.android.contacts") && !packageName.startsWith("com.android.dialer") &&
         !packageName.startsWith("dev.goodwy.contacts") && !packageName.startsWith("dev.goodwy.dialer")) {
         true
-    } else if ((packageName.startsWith("com.goodwy.contacts") || packageName.startsWith("com.goodwy.dialer") ||
+    } else if ((packageName.startsWith("com.android.contacts") || packageName.startsWith("com.android.dialer") ||
             packageName.startsWith("dev.goodwy.contacts") || packageName.startsWith("dev.goodwy.dialer")) && isQPlus()) {
         val roleManager = getSystemService(RoleManager::class.java)
         roleManager!!.isRoleAvailable(RoleManager.ROLE_DIALER) && roleManager.isRoleHeld(RoleManager.ROLE_DIALER)
