@@ -17,6 +17,7 @@ import com.android.dialer.adapters.ContactsAdapter
 import com.android.dialer.databinding.FragmentFavoritesBinding
 import com.android.dialer.databinding.FragmentLettersLayoutBinding
 import com.android.dialer.extensions.config
+import com.android.dialer.extensions.getContactsWithSecureBoxFilter
 import com.android.dialer.extensions.launchSendSMSIntentRecommendation
 import com.android.dialer.extensions.setupWithContacts
 import com.android.dialer.extensions.startCallWithConfirmationCheck
@@ -76,7 +77,7 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     }
 
     override fun refreshItems(invalidate: Boolean, needUpdate: Boolean, callback: (() -> Unit)?) {
-        ContactsHelper(context).getContacts { contacts ->
+        ContactsHelper(context).getContactsWithSecureBoxFilter { contacts ->
             allContacts = contacts
             val favorites = contacts.filter { it.starred == 1 } as ArrayList<Contact>
 

@@ -10,6 +10,7 @@ import com.goodwy.commons.helpers.PERMISSION_READ_PHONE_STATE
 import com.goodwy.commons.helpers.ensureBackgroundThread
 import com.android.dialer.R
 import com.android.dialer.extensions.config
+import com.android.dialer.extensions.getContactsWithSecureBoxFilter
 import com.android.dialer.extensions.isConference
 import com.android.dialer.models.CallContact
 
@@ -51,7 +52,7 @@ fun getCallContact(context: Context, call: Call?, callback: (CallContact) -> Uni
                 }
             }
 
-            ContactsHelper(context).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
+            ContactsHelper(context).getContactsWithSecureBoxFilter(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
 
                 val contactsWithMultipleNumbers = contacts.filter { it.phoneNumbers.size > 1 }
                 val numbersToContactIDMap = HashMap<String, Int>()

@@ -924,7 +924,7 @@ class MainActivity : SimpleActivity() {
     }
 
     fun cacheContacts() {
-        ContactsHelper(this).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
+        ContactsHelper(this).getContactsWithSecureBoxFilter(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
             try {
                 cachedContacts.clear()
                 cachedContacts.addAll(contacts)

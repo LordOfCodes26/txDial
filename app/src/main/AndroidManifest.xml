@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
@@ -288,6 +290,11 @@
         </service>
 
         <receiver android:name=".receivers.TimerReceiver" />
+
+        <provider
+            android:name="com.goodwy.commons.securebox.SecureBoxContentProvider"
+            android:authorities="com.android.dialer.securebox"
+            android:exported="false" />
 
         <receiver
             android:name=".receivers.CallActionReceiver"

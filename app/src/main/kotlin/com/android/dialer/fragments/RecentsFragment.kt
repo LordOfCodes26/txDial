@@ -37,6 +37,7 @@ import com.android.dialer.databinding.FragmentRecentsBinding
 import com.android.dialer.extensions.callContactWithSim
 import com.android.dialer.extensions.callerNotesHelper
 import com.android.dialer.extensions.config
+import com.android.dialer.extensions.getContactsWithSecureBoxFilter
 import com.android.dialer.extensions.launchSendSMSIntentRecommendation
 import com.android.dialer.extensions.numberForNotes
 import com.android.dialer.extensions.runAfterAnimations
@@ -336,7 +337,7 @@ class RecentsFragment(
             return
         }
 
-        ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        ContactsHelper(context).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
             ensureBackgroundThread {
                 val updatedCalls = updateNamesIfEmpty(
                     calls = calls,

@@ -17,6 +17,8 @@ import com.android.dialer.R
 import com.android.dialer.activities.SimpleActivity
 import com.android.dialer.extensions.config
 import com.android.dialer.extensions.getAvailableSIMCardLabels
+import com.android.dialer.extensions.getContactsWithSecureBoxFilter
+import com.goodwy.commons.securebox.SecureBoxHelper
 import com.android.dialer.models.RecentCall
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +46,7 @@ class RecentsHelper(private val context: Context) {
             return
         }
 
-        ContactsHelper(context).getContacts(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
+        ContactsHelper(context).getContactsWithSecureBoxFilter(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
             ensureBackgroundThread {
 
                 this.queryLimit = queryLimit
@@ -89,12 +91,28 @@ class RecentsHelper(private val context: Context) {
                     getRecents(contacts, updateCallsCache = updateCallsCache, limit = queryLimit)
                 }
 
-                callback(
-                    recentCalls
-                        .sortedByDescending { it.startTS }
-                        .distinctBy { it.id }
+                // Filter out secure box calls at data layer
+                // This ensures secure calls never reach adapters, search, or any UI
+                val secureBoxHelper = SecureBoxHelper(context)
+                val secureBoxCallIds = secureBoxHelper.getSecureBoxCallIds()
+                
+                val filteredCalls = recentCalls
+                    .sortedByDescending { it.startTS }
+                    .distinctBy { it.id }
+                    .filter { call ->
+                        // Filter out if the main call is in secure box
+                        if (call.id in secureBoxCallIds) {
+                            return@filter false
+                        }
+                        // Filter out if any grouped call is in secure box
+                        if (call.groupedCalls?.any { it.id in secureBoxCallIds } == true) {
+                            return@filter false
+                        }
+                        true
+                    }
+
+                callback(filteredCalls)
 //                        .take(queryLimit)
-                )
             }
         }
     }

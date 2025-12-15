@@ -167,4 +167,7 @@ dependencies {
     //timer
     implementation(libs.bundles.lifecycle)
     ksp(libs.androidx.room.compiler)
+    
+    // Biometric for Secure Box
+    implementation(libs.androidx.biometric.ktx)
 }

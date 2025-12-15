@@ -15,6 +15,7 @@ import com.android.dialer.adapters.ContactsAdapter
 import com.android.dialer.databinding.FragmentContactsBinding
 import com.android.dialer.databinding.FragmentLettersLayoutBinding
 import com.android.dialer.extensions.config
+import com.android.dialer.extensions.getContactsWithSecureBoxFilter
 import com.android.dialer.extensions.launchCreateNewContactIntent
 import com.android.dialer.extensions.launchSendSMSIntentRecommendation
 import com.android.dialer.extensions.setupWithContacts
@@ -91,7 +92,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     override fun refreshItems(invalidate: Boolean, needUpdate: Boolean, callback: (() -> Unit)?) {
-        ContactsHelper(context).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        ContactsHelper(context).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
             allContacts = contacts
             (activity as MainActivity).cacheContacts()
 
@@ -222,7 +223,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
             if (it) {
                 binding.fragmentPlaceholder.text = context.getString(R.string.no_contacts_found)
                 binding.fragmentPlaceholder2.text = context.getString(R.string.create_new_contact)
-                ContactsHelper(context).getContacts { contacts ->
+                ContactsHelper(context).getContactsWithSecureBoxFilter { contacts ->
                     activity?.runOnUiThread {
                         gotContacts(contacts)
                     }

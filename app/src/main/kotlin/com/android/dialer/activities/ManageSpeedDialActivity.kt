@@ -27,6 +27,7 @@ import com.android.dialer.dialogs.SelectSIMDialog
 import com.android.dialer.extensions.areMultipleSIMsAvailable
 import com.android.dialer.extensions.config
 import com.android.dialer.extensions.getAvailableSIMCardLabels
+import com.android.dialer.extensions.getContactsWithSecureBoxFilter
 import com.android.dialer.extensions.getHandleToUse
 import com.android.dialer.interfaces.RemoveSpeedDialListener
 import com.android.dialer.models.SpeedDial
@@ -49,7 +50,7 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
         speedDialValues = config.getSpeedDialValues()
         updateAdapter()
 
-        ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        ContactsHelper(this).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
             allContacts.addAll(contacts)
             allContacts.sort()
         }

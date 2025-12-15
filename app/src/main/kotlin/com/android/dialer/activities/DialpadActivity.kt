@@ -156,7 +156,7 @@ class DialpadActivity : SimpleActivity() {
             disableKeyboard()
         }
 
-        ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { allContacts ->
+        ContactsHelper(this).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { allContacts ->
             gotContacts(allContacts)
         }
         storedDialpadStyle = config.dialpadStyle
@@ -1492,7 +1492,7 @@ class DialpadActivity : SimpleActivity() {
             return
         }
 
-        ContactsHelper(this).getContacts(showOnlyContactsWithNumbers = true) { contacts ->
+        ContactsHelper(this).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
             ensureBackgroundThread {
                 val updatedCalls = updateNamesIfEmpty(
                     calls = calls,
