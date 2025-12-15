@@ -42,7 +42,7 @@ class ChangeSortingDialog(val activity: BaseSimpleActivity, private val showCust
                 val isCustomSorting = checkedId == sortingDialogRadioCustom.id
                 sortingDialogRadioOrder.beGoneIf(isCustomSorting)
                 sortingDialogSymbolsFirstCheckbox.beGoneIf(isCustomSorting)
-                (divider as View).beGoneIf(isCustomSorting)
+                divider.root.beGoneIf(isCustomSorting)
             }
 
             val sortBtn = when {

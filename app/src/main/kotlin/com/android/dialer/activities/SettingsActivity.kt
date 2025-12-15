@@ -117,15 +117,15 @@ class SettingsActivity : SimpleActivity() {
 
         setupManageBlockedNumbers()
         setupUseSpeechToText()
-        setupChangeDateTimeFormat()
-        setupFormatPhoneNumbers()
+//        setupChangeDateTimeFormat()
+//        setupFormatPhoneNumbers()
         setupFontSize()
-        setupUseEnglish()
-        setupLanguage()
+//        setupUseEnglish()
+//        setupLanguage()
 
         setupDefaultTab()
         setupManageShownTabs()
-        setupNavigationBarStyle()
+//        setupNavigationBarStyle()
         setupUseIconTabs()
         setupScreenSlideAnimation()
         setupOpenSearch()
@@ -172,21 +172,21 @@ class SettingsActivity : SimpleActivity() {
 
         setupGroupCalls()
         setupGroupSubsequentCalls()
-        setupQueryLimitRecent()
+//        setupQueryLimitRecent()
         setupShowDividers()
         setupShowContactThumbnails()
         setupContactThumbnailsSize()
         setupShowPhoneNumbers()
-        setupStartNameWithSurname()
-        setupShowNicknameInsteadNames()
+//        setupStartNameWithSurname()
+//        setupShowNicknameInsteadNames()
         setupUseRelativeDate()
-        setupChangeColourTopBar()
+//        setupChangeColourTopBar()
 
         setupCallsExport()
         setupCallsImport()
 
-        setupTipJar()
-        setupAbout()
+//        setupTipJar()
+//        setupAbout()
 
         updateTextColors(binding.settingsHolder)
 
@@ -206,7 +206,7 @@ class SettingsActivity : SimpleActivity() {
                 settingsSecurityLabel,
                 settingsListViewLabel,
                 settingsBackupsLabel,
-                settingsOtherLabel).forEach {
+                ).forEach {
                 it.setTextColor(properPrimaryColor)
             }
 
@@ -221,7 +221,6 @@ class SettingsActivity : SimpleActivity() {
                 settingsSecurityHolder,
                 settingsListViewHolder,
                 settingsBackupsHolder,
-                settingsOtherHolder
             ).forEach {
                 it.setCardBackgroundColor(surfaceColor)
             }
@@ -232,8 +231,6 @@ class SettingsActivity : SimpleActivity() {
                 settingsImportCallsChevron,
                 settingsManageBlockedNumbersChevron,
                 settingsManageSpeedDialChevron,
-                settingsTipJarChevron,
-                settingsAboutChevron,
                 settingsDialpadStyleChevron
             ).forEach {
                 it.applyColorFilter(properTextColor)
@@ -306,29 +303,29 @@ class SettingsActivity : SimpleActivity() {
 //        }
 //    }
 
-    private fun setupUseEnglish() {
-        binding.apply {
-            settingsUseEnglishHolder.beVisibleIf((config.wasUseEnglishToggled || Locale.getDefault().language != "en") && !isTiramisuPlus())
-            settingsUseEnglish.isChecked = config.useEnglish
-            settingsUseEnglishHolder.setOnClickListener {
-                settingsUseEnglish.toggle()
-                config.useEnglish = settingsUseEnglish.isChecked
-                exitProcess(0)
-            }
-        }
-    }
+//    private fun setupUseEnglish() {
+//        binding.apply {
+//            settingsUseEnglishHolder.beVisibleIf((config.wasUseEnglishToggled || Locale.getDefault().language != "en") && !isTiramisuPlus())
+//            settingsUseEnglish.isChecked = config.useEnglish
+//            settingsUseEnglishHolder.setOnClickListener {
+//                settingsUseEnglish.toggle()
+//                config.useEnglish = settingsUseEnglish.isChecked
+//                exitProcess(0)
+//            }
+//        }
+//    }
 
-    private fun setupLanguage() = binding.apply {
-        settingsLanguage.text = Locale.getDefault().displayLanguage
-        if (isTiramisuPlus()) {
-            settingsLanguageHolder.beVisible()
-            settingsLanguageHolder.setOnClickListener {
-                launchChangeAppLanguageIntent()
-            }
-        } else {
-            settingsLanguageHolder.beGone()
-        }
-    }
+//    private fun setupLanguage() = binding.apply {
+//        settingsLanguage.text = Locale.getDefault().displayLanguage
+//        if (isTiramisuPlus()) {
+//            settingsLanguageHolder.beVisible()
+//            settingsLanguageHolder.setOnClickListener {
+//                launchChangeAppLanguageIntent()
+//            }
+//        } else {
+//            settingsLanguageHolder.beGone()
+//        }
+//    }
 
     @SuppressLint("SetTextI18n")
     private fun setupManageBlockedNumbers() = binding.apply {
@@ -378,21 +375,21 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupChangeDateTimeFormat() {
-        updateDateTimeFormat()
-        binding.settingsChangeDateTimeFormatHolder.setOnClickListener {
-            ChangeDateTimeFormatDialog(this, true) {
-                updateDateTimeFormat()
-                config.needRestart = true
-            }
-        }
-    }
-
-    private fun updateDateTimeFormat() {
-        val cal = Calendar.getInstance(Locale.ENGLISH).timeInMillis
-        val formatDate = cal.formatDate(this@SettingsActivity)
-        binding.settingsChangeDateTimeFormat.text = formatDate
-    }
+//    private fun setupChangeDateTimeFormat() {
+//        updateDateTimeFormat()
+//        binding.settingsChangeDateTimeFormatHolder.setOnClickListener {
+//            ChangeDateTimeFormatDialog(this, true) {
+//                updateDateTimeFormat()
+//                config.needRestart = true
+//            }
+//        }
+//    }
+//
+//    private fun updateDateTimeFormat() {
+//        val cal = Calendar.getInstance(Locale.ENGLISH).timeInMillis
+//        val formatDate = cal.formatDate(this@SettingsActivity)
+//        binding.settingsChangeDateTimeFormat.text = formatDate
+//    }
 
     private fun setupFontSize() = binding.apply {
         settingsFontSize.text = getFontSizeText()
@@ -448,37 +445,37 @@ class SettingsActivity : SimpleActivity() {
         }
     )
 
-    private fun setupNavigationBarStyle() {
-        binding.settingsNavigationBarStyleLabel.text = formatWithDeprecatedBadge(R.string.tab_navigation)
-        binding.settingsNavigationBarStyle.text = getNavigationBarStyleText()
-        binding.settingsNavigationBarStyleHolder.setOnClickListener {
-            val top = formatWithDeprecatedBadge(R.string.top)
-            val items = arrayListOf(
-                RadioItem(0, top, icon = R.drawable.ic_tab_top),
-                RadioItem(1, getString(R.string.bottom), icon = R.drawable.ic_tab_bottom),
-            )
+//    private fun setupNavigationBarStyle() {
+//        binding.settingsNavigationBarStyleLabel.text = formatWithDeprecatedBadge(R.string.tab_navigation)
+//        binding.settingsNavigationBarStyle.text = getNavigationBarStyleText()
+//        binding.settingsNavigationBarStyleHolder.setOnClickListener {
+//            val top = formatWithDeprecatedBadge(R.string.top)
+//            val items = arrayListOf(
+//                RadioItem(0, top, icon = R.drawable.ic_tab_top),
+//                RadioItem(1, getString(R.string.bottom), icon = R.drawable.ic_tab_bottom),
+//            )
+//
+//            val checkedItemId = if (config.bottomNavigationBar) 1 else 0
+//            RadioGroupIconDialog(this@SettingsActivity, items, checkedItemId, R.string.tab_navigation) {
+//                config.bottomNavigationBar = it == 1
+//                config.needRestart = true
+//                binding.settingsNavigationBarStyle.text = getNavigationBarStyleText()
+//                binding.settingsChangeColourTopBarHolder.beVisibleIf(config.bottomNavigationBar)
+//            }
+//        }
+//    }
 
-            val checkedItemId = if (config.bottomNavigationBar) 1 else 0
-            RadioGroupIconDialog(this@SettingsActivity, items, checkedItemId, R.string.tab_navigation) {
-                config.bottomNavigationBar = it == 1
-                config.needRestart = true
-                binding.settingsNavigationBarStyle.text = getNavigationBarStyleText()
-                binding.settingsChangeColourTopBarHolder.beVisibleIf(config.bottomNavigationBar)
-            }
-        }
-    }
-
-    private fun setupChangeColourTopBar() {
-        binding.apply {
-            settingsChangeColourTopBarHolder.beVisibleIf(config.bottomNavigationBar)
-            settingsChangeColourTopBar.isChecked = config.changeColourTopBar
-            settingsChangeColourTopBarHolder.setOnClickListener {
-                settingsChangeColourTopBar.toggle()
-                config.changeColourTopBar = settingsChangeColourTopBar.isChecked
-                config.needRestart = true
-            }
-        }
-    }
+//    private fun setupChangeColourTopBar() {
+//        binding.apply {
+//            settingsChangeColourTopBarHolder.beVisibleIf(config.bottomNavigationBar)
+//            settingsChangeColourTopBar.isChecked = config.changeColourTopBar
+//            settingsChangeColourTopBarHolder.setOnClickListener {
+//                settingsChangeColourTopBar.toggle()
+//                config.changeColourTopBar = settingsChangeColourTopBar.isChecked
+//                config.needRestart = true
+//            }
+//        }
+//    }
 
     private fun setupUseIconTabs() {
         binding.apply {
@@ -886,10 +883,10 @@ class SettingsActivity : SimpleActivity() {
                 settingsKeepCallsInPopUp.toggle()
                 config.keepCallsInPopUp = settingsKeepCallsInPopUp.isChecked
             }
-            settingsKeepCallsInPopUpFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
-            settingsKeepCallsInPopUpFaq.setOnClickListener {
-                ConfirmationDialog(this@SettingsActivity, messageId = R.string.keep_calls_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
-            }
+//            settingsKeepCallsInPopUpFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
+//            settingsKeepCallsInPopUpFaq.setOnClickListener {
+//                ConfirmationDialog(this@SettingsActivity, messageId = R.string.keep_calls_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
+//            }
         }
     }
 
@@ -1129,68 +1126,68 @@ class SettingsActivity : SimpleActivity() {
 //        }
 //    }
 
-    private fun setupQueryLimitRecent() {
-        binding.settingsQueryLimitRecent.text = getQueryLimitRecentText()
-        binding.settingsQueryLimitRecentHolder.setOnClickListener {
-            val items = arrayListOf(
-                RadioItem(QUERY_LIMIT_TINY_VALUE, QUERY_LIMIT_TINY_VALUE.toString()),
-                RadioItem(QUERY_LIMIT_SMALL_VALUE, QUERY_LIMIT_SMALL_VALUE.toString()),
-                RadioItem(QUERY_LIMIT_MEDIUM_VALUE, QUERY_LIMIT_MEDIUM_VALUE.toString()),
-                RadioItem(QUERY_LIMIT_NORMAL_VALUE, QUERY_LIMIT_NORMAL_VALUE.toString()),
-                RadioItem(QUERY_LIMIT_BIG_VALUE, QUERY_LIMIT_BIG_VALUE.toString()),
-                RadioItem(QUERY_LIMIT_MAX_VALUE, "MAX"))
-
-            RadioGroupDialog(
-                this@SettingsActivity,
-                items,
-                config.queryLimitRecent,
-                R.string.number_of_recent_calls_displays,
-                defaultItemId = QUERY_LIMIT_MEDIUM_VALUE
-            ) {
-                config.queryLimitRecent = it as Int
-                binding.settingsQueryLimitRecent.text = getQueryLimitRecentText()
-            }
-        }
-
-        binding.settingsQueryLimitRecentFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
-        binding.settingsQueryLimitRecentFaq.setOnClickListener {
-            ConfirmationDialog(this@SettingsActivity, messageId = R.string.number_of_recent_calls_displays_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
-        }
-    }
+//    private fun setupQueryLimitRecent() {
+//        binding.settingsQueryLimitRecent.text = getQueryLimitRecentText()
+//        binding.settingsQueryLimitRecentHolder.setOnClickListener {
+//            val items = arrayListOf(
+//                RadioItem(QUERY_LIMIT_TINY_VALUE, QUERY_LIMIT_TINY_VALUE.toString()),
+//                RadioItem(QUERY_LIMIT_SMALL_VALUE, QUERY_LIMIT_SMALL_VALUE.toString()),
+//                RadioItem(QUERY_LIMIT_MEDIUM_VALUE, QUERY_LIMIT_MEDIUM_VALUE.toString()),
+//                RadioItem(QUERY_LIMIT_NORMAL_VALUE, QUERY_LIMIT_NORMAL_VALUE.toString()),
+//                RadioItem(QUERY_LIMIT_BIG_VALUE, QUERY_LIMIT_BIG_VALUE.toString()),
+//                RadioItem(QUERY_LIMIT_MAX_VALUE, "MAX"))
+//
+//            RadioGroupDialog(
+//                this@SettingsActivity,
+//                items,
+//                config.queryLimitRecent,
+//                R.string.number_of_recent_calls_displays,
+//                defaultItemId = QUERY_LIMIT_MEDIUM_VALUE
+//            ) {
+//                config.queryLimitRecent = it as Int
+//                binding.settingsQueryLimitRecent.text = getQueryLimitRecentText()
+//            }
+//        }
+//
+//        binding.settingsQueryLimitRecentFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
+//        binding.settingsQueryLimitRecentFaq.setOnClickListener {
+//            ConfirmationDialog(this@SettingsActivity, messageId = R.string.number_of_recent_calls_displays_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
+//        }
+//    }
 
     private fun getQueryLimitRecentText(): String {
         return if (config.queryLimitRecent == QUERY_LIMIT_MAX_VALUE) "MAX" else config.queryLimitRecent.toString()
     }
 
-    private fun setupStartNameWithSurname() {
-        binding.apply {
-            settingsStartNameWithSurname.isChecked = config.startNameWithSurname
-            settingsStartNameWithSurnameHolder.setOnClickListener {
-                settingsStartNameWithSurname.toggle()
-                config.startNameWithSurname = settingsStartNameWithSurname.isChecked
-            }
-        }
-    }
+//    private fun setupStartNameWithSurname() {
+//        binding.apply {
+//            settingsStartNameWithSurname.isChecked = config.startNameWithSurname
+//            settingsStartNameWithSurnameHolder.setOnClickListener {
+//                settingsStartNameWithSurname.toggle()
+//                config.startNameWithSurname = settingsStartNameWithSurname.isChecked
+//            }
+//        }
+//    }
 
-    private fun setupShowNicknameInsteadNames() {
-        binding.apply {
-            settingsShowNicknameInsteadNames.isChecked = config.showNicknameInsteadNames
-            settingsShowNicknameInsteadNamesHolder.setOnClickListener {
-                settingsShowNicknameInsteadNames.toggle()
-                config.showNicknameInsteadNames = settingsShowNicknameInsteadNames.isChecked
-                config.needRestart = true
-            }
-        }
-    }
+//    private fun setupShowNicknameInsteadNames() {
+//        binding.apply {
+//            settingsShowNicknameInsteadNames.isChecked = config.showNicknameInsteadNames
+//            settingsShowNicknameInsteadNamesHolder.setOnClickListener {
+//                settingsShowNicknameInsteadNames.toggle()
+//                config.showNicknameInsteadNames = settingsShowNicknameInsteadNames.isChecked
+//                config.needRestart = true
+//            }
+//        }
+//    }
 
-    private fun setupFormatPhoneNumbers() {
-        binding.settingsFormatPhoneNumbers.isChecked = config.formatPhoneNumbers
-        binding.settingsFormatPhoneNumbersHolder.setOnClickListener {
-            binding.settingsFormatPhoneNumbers.toggle()
-            config.formatPhoneNumbers = binding.settingsFormatPhoneNumbers.isChecked
-            config.needRestart = true
-        }
-    }
+//    private fun setupFormatPhoneNumbers() {
+//        binding.settingsFormatPhoneNumbers.isChecked = config.formatPhoneNumbers
+//        binding.settingsFormatPhoneNumbersHolder.setOnClickListener {
+//            binding.settingsFormatPhoneNumbers.toggle()
+//            config.formatPhoneNumbers = binding.settingsFormatPhoneNumbers.isChecked
+//            config.needRestart = true
+//        }
+//    }
 
     private fun setupShowCallConfirmation() {
         binding.apply {
@@ -1690,23 +1687,23 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupTipJar() = binding.apply {
-        settingsTipJarHolder.apply {
-            beVisibleIf(checkPro(false))
-            background.applyColorFilter(getColoredMaterialStatusBarColor())
-            setOnClickListener {
-                launchPurchase()
-            }
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    private fun setupAbout() = binding.apply {
-        settingsAboutVersion.text = "Version: " + BuildConfig.VERSION_NAME
-        settingsAboutHolder.setOnClickListener {
-            launchAbout()
-        }
-    }
+//    private fun setupTipJar() = binding.apply {
+//        settingsTipJarHolder.apply {
+//            beVisibleIf(checkPro(false))
+//            background.applyColorFilter(getColoredMaterialStatusBarColor())
+//            setOnClickListener {
+//                launchPurchase()
+//            }
+//        }
+//    }
+//
+//    @SuppressLint("SetTextI18n")
+//    private fun setupAbout() = binding.apply {
+//        settingsAboutVersion.text = "Version: " + BuildConfig.VERSION_NAME
+//        settingsAboutHolder.setOnClickListener {
+//            launchAbout()
+//        }
+//    }
 
     private fun setupDisableProximitySensor() {
         binding.apply {

@@ -355,7 +355,7 @@ fun SimpleActivity.showSnackbar(view: View) {
 
 fun Activity.launchSendSMSIntentRecommendation(recipient: String) {
     val simpleSmsMessenger = "com.android.mms"
-    val simpleSmsMessengerDebug = "com.android.mms.debug"
+    val simpleSmsMessengerDebug = "com.android.mms"
     if ((0..config.appRecommendationDialogCount).random() == 2
         && (!isPackageInstalled(simpleSmsMessenger)
             && !isPackageInstalled(simpleSmsMessengerDebug))
@@ -373,7 +373,7 @@ fun Activity.launchSendSMSIntentRecommendation(recipient: String) {
 
 fun Activity.startContactDetailsIntentRecommendation(contact: Contact) {
     val simpleContacts = "com.android.contacts"
-    val simpleContactsDebug = "com.android.contacts.debug"
+    val simpleContactsDebug = "com.android.contacts"
     if ((0..config.appRecommendationDialogCount).random() == 2
         && (!isPackageInstalled(simpleContacts)
             && !isPackageInstalled(simpleContactsDebug))

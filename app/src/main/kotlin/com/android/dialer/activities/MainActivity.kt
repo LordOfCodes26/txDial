@@ -136,14 +136,8 @@ class MainActivity : SimpleActivity() {
             searchBeVisibleIf(useBottomNavigationBar)
         }
 
-        if (!useBottomNavigationBar) {
-            setupTopTabs()
-        } else {
-            setupTabs()
-        }
+        setupTabs()
         Contact.sorting = config.sorting
-
-        binding.mainTopTabsContainer.beGoneIf(binding.mainTopTabsHolder.tabCount == 1 || useBottomNavigationBar)
 
         setupSecondaryLanguage()
 
@@ -197,33 +191,7 @@ class MainActivity : SimpleActivity() {
             refreshItems(true)
         }
 
-        if (binding.viewPager.adapter != null && !config.bottomNavigationBar) {
-
-            if (config.needRestart) {
-                if (config.useIconTabs) {
-                    binding.mainTopTabsHolder.getTabAt(0)?.text = null
-                    binding.mainTopTabsHolder.getTabAt(1)?.text = null
-                    binding.mainTopTabsHolder.getTabAt(2)?.text = null
-                } else {
-                    binding.mainTopTabsHolder.getTabAt(0)?.icon = null
-                    binding.mainTopTabsHolder.getTabAt(1)?.icon = null
-                    binding.mainTopTabsHolder.getTabAt(2)?.icon = null
-                }
-            }
-
-            getInactiveTabIndexes(binding.viewPager.currentItem).forEach {
-                binding.mainTopTabsHolder.getTabAt(it)?.icon?.applyColorFilter(properTextColor)
-                binding.mainTopTabsHolder.getTabAt(it)?.icon?.alpha = 220 // max 255
-                binding.mainTopTabsHolder.setTabTextColors(properTextColor, properPrimaryColor)
-            }
-
-            binding.mainTopTabsHolder.getTabAt(binding.viewPager.currentItem)?.icon?.applyColorFilter(properPrimaryColor)
-            binding.mainTopTabsHolder.getTabAt(binding.viewPager.currentItem)?.icon?.alpha = 220 // max 255
-            getAllFragments().forEach {
-                it?.setupColors(properTextColor, properPrimaryColor, getProperAccentColor())
-                binding.mainTopTabsHolder.setTabTextColors(properTextColor, properPrimaryColor)
-            }
-        } else if (binding.viewPager.adapter != null && config.bottomNavigationBar) {
+        if (binding.viewPager.adapter != null && config.bottomNavigationBar) {
             getAllFragments().forEach {
                 it?.setupColors(properTextColor, properPrimaryColor, getProperAccentColor())
             }
@@ -606,22 +574,6 @@ class MainActivity : SimpleActivity() {
 //                    }
 //                }
 //            }
-        } else {
-            // top tab bar
-            val lastUsedPage = getDefaultTab()
-            val properTextColor = getProperTextColor()
-            binding.mainTopTabsHolder.apply {
-                //background = ColorDrawable(getProperBackgroundColor())
-                setSelectedTabIndicatorColor(getProperBackgroundColor())
-                getTabAt(lastUsedPage)?.select()
-                getTabAt(lastUsedPage)?.icon?.applyColorFilter(properPrimaryColor)
-                getTabAt(lastUsedPage)?.icon?.alpha = 220 // max 255
-
-                getInactiveTabIndexes(lastUsedPage).forEach {
-                    getTabAt(it)?.icon?.applyColorFilter(properTextColor)
-                    getTabAt(it)?.icon?.alpha = 220 // max 255
-                }
-            }
         }
     }
 
@@ -678,7 +630,7 @@ class MainActivity : SimpleActivity() {
             override fun onPageSelected(position: Int) {
                 if (config.bottomNavigationBar) {
                     binding.mainTabsHolder.getTabAt(position)?.select()
-                } else binding.mainTopTabsHolder.getTabAt(position)?.select()
+                }
 
                 getAllFragments().forEach {
                     it?.finishActMode()
@@ -702,20 +654,6 @@ class MainActivity : SimpleActivity() {
                     }
 
                     binding.mainTabsHolder.getTabAt(wantedTab)?.select()
-                    refreshMenuItems()
-                }, 100L)
-            }
-        } else {
-            binding.mainTopTabsHolder.onGlobalLayout {
-                Handler().postDelayed({
-                    var wantedTab = getDefaultTab()
-
-                    // open the Recents tab if we got here by clicking a missed call notification
-                    if (intent.action == Intent.ACTION_VIEW && config.showTabs and TAB_CALL_HISTORY > 0) {
-                        wantedTab = binding.mainTopTabsHolder.tabCount - 2
-                    }
-
-                    binding.mainTopTabsHolder.getTabAt(wantedTab)?.select()
                     refreshMenuItems()
                 }, 100L)
             }
@@ -755,79 +693,8 @@ class MainActivity : SimpleActivity() {
         )
     }
 
-    private fun setupTopTabs() {
-        // top tab bar
-        binding.mainTabsHolder.beGone()
-        val selectedTabIndex = binding.mainTopTabsHolder.selectedTabPosition
-        binding.viewPager.adapter = null
-        binding.mainTopTabsHolder.removeAllTabs()
-        var skippedTabs = 0
-        var isAnySelected = false
-
-        val properTextColor = getProperTextColor()
-        val properPrimaryColor = getProperPrimaryColor()
-        tabsList.forEachIndexed { index, value ->
-            if (config.showTabs and value == 0) {
-                skippedTabs++
-            } else {
-                val tab =
-                    if (config.useIconTabs) binding.mainTopTabsHolder.newTab().setIcon(getTabIcon(index))
-                    else binding.mainTopTabsHolder.newTab().setText(getTabLabel(index))
-                tab.contentDescription = getTabContentDescription(index)
-                val wasAlreadySelected = selectedTabIndex > -1 && selectedTabIndex == index - skippedTabs
-                val shouldSelect = !isAnySelected && wasAlreadySelected
-                if (shouldSelect) {
-                    isAnySelected = true
-                }
-                binding.mainTopTabsHolder.addTab(tab, index - skippedTabs, shouldSelect)
-                binding.mainTopTabsHolder.setTabTextColors(
-                    properTextColor,
-                    properPrimaryColor
-                )
-            }
-        }
-
-        binding.mainTopTabsHolder.onTabSelectionChanged(
-            tabUnselectedAction = {
-                it.icon?.applyColorFilter(properTextColor)
-                it.icon?.alpha = 220 // max 255
-                getFavoritesFragment()?.refreshItems() //to save sorting
-            },
-            tabSelectedAction = {
-                if (config.closeSearch) {
-                    closeSearch()
-                } else {
-                    //On tab switch, the search string is not deleted
-                    //It should not start on the first startup
-                    if (isSearchOpen) getCurrentFragment()?.onSearchQueryChanged(searchQuery)
-                }
-
-                binding.viewPager.currentItem = it.position
-                it.icon?.applyColorFilter(properPrimaryColor)
-                it.icon?.alpha = 220 // max 255
-
-//                val lastPosition = binding.mainTopTabsHolder.tabCount - 1
-//                if (it.position == lastPosition && config.showTabs and TAB_CALL_HISTORY > 0) {
-//                    clearMissedCalls()
-//                }
-
-                if (config.openSearch) {
-                    if (getCurrentFragment() is ContactsFragment) {
-                        mSearchMenuItem!!.expandActionView()
-                    }
-                }
-            }
-        )
-        if (!isAnySelected) {
-            binding.mainTopTabsHolder.selectTab(binding.mainTopTabsHolder.getTabAt(getDefaultTab()))
-        }
-        storedShowTabs = config.showTabs
-        config.needRestart = false
-    }
-
     private fun setupTabs() {
         // bottom tab bar
-        binding.mainTopTabsHolder.beGone()
         binding.viewPager.adapter = null
         binding.mainTabsHolder.removeAllTabs()
         tabsList.forEachIndexed { index, value ->
@@ -968,7 +835,7 @@ class MainActivity : SimpleActivity() {
 
     private fun getDefaultTab(): Int {
         val showTabsMask = config.showTabs
-        val mainTabsHolder = if (config.bottomNavigationBar) binding.mainTabsHolder else binding.mainTopTabsHolder
+        val mainTabsHolder = binding.mainTabsHolder
         return when (config.defaultTab) {
             TAB_LAST_USED -> if (config.lastUsedViewPagerPage < mainTabsHolder.tabCount) config.lastUsedViewPagerPage else 0
             TAB_FAVORITES -> 0

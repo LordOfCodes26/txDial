@@ -28,7 +28,7 @@ class SelectSIMDialog(
     init {
         val isManageSpeedDial = phoneNumber == ""
         binding.selectSimLabel.beGoneIf(isManageSpeedDial)
-        (binding.divider as View).beGoneIf(isManageSpeedDial)
+        binding.divider.root.beGoneIf(isManageSpeedDial)
         binding.selectSimRememberHolder.beGoneIf(isManageSpeedDial)
         binding.selectSimRememberHolder.setOnClickListener {
             binding.selectSimRemember.toggle()

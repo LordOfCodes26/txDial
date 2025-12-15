@@ -516,7 +516,7 @@ open class BaseConfig(val context: Context) {
         set(defaultTab) = prefs.edit { putInt(DEFAULT_TAB, defaultTab) }
 
     var startNameWithSurname: Boolean
-        get() = prefs.getBoolean(START_NAME_WITH_SURNAME, false)
+        get() = prefs.getBoolean(START_NAME_WITH_SURNAME, true)
         set(startNameWithSurname) = prefs.edit { putBoolean(START_NAME_WITH_SURNAME, startNameWithSurname) }
 
     var favorites: MutableSet<String>
@@ -556,7 +556,7 @@ open class BaseConfig(val context: Context) {
         set(showPhoneNumbers) = prefs.edit { putBoolean(SHOW_PHONE_NUMBERS, showPhoneNumbers) }
 
     var formatPhoneNumbers: Boolean
-        get() = prefs.getBoolean(FORMAT_PHONE_NUMBERS, true)
+        get() = prefs.getBoolean(FORMAT_PHONE_NUMBERS, false)
         set(formatPhoneNumbers) = prefs.edit { putBoolean(FORMAT_PHONE_NUMBERS, formatPhoneNumbers) }
 
     var showOnlyContactsWithNumbers: Boolean
