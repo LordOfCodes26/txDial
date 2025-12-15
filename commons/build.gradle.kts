@@ -154,4 +154,7 @@ dependencies {
     implementation(libs.behavio.rule)
     implementation(libs.rx.animation)
     implementation(libs.rx.java)
+    api("io.github.kyant0:backdrop:1.0.2")
+    api("io.github.kyant0:capsule:2.1.2")
+
 }

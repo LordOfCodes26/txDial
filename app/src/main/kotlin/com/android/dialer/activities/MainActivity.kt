@@ -174,7 +174,7 @@ class MainActivity : SimpleActivity() {
         binding.mainDialpadButton.setImageDrawable(dialpadIcon)
 
         updateTextColors(binding.mainHolder)
-        setupTabColors()
+//        setupTabColors()
         binding.mainMenu.updateColors(
             background = getStartRequiredStatusBarColor(),
             scrollOffset = scrollingView?.computeVerticalScrollOffset() ?: 0
@@ -548,34 +548,25 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-    private fun setupTabColors() {
-        val properPrimaryColor = getProperPrimaryColor()
-        // bottom tab bar
-        if (config.bottomNavigationBar) {
-            val activeView = binding.mainTabsHolder.getTabAt(binding.viewPager.currentItem)?.customView
-            updateBottomTabItemColors(activeView, true, getSelectedTabDrawableIds()[binding.viewPager.currentItem])
-
-            getInactiveTabIndexes(binding.viewPager.currentItem).forEach { index ->
-                val inactiveView = binding.mainTabsHolder.getTabAt(index)?.customView
-                updateBottomTabItemColors(inactiveView, false, getDeselectedTabDrawableIds()[index])
-            }
-
-            val bottomBarColor =
-                if (isDynamicTheme() && !isSystemInDarkMode()) getColoredMaterialStatusBarColor()
-                else getSurfaceColor()
-            binding.mainTabsHolder.setBackgroundColor(bottomBarColor)
-//            if (binding.mainTabsHolder.tabCount != 1) updateNavigationBarColor(bottomBarColor)
-//            else {
-//                // TODO TRANSPARENT Navigation Bar
-//                setWindowTransparency(true) { _, bottomNavigationBarSize, leftNavigationBarSize, rightNavigationBarSize ->
-//                    binding.mainCoordinator.setPadding(leftNavigationBarSize, 0, rightNavigationBarSize, 0)
-//                    binding.mainDialpadButton.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-//                        setMargins(0, 0, 0, bottomNavigationBarSize + pixels(R.dimen.activity_margin).toInt())
-//                    }
-//                }
-//            }
-        }
-    }
+//    private fun setupTabColors() {
+//        // bottom tab bar
+//        if (config.bottomNavigationBar) {
+//            val bottomBarColor =
+//                if (isDynamicTheme() && !isSystemInDarkMode()) getColoredMaterialStatusBarColor()
+//                else getSurfaceColor()
+//            binding.mainTabsHolder.setBackgroundColor(Color.TRANSPARENT)
+////            if (binding.mainTabsHolder.tabCount != 1) updateNavigationBarColor(bottomBarColor)
+////            else {
+////                // TODO TRANSPARENT Navigation Bar
+////                setWindowTransparency(true) { _, bottomNavigationBarSize, leftNavigationBarSize, rightNavigationBarSize ->
+////                    binding.mainCoordinator.setPadding(leftNavigationBarSize, 0, rightNavigationBarSize, 0)
+////                    binding.mainDialpadButton.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+////                        setMargins(0, 0, 0, bottomNavigationBarSize + pixels(R.dimen.activity_margin).toInt())
+////                    }
+////                }
+////            }
+//        }
+//    }
 
     private fun getInactiveTabIndexes(activeIndex: Int) = (0 until binding.mainTabsHolder.tabCount).filter { it != activeIndex }
 
@@ -699,21 +690,15 @@ class MainActivity : SimpleActivity() {
         binding.mainTabsHolder.removeAllTabs()
         tabsList.forEachIndexed { index, value ->
             if (config.showTabs and value != 0) {
-                binding.mainTabsHolder.newTab().setCustomView(R.layout.bottom_tablayout_item).apply {
-                    customView?.findViewById<ImageView>(R.id.tab_item_icon)?.setImageDrawable(getTabIcon(index))
-                    customView?.findViewById<TextView>(R.id.tab_item_label)?.apply {
-                        text = getTabLabel(index)
-                        beGoneIf(config.useIconTabs)
-                    }
-                    AutofitHelper.create(customView?.findViewById(R.id.tab_item_label))
-                    binding.mainTabsHolder.addTab(this)
-                }
+                val tab = binding.mainTabsHolder.newTab()
+                tab.setIcon(getTabIconRes(index))
+                tab.setText(getTabLabel(index))
+                binding.mainTabsHolder.addTab(tab)
             }
         }
 
         binding.mainTabsHolder.onTabSelectionChanged(
             tabUnselectedAction = {
-                updateBottomTabItemColors(it.customView, false, getDeselectedTabDrawableIds()[it.position])
             },
             tabSelectedAction = {
                 if (config.closeSearch) {
@@ -725,7 +710,6 @@ class MainActivity : SimpleActivity() {
                 }
 
                 binding.viewPager.currentItem = it.position
-                updateBottomTabItemColors(it.customView, true, getSelectedTabDrawableIds()[it.position])
 
 //                val lastPosition = binding.mainTabsHolder.tabCount - 1
 //                if (it.position == lastPosition && config.showTabs and TAB_CALL_HISTORY > 0) {
@@ -754,6 +738,14 @@ class MainActivity : SimpleActivity() {
         }
 
         return resources.getString(stringId)
+    }
+
+    private fun getTabIconRes(position: Int): Int {
+        return when (position) {
+            0 -> R.drawable.ic_star_vector
+            1 -> R.drawable.ic_clock_filled_vector
+            else -> R.drawable.ic_person_rounded
+        }
     }
 
     private fun getTabIcon(position: Int): Drawable {

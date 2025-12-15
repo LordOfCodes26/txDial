@@ -23,8 +23,8 @@
             android:id="@+id/viewPager"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toTopOf="@+id/mainTabsHolder"
-            app:layout_constraintTop_toTopOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
 
         <com.goodwy.commons.views.MyFloatingActionButton
             android:id="@+id/main_dialpad_button"
@@ -62,13 +62,10 @@
             app:rippleColor="@color/pressed_item_foreground"
             tools:alpha="1"/>
 
-        <com.google.android.material.tabs.TabLayout
+        <com.goodwy.commons.views.MyLiquidNavigationView
             android:id="@+id/mainTabsHolder"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:tabIndicator="@null"
-            app:tabMinWidth="150dp"
-            app:tabRippleColor="@null"/>
+            app:layout_constraintBottom_toBottomOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
