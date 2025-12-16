@@ -5,8 +5,12 @@ import android.os.Handler
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
+import android.widget.EdgeEffect
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.EdgeEffectFactory
+import androidx.dynamicanimation.animation.SpringAnimation
+import androidx.dynamicanimation.animation.SpringForce
 import com.goodwy.commons.R
 import com.goodwy.commons.interfaces.RecyclerScrollCallback
 
@@ -63,6 +67,10 @@ open class MyRecyclerView : RecyclerView {
 
     init {
         hotspotHeight = context.resources.getDimensionPixelSize(R.dimen.dragselect_hotspot_height)
+
+        // enable bouncy overscroll effect
+        edgeEffectFactory = BounceEdgeEffectFactory()
+        overScrollMode = OVER_SCROLL_ALWAYS
 
         if (layoutManager is LinearLayoutManager) {
             linearLayoutManager = layoutManager as LinearLayoutManager
@@ -224,11 +232,9 @@ open class MyRecyclerView : RecyclerView {
     private fun getItemPosition(e: MotionEvent): Int {
         val v = findChildViewUnder(e.x, e.y) ?: return NO_POSITION
 
-        if (v.tag == null || v.tag !is ViewHolder) {
-            throw IllegalStateException("Make sure your adapter makes a call to super.onBindViewHolder(), and doesn't override itemView tags.")
-        }
-
-        val holder = v.tag as ViewHolder
+        // Be defensive here so touch handling never crashes the app.
+        val holderTag = v.tag
+        val holder = holderTag as? ViewHolder ?: return NO_POSITION
         return holder.adapterPosition
     }
 
@@ -329,5 +335,65 @@ open class MyRecyclerView : RecyclerView {
         fun updateTop()
 
         fun updateBottom()
+    }
+
+    private class BounceEdgeEffectFactory : EdgeEffectFactory() {
+
+        override fun createEdgeEffect(recyclerView: RecyclerView, direction: Int): EdgeEffect {
+            return object : EdgeEffect(recyclerView.context) {
+
+                // Spring animation that returns the list back to its resting position.
+                private val spring =
+                    SpringAnimation(recyclerView, SpringAnimation.TRANSLATION_Y).apply {
+                        spring = SpringForce(0f).apply {
+                            // Slightly stronger damping and stiffness for a smoother, less “wobbly” feel.
+                            dampingRatio = 0.7f
+                            stiffness = SpringForce.STIFFNESS_MEDIUM
+                        }
+                    }
+
+                private fun signForDirection(): Int {
+                    return when (direction) {
+                        DIRECTION_TOP -> 1
+                        DIRECTION_BOTTOM -> -1
+                        else -> 1
+                    }
+                }
+
+                private fun handlePull(deltaDistance: Float) {
+                    val sign = signForDirection()
+                    val translationDelta =
+                        sign * recyclerView.height * deltaDistance.coerceIn(-1f, 1f) * 0.25f
+                    val maxOffset = recyclerView.height * 0.15f
+                    recyclerView.translationY =
+                        (recyclerView.translationY + translationDelta).coerceIn(-maxOffset, maxOffset)
+                    spring.cancel()
+                }
+
+                override fun onPull(deltaDistance: Float) {
+                    // Do not call super.onPull here to avoid recursive calls between the
+                    // 1-arg and 2-arg overloads in the platform implementation.
+                    handlePull(deltaDistance)
+                }
+
+                override fun onPull(deltaDistance: Float, displacement: Float) {
+                    // Route both overloads through the same logic.
+                    handlePull(deltaDistance)
+                }
+
+                override fun onRelease() {
+                    if (recyclerView.translationY != 0f) {
+                        spring.start()
+                    }
+                }
+
+                override fun onAbsorb(velocity: Int) {
+                    // Fling into the edge – give an initial velocity for a stronger bounce.
+                    val sign = signForDirection()
+                    spring.setStartVelocity(sign * velocity * 0.15f)
+                    spring.start()
+                }
+            }
+        }
     }
 }

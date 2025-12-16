@@ -350,5 +350,18 @@ class Config(context: Context) : BaseConfig(context) {
     var swipeRipple: Boolean
         get() = prefs.getBoolean(SWIPE_RIPPLE, false)
         set(swipeRipple) = prefs.edit { putBoolean(SWIPE_RIPPLE, swipeRipple) }
+
+    // Auto Redial
+    var autoRedialEnabled: Boolean
+        get() = prefs.getBoolean(AUTO_REDIAL_ENABLED, false)
+        set(autoRedialEnabled) = prefs.edit { putBoolean(AUTO_REDIAL_ENABLED, autoRedialEnabled) }
+
+    var autoRedialMaxRetries: Int
+        get() = prefs.getInt(AUTO_REDIAL_MAX_RETRIES, 3)
+        set(autoRedialMaxRetries) = prefs.edit { putInt(AUTO_REDIAL_MAX_RETRIES, autoRedialMaxRetries) }
+
+    var autoRedialDelayMs: Long
+        get() = prefs.getLong(AUTO_REDIAL_DELAY_MS, 2000L)
+        set(autoRedialDelayMs) = prefs.edit { putLong(AUTO_REDIAL_DELAY_MS, autoRedialDelayMs) }
 }
 

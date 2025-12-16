@@ -157,4 +157,7 @@ dependencies {
     api("io.github.kyant0:backdrop:1.0.2")
     api("io.github.kyant0:capsule:2.1.2")
 
+    // Bouncy overscroll spring effect
+    implementation("androidx.dynamicanimation:dynamicanimation:1.1.0")
+
 }

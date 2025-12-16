@@ -1026,6 +1026,59 @@
                     </RelativeLayout>
 
                     <RelativeLayout
+                        android:id="@+id/settingsAutoRedialHolder"
+                        style="@style/SettingsHolderSwitchStyle">
+
+                        <com.goodwy.commons.views.MyMaterialSwitch
+                            android:id="@+id/settingsAutoRedial"
+                            style="@style/SettingsSwitchStyle"
+                            android:text="@string/auto_redial"
+                            app:switchPadding="@dimen/bigger_margin"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:id="@+id/settingsAutoRedialMaxRetriesHolder"
+                        style="@style/SettingsHolderStyle"
+                        android:visibility="gone">
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoRedialMaxRetriesLabel"
+                            style="@style/SettingsTextLabelStyle"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:layout_toStartOf="@+id/settingsAutoRedialMaxRetries"
+                            android:text="@string/auto_redial_max_retries"/>
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoRedialMaxRetries"
+                            style="@style/SettingsTextValueStyle"
+                            android:layout_alignParentEnd="true"
+                            android:layout_marginEnd="@dimen/settings_margin"
+                            tools:text="3"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:id="@+id/settingsAutoRedialDelayHolder"
+                        style="@style/SettingsHolderStyle"
+                        android:visibility="gone">
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoRedialDelayLabel"
+                            style="@style/SettingsTextLabelStyle"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:layout_toStartOf="@+id/settingsAutoRedialDelay"
+                            android:text="@string/auto_redial_delay"/>
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoRedialDelay"
+                            style="@style/SettingsTextValueStyle"
+                            android:layout_alignParentEnd="true"
+                            android:layout_marginEnd="@dimen/settings_margin"
+                            tools:text="2s"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
                         android:id="@+id/settingsQuickAnswersHolder"
                         style="@style/SettingsHolderStyle"
                         android:padding="@dimen/smaller_margin">

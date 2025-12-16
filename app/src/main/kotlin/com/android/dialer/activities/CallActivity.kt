@@ -159,8 +159,8 @@ class CallActivity : SimpleActivity() {
                 arrayOf(
                     callToggleMicrophone, callToggleSpeaker, callDialpad, /*dialpadClose,*/ callSimImage, callDetails,
                     callToggleHold, callAddContact, callAdd, callSwap, callMerge, callInfo, addCallerNote, imageView,
-                    dialpadInclude.dialpadAsterisk, dialpadInclude.dialpadHashtag
-                ).forEach {
+                    dialpadInclude.dialpadAsterisk, dialpadInclude.dialpadHashtag, callRedial
+                ).filterNotNull().forEach {
                     it.applyColorFilter(Color.WHITE)
                 }
 
@@ -177,8 +177,8 @@ class CallActivity : SimpleActivity() {
                 arrayOf(
                     callToggleMicrophone, callToggleSpeaker, callDialpad, /*dialpadClose,*/ callSimImage, callDetails,
                     callToggleHold, callAddContact, callAdd, callSwap, callMerge, callInfo, addCallerNote, imageView,
-                    dialpadInclude.dialpadAsterisk, dialpadInclude.dialpadHashtag, callMessage, callRemind
-                ).forEach {
+                    dialpadInclude.dialpadAsterisk, dialpadInclude.dialpadHashtag, callMessage, callRemind, callRedial
+                ).filterNotNull().forEach {
                     it.applyColorFilter(properTextColor)
                 }
 
@@ -197,7 +197,7 @@ class CallActivity : SimpleActivity() {
                 callToggleMicrophone, callToggleSpeaker, callToggleHold, onHoldStatusHolder,
                 callRemind, callMessage,
                 callDialpadHolder, callAddContactHolder, callAddHolder, callSwapHolder, callMergeHolder,
-                callAcceptAndDecline
+                callRedialHolder, callAcceptAndDecline
             ).forEach {
                 it.background.applyColorFilter(Color.GRAY)
                 it.background.alpha = 60
@@ -462,6 +462,64 @@ class CallActivity : SimpleActivity() {
 
         callAddContactHolder.setOnClickListener {
             addContact()
+            maybePerformDialpadHapticFeedback(it)
+        }
+
+        callRedialHolder.setOnClickListener {
+            // If auto redial setting is enabled, toggle the active state
+            if (config.autoRedialEnabled) {
+                val newState = !CallManager.isAutoRedialActive()
+                CallManager.setAutoRedialActive(newState)
+                toast(if (newState) R.string.auto_redial_enabled else R.string.auto_redial_disabled)
+                updateRedialButtonVisibility()
+                maybePerformDialpadHapticFeedback(it)
+                return@setOnClickListener
+            }
+            
+            // If auto redial setting is disabled, perform manual redial
+            val lastNumber = CallManager.getLastDialedNumber()
+            if (lastNumber != null) {
+                handlePermission(PERMISSION_CALL_PHONE) {
+                    val primaryCall = CallManager.getPrimaryCall()
+                    val callState = primaryCall?.getStateCompat()
+                    
+                    // If there's an active call, disconnect it first before redialing
+                    if (callState != null && callState != Call.STATE_DISCONNECTED && callState != Call.STATE_DISCONNECTING) {
+                        // Disconnect the current call
+                        CallManager.reject()
+                        
+                        // Wait for the call to disconnect before redialing
+                        val handler = Handler(Looper.getMainLooper())
+                        var retryCount = 0
+                        val maxRetries = 20 // Wait up to 2 seconds (20 * 100ms)
+                        
+                        val checkDisconnected = object : Runnable {
+                            override fun run() {
+                                val currentCall = CallManager.getPrimaryCall()
+                                val currentState = currentCall?.getStateCompat()
+                                
+                                if (currentState == Call.STATE_DISCONNECTED || currentState == null || CallManager.getPhoneState() == NoCall) {
+                                    // Call is disconnected, now redial
+                                    CallManager.redial(this@CallActivity)
+                                } else if (retryCount < maxRetries) {
+                                    // Still disconnecting, check again
+                                    retryCount++
+                                    handler.postDelayed(this, 100)
+                                } else {
+                                    // Timeout, try redialing anyway
+                                    CallManager.redial(this@CallActivity)
+                                }
+                            }
+                        }
+                        handler.postDelayed(checkDisconnected, 300)
+                    } else {
+                        // No active call, just redial immediately
+                        CallManager.redial(this@CallActivity)
+                    }
+                }
+            } else {
+                toast(R.string.no_number_to_redial)
+            }
             maybePerformDialpadHapticFeedback(it)
         }
 
@@ -1348,6 +1406,7 @@ class CallActivity : SimpleActivity() {
                 setActionButtonEnabled(callSwapHolder, enabled = !isCallEnded && state == Call.STATE_ACTIVE)
                 setActionButtonEnabled(callMergeHolder, enabled = !isCallEnded && state == Call.STATE_ACTIVE)
             }
+            updateRedialButtonVisibility()
         }
     }
 
@@ -1373,6 +1432,7 @@ class CallActivity : SimpleActivity() {
         runOnUiThread {
             updateCallAudioState(CallManager.getCallAudioRoute(), changeProximitySensor)
             updateMicrophoneButton()
+            updateRedialButtonVisibility()
         }
     }
 
@@ -1516,6 +1576,7 @@ class CallActivity : SimpleActivity() {
         binding.incomingCallHolder.beGone()
         binding.ongoingCallHolder.beVisible()
         binding.callEnd.beVisible()
+        updateRedialButtonVisibility()
     }
 
     private fun callRinging() {
@@ -1529,6 +1590,7 @@ class CallActivity : SimpleActivity() {
         binding.callEnd.beVisible()
         callDurationHandler.removeCallbacks(updateCallDurationTask)
         callDurationHandler.post(updateCallDurationTask)
+        updateRedialButtonVisibility()
         maybePerformCallHapticFeedback(binding.callerNameLabel)
 //        if (config.flashForAlerts) MyCameraImpl.newInstance(this).toggleSOS()
     }
@@ -1559,6 +1621,7 @@ class CallActivity : SimpleActivity() {
         isCallEnded = true
         runOnUiThread {
             val phoneState = CallManager.getPhoneState()
+            updateRedialButtonVisibility()
             if (callDuration > 0) {
                 disableAllActionButtons()
                 @SuppressLint("SetTextI18n")
@@ -1667,6 +1730,48 @@ class CallActivity : SimpleActivity() {
         }
     }
 
+    private fun updateRedialButtonVisibility() {
+        val lastNumber = CallManager.getLastDialedNumber()
+        val primaryCall = CallManager.getPrimaryCall()
+        val callState = primaryCall?.getStateCompat()
+        
+        // Show redial button when auto redial setting is enabled (to allow toggling active state)
+        // Or when auto redial setting is disabled and there's a last number to redial
+        val shouldShowRedial: Boolean
+        if (config.autoRedialEnabled) {
+            // Show redial button when auto redial setting is enabled (acts as toggle for active state)
+            val isOutgoingCall = callState == Call.STATE_CONNECTING || callState == Call.STATE_DIALING
+            val isCallEndedState = isCallEnded && !lastNumber.isNullOrEmpty()
+            shouldShowRedial = (isOutgoingCall || isCallEndedState) && !lastNumber.isNullOrEmpty()
+        } else {
+            // Show redial button during outgoing calls (CONNECTING, DIALING) or when call ended
+            val isOutgoingCall = callState == Call.STATE_CONNECTING || callState == Call.STATE_DIALING
+            val isCallEndedState = isCallEnded && !lastNumber.isNullOrEmpty()
+            shouldShowRedial = (isOutgoingCall || isCallEndedState) && !lastNumber.isNullOrEmpty()
+        }
+        
+        // Show add call button only when call is active (connected) and not ended
+        val shouldShowAddCall = !isCallEnded && callState == Call.STATE_ACTIVE
+        
+        binding.apply {
+            callRedialHolder.beVisibleIf(shouldShowRedial)
+            callRedialLabel.beVisibleIf(shouldShowRedial)
+            if (shouldShowRedial) {
+                callRedialHolder.isEnabled = true
+                // Show visual feedback: dimmed when auto redial is inactive (if setting is enabled)
+                if (config.autoRedialEnabled) {
+                    callRedialHolder.alpha = if (CallManager.isAutoRedialActive()) 1f else 0.5f
+                } else {
+                    callRedialHolder.alpha = 1f
+                }
+            }
+            
+            // Hide/show add call button based on call state
+            callAddHolder.beVisibleIf(shouldShowAddCall)
+            callAddLabel.beVisibleIf(shouldShowAddCall)
+        }
+    }
+
     private fun disableAllActionButtons() {
         (binding.ongoingCallHolder.children + binding.callEnd)
             .filter { it is ImageView && it.isVisible() }
@@ -1678,6 +1783,13 @@ class CallActivity : SimpleActivity() {
             .forEach { view ->
                 setActionButtonEnabled(button = view as LinearLayout, enabled = false)
             }
+        // Keep redial button enabled even when other buttons are disabled
+        binding.callRedialHolder.let {
+            if (it.isVisible) {
+                it.isEnabled = true
+                it.alpha = 1f
+            }
+        }
     }
 
     private fun setActionButtonEnabled(button: LinearLayout, enabled: Boolean) {

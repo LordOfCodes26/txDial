@@ -2,6 +2,7 @@ package com.android.dialer.services
 
 import android.telecom.Call
 import android.telecom.CallAudioState
+import android.telecom.DisconnectCause
 import android.telecom.InCallService
 import com.goodwy.commons.extensions.baseConfig
 import com.goodwy.commons.extensions.canUseFullScreenIntent
@@ -25,8 +26,24 @@ class CallService : InCallService() {
             super.onStateChanged(call, state)
             if (state == Call.STATE_DISCONNECTED || state == Call.STATE_DISCONNECTING) {
                 callNotificationManager.cancelNotification()
+                
+                // Check if auto redial should be triggered
+                if (state == Call.STATE_DISCONNECTED && call.isOutgoing()) {
+                    val disconnectCause = call.details.disconnectCause
+                    val disconnectCode = disconnectCause?.code ?: DisconnectCause.UNKNOWN
+                    if (CallManager.shouldAutoRedial(context, disconnectCode)) {
+                        CallManager.startAutoRedial(context, disconnectCode)
+                    } else {
+                        CallManager.resetAutoRedialRetryCount()
+                    }
+                }
             } else {
                 callNotificationManager.setupNotification()
+                // Reset auto redial retry count when call is successfully connected
+                if (state == Call.STATE_ACTIVE && call.isOutgoing()) {
+                    CallManager.resetAutoRedialRetryCount()
+                    CallManager.cancelAutoRedial()
+                }
             }
             if (baseConfig.flashForAlerts) MyCameraImpl.newInstance(context).stopSOS()
         }
@@ -37,6 +54,17 @@ class CallService : InCallService() {
         CallManager.onCallAdded(call)
         CallManager.inCallService = this
         call.registerCallback(callListener)
+        
+        // Store last dialed number for redial functionality
+        if (call.isOutgoing()) {
+            val handle = call.details.accountHandle
+            val number = call.details.handle?.schemeSpecificPart
+            if (number != null) {
+                CallManager.setLastDialedNumber(number, handle)
+                // Cancel any pending auto redial when a new call is initiated
+                CallManager.cancelAutoRedial()
+            }
+        }
 
         // Incoming/Outgoing (locked): high priority (FSI)
         // Incoming (unlocked): if user opted in, low priority ➜ manual activity start, otherwise high priority (FSI)
@@ -77,6 +105,8 @@ class CallService : InCallService() {
         if (CallManager.getPhoneState() == NoCall) {
             CallManager.inCallService = null
             callNotificationManager.cancelNotification()
+            // Reset auto redial when all calls are removed
+            CallManager.resetAutoRedialRetryCount()
         } else {
             callNotificationManager.setupNotification()
             if (wasPrimaryCall) {

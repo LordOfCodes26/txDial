@@ -64,6 +64,9 @@ const val INIT_CALL_BLOCKING_SETUP = "init_call_blocking_setup"
 const val RECENT_OUTGOING_NUMBERS = "recent_outgoing_numbers"
 const val ON_RECENT_CLICK = "on_recent_click"
 const val ON_FAVORITE_CLICK = "on_favorite_click"
+const val AUTO_REDIAL_ENABLED = "auto_redial_enabled"
+const val AUTO_REDIAL_MAX_RETRIES = "auto_redial_max_retries"
+const val AUTO_REDIAL_DELAY_MS = "auto_redial_delay_ms"
 
 const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY
 

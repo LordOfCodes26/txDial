@@ -1,15 +1,23 @@
 package com.android.dialer.helpers
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.net.Uri
 import android.os.Handler
+import android.os.Looper
 import android.telecom.Call
 import android.telecom.CallAudioState
+import android.telecom.DisconnectCause
 import android.telecom.InCallService
+import android.telecom.PhoneAccountHandle
+import android.telecom.TelecomManager
 import android.telecom.VideoProfile
+import com.android.dialer.extensions.config
 import com.android.dialer.extensions.getStateCompat
 import com.android.dialer.extensions.hasCapability
 import com.android.dialer.extensions.isConference
 import com.android.dialer.models.AudioRoute
+import com.goodwy.commons.extensions.telecomManager
 import java.util.concurrent.CopyOnWriteArraySet
 
 // inspired by https://github.com/Chooloo/call_manage
@@ -22,6 +30,14 @@ class CallManager {
         private val listeners = CopyOnWriteArraySet<CallManagerListener>()
         var isSpeakerOn: Boolean = false
         private var previousAudioRoute: Int = CallAudioState.ROUTE_WIRED_OR_EARPIECE
+        
+        // Redial and Auto Redial
+        private var lastDialedNumber: String? = null
+        private var lastDialedHandle: PhoneAccountHandle? = null
+        private var autoRedialRetryCount: Int = 0
+        private val autoRedialHandler = Handler(Looper.getMainLooper())
+        private var autoRedialRunnable: Runnable? = null
+        private var autoRedialActive: Boolean = true // Toggle state for auto redial (independent of config setting)
 
         fun onCallAdded(call: Call) {
             this.call = call
@@ -280,6 +296,102 @@ class CallManager {
                 call?.stopDtmfTone()
             }, DIALPAD_TONE_LENGTH_MS)
         }
+
+        // Redial functionality
+        fun setLastDialedNumber(number: String?, handle: PhoneAccountHandle? = null) {
+            lastDialedNumber = number
+            lastDialedHandle = handle
+            // Reset auto redial retry count when a new number is dialed
+            autoRedialRetryCount = 0
+            autoRedialActive = true // Reset to active when a new call is made
+        }
+
+        fun getLastDialedNumber(): String? = lastDialedNumber
+
+        fun redial(context: Context) {
+            val number = lastDialedNumber ?: return
+            // Cancel any pending auto redial when manually redialing
+            cancelAutoRedial()
+            redialNumber(context, number, lastDialedHandle)
+        }
+
+        @SuppressLint("MissingPermission")
+        fun redialNumber(context: Context, number: String, handle: PhoneAccountHandle? = null) {
+            try {
+                val uri = Uri.fromParts("tel", number, null)
+                val extras = android.os.Bundle().apply {
+                    if (handle != null) {
+                        putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle)
+                    }
+                    putBoolean(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE, false)
+                    putBoolean(TelecomManager.EXTRA_START_CALL_WITH_SPEAKERPHONE, false)
+                }
+                context.telecomManager.placeCall(uri, extras)
+                setLastDialedNumber(number, handle)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // Auto redial functionality
+        fun shouldAutoRedial(context: Context, disconnectCode: Int): Boolean {
+            val config = context.config
+            if (!config.autoRedialEnabled) return false
+            if (!autoRedialActive) return false // Check toggle state
+            if (autoRedialRetryCount >= config.autoRedialMaxRetries) return false
+            if (lastDialedNumber == null) return false
+
+            // Auto redial for specific disconnect codes
+            return when (disconnectCode) {
+                DisconnectCause.BUSY,
+                DisconnectCause.CANCELED,
+                DisconnectCause.ERROR,
+                DisconnectCause.REJECTED,
+                DisconnectCause.UNKNOWN -> true
+                else -> false
+            }
+        }
+        
+        fun setAutoRedialActive(active: Boolean) {
+            autoRedialActive = active
+            if (!active) {
+                cancelAutoRedial() // Cancel any pending auto redial when disabled
+            }
+        }
+        
+        fun isAutoRedialActive(): Boolean = autoRedialActive
+
+        fun startAutoRedial(context: Context, disconnectCode: Int) {
+            if (!shouldAutoRedial(context, disconnectCode)) {
+                cancelAutoRedial()
+                return
+            }
+
+            val config = context.config
+            cancelAutoRedial() // Cancel any existing auto redial
+
+            autoRedialRetryCount++
+            autoRedialRunnable = Runnable {
+                if (lastDialedNumber != null) {
+                    redialNumber(context, lastDialedNumber!!, lastDialedHandle)
+                }
+            }
+
+            autoRedialHandler.postDelayed(autoRedialRunnable!!, config.autoRedialDelayMs)
+        }
+
+        fun cancelAutoRedial() {
+            autoRedialRunnable?.let {
+                autoRedialHandler.removeCallbacks(it)
+                autoRedialRunnable = null
+            }
+        }
+
+        fun resetAutoRedialRetryCount() {
+            autoRedialRetryCount = 0
+        }
+
+        fun getAutoRedialRetryCount(): Int = autoRedialRetryCount
     }
 }
 

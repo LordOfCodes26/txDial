@@ -168,6 +168,10 @@ class SettingsActivity : SimpleActivity() {
         setupCallUsingSameSim()
         setupCallBlockButton()
 
+        setupAutoRedial()
+        setupAutoRedialMaxRetries()
+        setupAutoRedialDelay()
+
         setupBlockCallFromAnotherApp()
 
         setupGroupCalls()
@@ -894,6 +898,84 @@ class SettingsActivity : SimpleActivity() {
                 config.backPressedEndCall = settingsBackPressedEndCall.isChecked
             }
         }
+    }
+
+    private fun setupAutoRedial() {
+        binding.apply {
+            settingsAutoRedial.isChecked = config.autoRedialEnabled
+            settingsAutoRedialHolder.setOnClickListener {
+                settingsAutoRedial.toggle()
+                config.autoRedialEnabled = settingsAutoRedial.isChecked
+                updateAutoRedialSettingsVisibility()
+            }
+            updateAutoRedialSettingsVisibility()
+        }
+    }
+
+    private fun updateAutoRedialSettingsVisibility() {
+        binding.apply {
+            val isEnabled = config.autoRedialEnabled
+            settingsAutoRedialMaxRetriesHolder.beVisibleIf(isEnabled)
+            settingsAutoRedialDelayHolder.beVisibleIf(isEnabled)
+        }
+    }
+
+    private fun setupAutoRedialMaxRetries() {
+        binding.apply {
+            settingsAutoRedialMaxRetries.text = config.autoRedialMaxRetries.toString()
+            settingsAutoRedialMaxRetriesHolder.setOnClickListener {
+                val items = arrayListOf(
+                    RadioItem(1, "1"),
+                    RadioItem(2, "2"),
+                    RadioItem(3, "3"),
+                    RadioItem(4, "4"),
+                    RadioItem(5, "5"),
+                    RadioItem(10, "10")
+                )
+
+                RadioGroupDialog(
+                    this@SettingsActivity,
+                    items,
+                    config.autoRedialMaxRetries,
+                    R.string.auto_redial_max_retries,
+                    defaultItemId = 3
+                ) {
+                    config.autoRedialMaxRetries = it as Int
+                    settingsAutoRedialMaxRetries.text = config.autoRedialMaxRetries.toString()
+                }
+            }
+        }
+    }
+
+    private fun setupAutoRedialDelay() {
+        binding.apply {
+            settingsAutoRedialDelay.text = getAutoRedialDelayText()
+            settingsAutoRedialDelayHolder.setOnClickListener {
+                val items = arrayListOf(
+                    RadioItem(1000, "1s"),
+                    RadioItem(2000, "2s"),
+                    RadioItem(3000, "3s"),
+                    RadioItem(5000, "5s"),
+                    RadioItem(10000, "10s")
+                )
+
+                RadioGroupDialog(
+                    this@SettingsActivity,
+                    items,
+                    config.autoRedialDelayMs.toInt(),
+                    R.string.auto_redial_delay,
+                    defaultItemId = 2000
+                ) {
+                    config.autoRedialDelayMs = (it as Int).toLong()
+                    settingsAutoRedialDelay.text = getAutoRedialDelayText()
+                }
+            }
+        }
+    }
+
+    private fun getAutoRedialDelayText(): String {
+        val seconds = config.autoRedialDelayMs / 1000
+        return "${seconds}s"
     }
 
     private fun setupQuickAnswers() {

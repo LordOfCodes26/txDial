@@ -1,8 +1,11 @@
 package com.android.dialer.extensions
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import com.goodwy.commons.extensions.baseConfig
 import com.goodwy.commons.helpers.ContactsHelper
+import com.goodwy.commons.helpers.ensureBackgroundThread
 import com.goodwy.commons.models.contacts.Contact
 import com.goodwy.commons.securebox.SecureBoxHelper
 import java.util.HashSet
@@ -25,8 +28,8 @@ fun ArrayList<Contact>.filterSecureBox(context: Context): ArrayList<Contact> {
 /**
  * Wrapper for ContactsHelper.getContacts that automatically filters out secure box contacts
  * This ensures secure contacts never reach adapters, search, or any UI unless unlocked
- * 
- * Performance optimized: Loads secure box IDs in background and uses HashSet for O(1) lookup
+ *
+ * Performance optimized: Loads secure box IDs off the main thread and uses HashSet-style lookup
  */
 fun ContactsHelper.getContactsWithSecureBoxFilter(
     getAll: Boolean = false,
@@ -37,24 +40,25 @@ fun ContactsHelper.getContactsWithSecureBoxFilter(
 ) {
     val helperContext = this.context
     val showOnlyNumbers = showOnlyContactsWithNumbers ?: helperContext.baseConfig.showOnlyContactsWithNumbers
-    
-    // Pre-load secure box IDs in background for better performance
-    val secureBoxHelper = SecureBoxHelper(helperContext)
-    val secureBoxContactIds = secureBoxHelper.getSecureBoxContactIds() // Uses cached IDs if available
-    
+    val mainHandler = Handler(Looper.getMainLooper())
+
     getContacts(getAll, gettingDuplicates, ignoredContactSources, showOnlyNumbers) { contacts ->
-        // Filter out secure box contacts at data layer using HashSet for O(1) lookup
-        // This ensures secure contacts never reach adapters, search, or any UI
-        // For large contact lists, this is much faster than checking each contact individually
-        val filteredContacts = if (secureBoxContactIds.isEmpty()) {
-            // No secure contacts, return as-is (no filtering needed)
-            contacts
-        } else {
-            // Use filterNot for better performance with large lists
-            contacts.filterNot { it.id in secureBoxContactIds } as ArrayList<Contact>
+        // Move secure box DB access and filtering off the main thread to avoid Room's
+        // "Cannot access database on the main thread" IllegalStateException.
+        ensureBackgroundThread {
+            val secureBoxHelper = SecureBoxHelper(helperContext)
+            val secureBoxContactIds = secureBoxHelper.getSecureBoxContactIds()
+
+            val filteredContacts = if (secureBoxContactIds.isEmpty()) {
+                contacts
+            } else {
+                ArrayList(contacts.filterNot { it.id in secureBoxContactIds })
+            }
+
+            mainHandler.post {
+                callback(filteredContacts)
+            }
         }
-        
-        callback(filteredContacts)
     }
 }
 

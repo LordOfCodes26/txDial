@@ -566,6 +566,43 @@
             app:layout_constraintStart_toStartOf="@+id/callEnd"
             app:layout_constraintTop_toBottomOf="@+id/callEnd" />
 
+        <LinearLayout
+            android:id="@+id/callRedialHolder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="42dp"
+            android:layout_marginEnd="@dimen/margin_button_horizontal"
+            android:background="@drawable/pulsing_background_ripple"
+            android:contentDescription="@string/redial"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/callToggleSpeaker">
+
+            <ImageView
+                android:id="@+id/call_redial"
+                android:layout_width="@dimen/call_button_size"
+                android:layout_height="@dimen/call_button_size"
+                android:padding="@dimen/bigger_margin"
+                android:src="@drawable/ic_phone_vector"/>
+        </LinearLayout>
+
+        <com.goodwy.commons.views.MyTextView
+            android:id="@+id/callRedialLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/small_margin"
+            android:ellipsize="marquee"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/redial"
+            android:textSize="@dimen/normal_text_size"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="@+id/callRedialHolder"
+            app:layout_constraintStart_toStartOf="@+id/callRedialHolder"
+            app:layout_constraintTop_toBottomOf="@+id/callRedialHolder"/>
+
         <com.goodwy.commons.views.MyTextView
             android:id="@+id/dialpadClose"
             android:layout_width="@dimen/call_button_size"

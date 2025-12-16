@@ -809,7 +809,7 @@ open class BaseConfig(val context: Context) {
         set(contactThumbnailsSize) = prefs.edit { putInt(CONTACT_THUMBNAILS_SIZE, contactThumbnailsSize) }
 
     var changeColourTopBar: Boolean
-        get() = prefs.getBoolean(CHANGE_COLOUR_TOP_BAR, true)
+        get() = prefs.getBoolean(CHANGE_COLOUR_TOP_BAR, false)
         set(changeColourTopBar) = prefs.edit { putBoolean(CHANGE_COLOUR_TOP_BAR, changeColourTopBar) }
 
     var useShamsi: Boolean //Persian Calendar
