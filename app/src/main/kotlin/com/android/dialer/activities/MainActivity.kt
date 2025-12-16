@@ -78,6 +78,7 @@ class MainActivity : SimpleActivity() {
     private var cachedFavorites = ArrayList<Contact>()
     private var storedContactShortcuts = ArrayList<Contact>()
     private var isSpeechToTextAvailable = false
+    private var mSearchView: SearchView? = null
 
     @SuppressLint("MissingSuperCall")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,7 +88,7 @@ class MainActivity : SimpleActivity() {
         setupOptionsMenu()
         refreshMenuItems()
         storeStateVariables()
-        setupEdgeToEdge(padBottomImeAndSystem = listOf(binding.mainTabsHolder))
+        setupEdgeToEdge(padBottomImeAndSystem = listOf(binding.mainTabsHolder, binding.mainDialpadButton))
 
         EventBus.getDefault().register(this)
         launchedDialer = savedInstanceState?.getBoolean(OPEN_DIAL_PAD_AT_LAUNCH) ?: false
@@ -331,7 +332,7 @@ class MainActivity : SimpleActivity() {
         binding.mainMenu.apply {
             requireToolbar().inflateMenu(R.menu.menu)
 //            toggleHideOnScroll(false)
-            if (config.bottomNavigationBar) {
+            /*if (config.bottomNavigationBar) {
                 if (baseConfig.useSpeechToText) {
                     isSpeechToTextAvailable = isSpeechToTextAvailable()
                     showSpeechToText = isSpeechToTextAvailable
@@ -353,7 +354,7 @@ class MainActivity : SimpleActivity() {
                     getCurrentFragment()?.onSearchQueryChanged(text)
                     clearSearch()
                 }
-            } else setupSearch(requireToolbar().menu)
+            } else*/ setupSearch(requireToolbar().menu)
 
             requireToolbar().setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
@@ -405,11 +406,14 @@ class MainActivity : SimpleActivity() {
         updateMenuItemColors(menu)
         val searchManager = getSystemService(SEARCH_SERVICE) as SearchManager
         mSearchMenuItem = menu.findItem(R.id.search)
-        (mSearchMenuItem!!.actionView as SearchView).apply {
+        mSearchView = (mSearchMenuItem!!.actionView as SearchView).apply {
             val textColor = getProperTextColor()
             findViewById<TextView>(androidx.appcompat.R.id.search_src_text).apply {
                 setTextColor(textColor)
                 setHintTextColor(textColor)
+                // Reduce left padding to a small value
+                val smallPadding = resources.getDimensionPixelSize(com.goodwy.commons.R.dimen.small_margin)
+                setPadding(smallPadding, paddingTop, paddingRight, paddingBottom)
             }
             findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn).apply {
                 setImageResource(com.goodwy.commons.R.drawable.ic_clear_round)
@@ -417,6 +421,9 @@ class MainActivity : SimpleActivity() {
             }
             findViewById<View>(androidx.appcompat.R.id.search_plate)?.apply { // search underline
                 background.setColorFilter(Color.TRANSPARENT, PorterDuff.Mode.MULTIPLY)
+                // Reduce left padding on the search plate to a small value
+                val smallPadding = resources.getDimensionPixelSize(com.goodwy.commons.R.dimen.small_margin)
+                setPadding(smallPadding, paddingTop, paddingRight, paddingBottom)
             }
             setIconifiedByDefault(false)
             findViewById<ImageView>(androidx.appcompat.R.id.search_mag_icon).apply {
@@ -444,6 +451,28 @@ class MainActivity : SimpleActivity() {
             override fun onMenuItemActionExpand(item: MenuItem?): Boolean {
                 isSearchOpen = true
                 binding.mainDialpadButton.beGone()
+                
+                // Animate search bar appearance with smooth translation (slide in from right)
+                mSearchView?.let { searchView ->
+                    searchView.post {
+                        // Get the parent toolbar width for smooth slide-in
+                        val toolbar = binding.mainMenu.requireToolbar()
+                        val slideDistance = toolbar.width.toFloat()
+                        
+                        // Start from right side
+                        searchView.translationX = slideDistance
+                        searchView.alpha = 0f
+                        
+                        // Animate to center with smooth deceleration
+                        searchView.animate()
+                            .translationX(0f)
+                            .alpha(1f)
+                            .setDuration(350)
+                            .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
+                            .start()
+                    }
+                }
+                
                 return true
             }
 
@@ -453,7 +482,27 @@ class MainActivity : SimpleActivity() {
                 }
 
                 isSearchOpen = false
-                binding.mainDialpadButton.beVisible()
+                
+                // Animate search bar disappearance with smooth translation (slide out to right)
+                mSearchView?.let { searchView ->
+                    val toolbar = binding.mainMenu.requireToolbar()
+                    val slideDistance = toolbar.width.toFloat()
+                    
+                    searchView.animate()
+                        .translationX(slideDistance)
+                        .alpha(0f)
+                        .setDuration(300)
+                        .setInterpolator(android.view.animation.AccelerateInterpolator(1.2f))
+                        .withEndAction {
+                            searchView.translationX = 0f
+                            searchView.alpha = 1f
+                            binding.mainDialpadButton.beVisible()
+                        }
+                        .start()
+                } ?: run {
+                    binding.mainDialpadButton.beVisible()
+                }
+                
                 return true
             }
         })
