@@ -61,7 +61,7 @@ fun LiquidToggle(
 
     val density = LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
-    val dragWidth = with(density) { 20f.dp.toPx() }
+    val dragWidth = with(density) { 18f.dp.toPx() }
     val animationScope = rememberCoroutineScope()
     var didDrag by remember { mutableStateOf(false) }
     var fraction by remember { mutableFloatStateOf(if (selected()) 1f else 0f) }
@@ -126,7 +126,7 @@ fun LiquidToggle(
                     val fraction = dampedDragAnimation.value
                     drawRect(lerp(trackColor, accentColor, fraction))
                 }
-                .size(64f.dp, 28f.dp)
+                .size(46f.dp, 22f.dp)
         )
 
         Box(
@@ -160,7 +160,7 @@ fun LiquidToggle(
                         blur(8f.dp.toPx() * (1f - progress))
                         lens(
                             5f.dp.toPx() * progress,
-                            10f.dp.toPx() * progress,
+                            5f.dp.toPx() * progress,
                             chromaticAberration = true
                         )
                     },
@@ -174,14 +174,14 @@ fun LiquidToggle(
                     },
                     shadow = {
                         Shadow(
-                            radius = 4f.dp,
+                            radius = 2f.dp,
                             color = Color.Black.copy(alpha = 0.05f)
                         )
                     },
                     innerShadow = {
                         val progress = dampedDragAnimation.pressProgress
                         InnerShadow(
-                            radius = 4f.dp * progress,
+                            radius = 2f.dp * progress,
                             alpha = progress
                         )
                     },
@@ -197,7 +197,7 @@ fun LiquidToggle(
                         drawRect(Color.White.copy(alpha = 1f - progress))
                     }
                 )
-                .size(40f.dp, 24f.dp)
+                .size(24f.dp, 18f.dp)
         )
     }
 }
