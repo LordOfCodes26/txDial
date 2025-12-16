@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/select_sim_holder"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -8,14 +9,31 @@
     android:paddingStart="@dimen/activity_margin"
     android:paddingEnd="@dimen/activity_margin">
 
-    <com.goodwy.commons.views.MyTextView
-        android:id="@+id/selectSimLabel"
-        android:layout_width="wrap_content"
+    <RelativeLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingStart="@dimen/small_margin"
-        android:paddingBottom="@dimen/activity_margin"
-        android:text="@string/select_sim"
-        android:textSize="@dimen/big_text_size"/>
+        android:paddingBottom="@dimen/activity_margin">
+
+        <com.goodwy.commons.views.MyTextView
+            android:id="@+id/selectSimLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/select_sim"
+            android:textSize="@dimen/big_text_size"/>
+
+        <douglasspgyn.com.github.circularcountdown.CircularCountdown
+            android:id="@+id/countdownView"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:visibility="gone"
+            app:countdownBackgroundColor="?attr/colorControlNormal"
+            app:countdownForegroundColor="?attr/colorPrimary"
+            app:countdownTextColor="?attr/colorPrimary"
+            app:countdownTextSize="24sp"/>
+    </RelativeLayout>
 
     <RadioGroup
         android:id="@+id/select_sim_radio_group"

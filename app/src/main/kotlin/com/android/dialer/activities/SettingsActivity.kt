@@ -159,6 +159,7 @@ class SettingsActivity : SimpleActivity() {
         setupQuickAnswers()
         setupCallerDescription()
         setupSimDialogStyle()
+        setupAutoSimSelect()
         setupHideDialpadLetters()
         setupDialpadNumbers()
         setupDisableProximitySensor()
@@ -1348,6 +1349,70 @@ class SettingsActivity : SimpleActivity() {
             else -> R.string.buttons
         }
     )
+
+    private fun setupAutoSimSelect() {
+        binding.apply {
+            val areMultipleSIMsAvailable = areMultipleSIMsAvailable()
+            settingsAutoSimSelectHolder.beVisibleIf(areMultipleSIMsAvailable)
+            settingsAutoSimSelectDelayHolder.beVisibleIf(areMultipleSIMsAvailable && config.autoSimSelectEnabled)
+            settingsAutoSimSelectSimHolder.beVisibleIf(areMultipleSIMsAvailable && config.autoSimSelectEnabled)
+
+            settingsAutoSimSelect.isChecked = config.autoSimSelectEnabled
+            settingsAutoSimSelectHolder.setOnClickListener {
+                settingsAutoSimSelect.toggle()
+                config.autoSimSelectEnabled = settingsAutoSimSelect.isChecked
+                settingsAutoSimSelectDelayHolder.beVisibleIf(areMultipleSIMsAvailable && config.autoSimSelectEnabled)
+                settingsAutoSimSelectSimHolder.beVisibleIf(areMultipleSIMsAvailable && config.autoSimSelectEnabled)
+            }
+
+            settingsAutoSimSelectDelay.text = config.autoSimSelectDelaySeconds.toString()
+            settingsAutoSimSelectDelayHolder.setOnClickListener {
+                val items = arrayListOf(
+                    RadioItem(1, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 1, 1)),
+                    RadioItem(2, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 2, 2)),
+                    RadioItem(3, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 3, 3)),
+                    RadioItem(4, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 4, 4)),
+                    RadioItem(5, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 5, 5)),
+                    RadioItem(6, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 6, 6)),
+                    RadioItem(7, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 7, 7)),
+                    RadioItem(8, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 8, 8)),
+                    RadioItem(9, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 9, 9)),
+                    RadioItem(10, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 10, 10))
+                )
+
+                RadioGroupDialog(this@SettingsActivity, items, config.autoSimSelectDelaySeconds, R.string.auto_sim_select_delay) {
+                    config.autoSimSelectDelaySeconds = it as Int
+                    settingsAutoSimSelectDelay.text = config.autoSimSelectDelaySeconds.toString()
+                }
+            }
+
+            val simList = getAvailableSIMCardLabels()
+            if (simList.isNotEmpty()) {
+                settingsAutoSimSelectSim.text = getAutoSimSelectSimText()
+                settingsAutoSimSelectSimHolder.setOnClickListener {
+                    val items = arrayListOf<RadioItem>()
+                    simList.forEachIndexed { index, sim ->
+                        items.add(RadioItem(index, "${index + 1} - ${sim.label}"))
+                    }
+
+                    RadioGroupDialog(this@SettingsActivity, items, config.autoSimSelectIndex, R.string.auto_sim_select_sim) {
+                        config.autoSimSelectIndex = it as Int
+                        settingsAutoSimSelectSim.text = getAutoSimSelectSimText()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getAutoSimSelectSimText(): String {
+        val simList = getAvailableSIMCardLabels()
+        val index = config.autoSimSelectIndex.coerceIn(0, simList.size - 1)
+        return if (simList.isNotEmpty()) {
+            "${index + 1} - ${simList[index].label}"
+        } else {
+            "SIM 1"
+        }
+    }
 
 //    private fun setupOverflowIcon() {
 //        binding.apply {

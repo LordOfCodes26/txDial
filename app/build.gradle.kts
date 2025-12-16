@@ -170,4 +170,7 @@ dependencies {
     
     // Biometric for Secure Box
     implementation(libs.androidx.biometric.ktx)
+    
+    // Circular Countdown
+    implementation("com.github.douglasspgyn:CircularCountdown:0.3.0")
 }

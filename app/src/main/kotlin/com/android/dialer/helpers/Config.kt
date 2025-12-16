@@ -270,6 +270,18 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getInt(SIM_DIALOG_STYLE, SIM_DIALOG_STYLE_LIST)
         set(simDialogStyle) = prefs.edit { putInt(SIM_DIALOG_STYLE, simDialogStyle) }
 
+    var autoSimSelectEnabled: Boolean
+        get() = prefs.getBoolean(AUTO_SIM_SELECT_ENABLED, false)
+        set(autoSimSelectEnabled) = prefs.edit { putBoolean(AUTO_SIM_SELECT_ENABLED, autoSimSelectEnabled) }
+
+    var autoSimSelectDelaySeconds: Int
+        get() = prefs.getInt(AUTO_SIM_SELECT_DELAY_SECONDS, DEFAULT_AUTO_SIM_SELECT_DELAY)
+        set(autoSimSelectDelaySeconds) = prefs.edit { putInt(AUTO_SIM_SELECT_DELAY_SECONDS, autoSimSelectDelaySeconds) }
+
+    var autoSimSelectIndex: Int
+        get() = prefs.getInt(AUTO_SIM_SELECT_INDEX, 0)  // 0 = SIM 1, 1 = SIM 2
+        set(autoSimSelectIndex) = prefs.edit { putInt(AUTO_SIM_SELECT_INDEX, autoSimSelectIndex) }
+
     var dialpadSecondaryTypeface: Int
         get() = prefs.getInt(DIALPAD_SECONDARY_TYPEFACE, Typeface.NORMAL)
         set(dialpadSecondaryTypeface) = prefs.edit { putInt(DIALPAD_SECONDARY_TYPEFACE, dialpadSecondaryTypeface) }

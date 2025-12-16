@@ -44,6 +44,9 @@
     <string name="show_voicemail_icon">Show voicemail icon</string>
     <string name="secondary_dialpad_language">Secondary dialpad language</string>
     <string name="sim_card_selection_dialog_style">SIM card selection dialogue style</string>
+    <string name="auto_sim_select">Auto SIM select</string>
+    <string name="auto_sim_select_delay">Auto select delay (seconds)</string>
+    <string name="auto_sim_select_sim">Auto select SIM</string>
     <string name="clear_dialpad_when_start_call">Clear dialpad when starting a call</string>
     <string name="dialpad_preferences">Dialpad settings</string>
     <string name="show_contact_thumbnails_g">Show contact thumbnails</string>

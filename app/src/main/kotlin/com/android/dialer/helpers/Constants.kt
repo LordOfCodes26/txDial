@@ -166,6 +166,12 @@ const val IOS17 = 1
 const val SIM_DIALOG_STYLE_LIST = 0
 const val SIM_DIALOG_STYLE_BUTTON = 1
 
+// Auto SIM select
+const val AUTO_SIM_SELECT_ENABLED = "auto_sim_select_enabled"
+const val AUTO_SIM_SELECT_DELAY_SECONDS = "auto_sim_select_delay_seconds"
+const val AUTO_SIM_SELECT_INDEX = "auto_sim_select_index"  // 0 for SIM 1, 1 for SIM 2
+const val DEFAULT_AUTO_SIM_SELECT_DELAY = 3  // 3 seconds default
+
 // Additional language on dialpad
 const val LANGUAGE_NONE = "none"
 const val LANGUAGE_SYSTEM = "system"

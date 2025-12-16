@@ -1231,6 +1231,57 @@
                     </RelativeLayout>
 
                     <RelativeLayout
+                        android:id="@+id/settingsAutoSimSelectHolder"
+                        style="@style/SettingsHolderSwitchStyle">
+
+                        <com.goodwy.commons.views.MyMaterialSwitch
+                            android:id="@+id/settingsAutoSimSelect"
+                            style="@style/SettingsSwitchStyle"
+                            android:text="@string/auto_sim_select"
+                            app:switchPadding="@dimen/bigger_margin"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:id="@+id/settingsAutoSimSelectDelayHolder"
+                        style="@style/SettingsHolderStyle">
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoSimSelectDelayLabel"
+                            style="@style/SettingsTextLabelStyle"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:layout_toStartOf="@+id/settingsAutoSimSelectDelay"
+                            android:text="@string/auto_sim_select_delay"/>
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoSimSelectDelay"
+                            style="@style/SettingsTextValueStyle"
+                            android:layout_alignParentEnd="true"
+                            android:layout_marginEnd="@dimen/settings_margin"
+                            tools:text="3"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:id="@+id/settingsAutoSimSelectSimHolder"
+                        style="@style/SettingsHolderStyle">
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoSimSelectSimLabel"
+                            style="@style/SettingsTextLabelStyle"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:layout_toStartOf="@+id/settingsAutoSimSelectSim"
+                            android:text="@string/auto_sim_select_sim"/>
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsAutoSimSelectSim"
+                            style="@style/SettingsTextValueStyle"
+                            android:layout_alignParentEnd="true"
+                            android:layout_marginEnd="@dimen/settings_margin"
+                            tools:text="SIM 1"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
                         android:id="@+id/settings_disable_proximity_sensor_holder"
                         style="@style/SettingsHolderSwitchStyle">
 

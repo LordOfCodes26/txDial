@@ -14,6 +14,8 @@ import com.android.dialer.R
 import com.android.dialer.databinding.DialogSelectSimBinding
 import com.android.dialer.extensions.config
 import com.android.dialer.extensions.getAvailableSIMCardLabels
+import douglasspgyn.com.github.circularcountdown.CircularCountdown
+import douglasspgyn.com.github.circularcountdown.listener.CircularListener
 
 @SuppressLint("MissingPermission", "SetTextI18n")
 class SelectSIMDialog(
@@ -62,15 +64,53 @@ class SelectSIMDialog(
             .apply {
                 activity.setupDialogStuff(binding.root, this) { alertDialog ->
                     dialog = alertDialog
+                    // Make dialog backdrop transparent
+                    alertDialog.window?.setDimAmount(0f)
                 }
             }
 
         dialog?.setOnDismissListener {
+            cancelCountdown()
             onDismiss()
+        }
+
+        // Start auto-select countdown if enabled
+        if (activity.config.autoSimSelectEnabled) {
+            startAutoSelectCountdown()
+        } else {
+            binding.countdownView.beGone()
         }
     }
 
+    private fun startAutoSelectCountdown() {
+        val simList = activity.getAvailableSIMCardLabels()
+        if (simList.isEmpty()) return
+
+        val selectedIndex = activity.config.autoSimSelectIndex.coerceIn(0, simList.size - 1)
+        val selectedSIM = simList[selectedIndex]
+        val delaySeconds = activity.config.autoSimSelectDelaySeconds
+
+        binding.countdownView.beVisible()
+        binding.countdownView.create(delaySeconds, delaySeconds, CircularCountdown.TYPE_SECOND)
+            .listener(object : CircularListener {
+                override fun onTick(progress: Int) {
+                    // Progress update - can be used for additional UI updates if needed
+                }
+
+                override fun onFinish(newCycle: Boolean, cycleCount: Int) {
+                    // Auto-select the SIM when countdown completes
+                    selectedSIM(selectedSIM.handle, selectedSIM.label)
+                }
+            })
+            .start()
+    }
+
+    private fun cancelCountdown() {
+        binding.countdownView.stop()
+    }
+
     private fun selectedSIM(handle: PhoneAccountHandle, label: String) {
+        cancelCountdown()
         if (binding.selectSimRemember.isChecked) {
             activity.config.saveCustomSIM(phoneNumber, handle)
         }
