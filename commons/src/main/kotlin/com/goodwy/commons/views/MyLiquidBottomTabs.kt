@@ -1,5 +1,6 @@
 package com.goodwy.commons.views
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -43,7 +44,9 @@ fun MyLiquidBottomTabs(
         },
         backdrop = backdrop,
         tabsCount = tabs.size,
-        modifier = modifier.padding(horizontal = 20.dp, vertical = 20.dp)
+        modifier = modifier
+            .background(backgroundColor)
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
         tabs.forEachIndexed { index, (icon, label) ->
             LiquidBottomTab({ selectedTabIndex.value = index }) {

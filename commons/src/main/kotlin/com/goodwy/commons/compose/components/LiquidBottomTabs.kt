@@ -70,8 +70,8 @@ fun LiquidBottomTabs(
         if (isLightTheme) Color(0xFF0088FF)
         else Color(0xFF0091FF)
     val containerColor =
-        if (isLightTheme) Color(0xFFFAFAFA).copy(0.4f)
-        else Color(0xFF121212).copy(0.4f)
+        if (isLightTheme) Color(0xFFFAFAFA).copy(1.0f)
+        else Color(0xFF121212).copy(1.0f)
 
     val tabsBackdrop = rememberLayerBackdrop()
 
@@ -254,14 +254,12 @@ fun LiquidBottomTabs(
                         Highlight.Default.copy(alpha = progress)
                     },
                     shadow = {
-                        val progress = dampedDragAnimation.pressProgress
-                        Shadow(alpha = progress)
+                        Shadow(alpha = 0f)
                     },
                     innerShadow = {
-                        val progress = dampedDragAnimation.pressProgress
                         InnerShadow(
-                            radius = 8f.dp * progress,
-                            alpha = progress
+                            radius = 0f.dp,
+                            alpha = 0f
                         )
                     },
                     layerBlock = {

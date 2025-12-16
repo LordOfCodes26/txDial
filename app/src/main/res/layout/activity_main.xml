@@ -32,13 +32,14 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_marginEnd="@dimen/bigger_margin"
-            android:layout_marginBottom="@dimen/activity_margin"
+            android:layout_marginBottom="24dp"
             android:contentDescription="@string/dialpad"
             android:elevation="@dimen/medium_margin"
             android:padding="@dimen/activity_margin"
             android:src="@drawable/ic_dialpad_vector"
             app:backgroundTint="@color/color_primary"
-            app:layout_constraintBottom_toTopOf="@+id/mainTabsHolder"
+            app:layout_constraintTop_toTopOf="@id/mainTabsHolder"
+            app:layout_constraintBottom_toBottomOf="@id/mainTabsHolder"
             app:layout_constraintEnd_toEndOf="parent"
             app:rippleColor="@color/pressed_item_foreground"/>
 
@@ -66,6 +67,7 @@
             android:id="@+id/mainTabsHolder"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginRight="80dp"
             app:layout_constraintBottom_toBottomOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
