@@ -144,6 +144,7 @@ class SettingsActivity : SimpleActivity() {
         setupManageSpeedDial()
         setupDialpadStyle()
         setupShowRecentCallsOnDialpad()
+        setupSearchContactsInDialpad()
 
         setupFlashForAlerts()
 
@@ -153,6 +154,7 @@ class SettingsActivity : SimpleActivity() {
         setupCallButtonStyle()
         setupAlwaysShowFullscreen()
         setupKeepCallsInPopUp()
+        setupTurnOnSpeakerInPopup()
         setupBackPressedEndCall()
         setupQuickAnswers()
         setupCallerDescription()
@@ -171,6 +173,7 @@ class SettingsActivity : SimpleActivity() {
         setupAutoRedial()
         setupAutoRedialMaxRetries()
         setupAutoRedialDelay()
+        setupShakeToAnswer()
 
         setupBlockCallFromAnotherApp()
 
@@ -870,23 +873,49 @@ class SettingsActivity : SimpleActivity() {
             settingsAlwaysShowFullscreenHolder.setOnClickListener {
                 settingsAlwaysShowFullscreen.toggle()
                 config.showIncomingCallsFullScreen = settingsAlwaysShowFullscreen.isChecked
+                settingsKeepCallsInPopUpWrapper.beVisibleIf(!config.showIncomingCallsFullScreen)
                 settingsKeepCallsInPopUpHolder.beVisibleIf(!config.showIncomingCallsFullScreen)
+                settingsTurnOnSpeakerInPopupHolder.beVisibleIf(!config.showIncomingCallsFullScreen && config.keepCallsInPopUp)
             }
         }
     }
 
+    private fun updateWrapperKeepCallsInPopUp() {
+        val wrapperColor = if (config.keepCallsInPopUp) getColoredMaterialStatusBarColor() else getSurfaceColor()
+        binding.settingsKeepCallsInPopUpWrapper.background.applyColorFilter(wrapperColor)
+    }
+
     private fun setupKeepCallsInPopUp() {
+        updateWrapperKeepCallsInPopUp()
         binding.apply {
+            settingsKeepCallsInPopUpWrapper.beVisibleIf(!config.showIncomingCallsFullScreen)
             settingsKeepCallsInPopUpHolder.beVisibleIf(!config.showIncomingCallsFullScreen)
             settingsKeepCallsInPopUp.isChecked = config.keepCallsInPopUp
             settingsKeepCallsInPopUpHolder.setOnClickListener {
                 settingsKeepCallsInPopUp.toggle()
                 config.keepCallsInPopUp = settingsKeepCallsInPopUp.isChecked
+                updateWrapperKeepCallsInPopUp()
+                settingsTurnOnSpeakerInPopupHolder.beVisibleIf(!config.showIncomingCallsFullScreen && config.keepCallsInPopUp)
             }
-//            settingsKeepCallsInPopUpFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
-//            settingsKeepCallsInPopUpFaq.setOnClickListener {
-//                ConfirmationDialog(this@SettingsActivity, messageId = R.string.keep_calls_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
-//            }
+            settingsKeepCallsInPopUpFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
+            settingsKeepCallsInPopUpFaq.setOnClickListener {
+                ConfirmationDialog(this@SettingsActivity, messageId = R.string.keep_calls_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
+            }
+        }
+    }
+
+    private fun setupTurnOnSpeakerInPopup() {
+        binding.apply {
+            settingsTurnOnSpeakerInPopupHolder.beVisibleIf(!config.showIncomingCallsFullScreen && config.keepCallsInPopUp)
+            settingsTurnOnSpeakerInPopup.isChecked = config.turnOnSpeakerInPopup
+            settingsTurnOnSpeakerInPopupHolder.setOnClickListener {
+                settingsTurnOnSpeakerInPopup.toggle()
+                config.turnOnSpeakerInPopup = settingsTurnOnSpeakerInPopup.isChecked
+            }
+            settingsTurnOnSpeakerInPopupFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
+            settingsTurnOnSpeakerInPopupFaq.setOnClickListener {
+                ConfirmationDialog(this@SettingsActivity, messageId = R.string.turn_on_speaker_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
+            }
         }
     }
 
@@ -1524,6 +1553,16 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
+    private fun setupSearchContactsInDialpad() {
+        binding.apply {
+            settingsSearchContactsInDialpad.isChecked = config.searchContactsInDialpad
+            settingsSearchContactsInDialpadHolder.setOnClickListener {
+                settingsSearchContactsInDialpad.toggle()
+                config.searchContactsInDialpad = settingsSearchContactsInDialpad.isChecked
+            }
+        }
+    }
+
     private fun setupOpenSearch() {
         binding.apply {
             settingsOpenSearch.isChecked = config.openSearch
@@ -1782,6 +1821,16 @@ class SettingsActivity : SimpleActivity() {
 //            launchAbout()
 //        }
 //    }
+
+    private fun setupShakeToAnswer() {
+        binding.apply {
+            settingsShakeToAnswer.isChecked = config.shakeToAnswer
+            settingsShakeToAnswerHolder.setOnClickListener {
+                settingsShakeToAnswer.toggle()
+                config.shakeToAnswer = settingsShakeToAnswer.isChecked
+            }
+        }
+    }
 
     private fun setupDisableProximitySensor() {
         binding.apply {

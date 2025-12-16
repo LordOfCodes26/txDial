@@ -284,6 +284,12 @@ class Config(context: Context) : BaseConfig(context) {
             putBoolean(DIALPAD_CLEAR_WHEN_START_CALL, dialpadClearWhenStartCall)
         }
 
+    var searchContactsInDialpad: Boolean
+        get() = prefs.getBoolean(SEARCH_CONTACT_IN_DIALPAD, true)
+        set(searchContactsInDialpad) = prefs.edit {
+            putBoolean(SEARCH_CONTACT_IN_DIALPAD, searchContactsInDialpad)
+        }
+
     var callerNotes: String
         get() = prefs.getString(CALLER_NOTES, "")!!
         set(callerNotes) = prefs.edit { putString(CALLER_NOTES, callerNotes) }
@@ -304,6 +310,10 @@ class Config(context: Context) : BaseConfig(context) {
     var keepCallsInPopUp: Boolean
         get() = prefs.getBoolean(KEEP_CALLS_IN_POPUP, false)
         set(keepCallsInPopUp) = prefs.edit { putBoolean(KEEP_CALLS_IN_POPUP, keepCallsInPopUp) }
+
+    var turnOnSpeakerInPopup: Boolean
+        get() = prefs.getBoolean(TURN_ON_SPEAKER_IN_POPUP, false)
+        set(turnOnSpeakerInPopup) = prefs.edit { putBoolean(TURN_ON_SPEAKER_IN_POPUP, turnOnSpeakerInPopup) }
 
     var initCallBlockingSetup: Boolean
         get() = prefs.getBoolean(INIT_CALL_BLOCKING_SETUP, true)
@@ -363,5 +373,9 @@ class Config(context: Context) : BaseConfig(context) {
     var autoRedialDelayMs: Long
         get() = prefs.getLong(AUTO_REDIAL_DELAY_MS, 2000L)
         set(autoRedialDelayMs) = prefs.edit { putLong(AUTO_REDIAL_DELAY_MS, autoRedialDelayMs) }
+
+    var shakeToAnswer: Boolean
+        get() = prefs.getBoolean(SHAKE_TO_ANSWER, false)
+        set(shakeToAnswer) = prefs.edit { putBoolean(SHAKE_TO_ANSWER, shakeToAnswer) }
 }
 

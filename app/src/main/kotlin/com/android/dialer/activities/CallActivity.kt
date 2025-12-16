@@ -10,9 +10,14 @@ import android.graphics.*
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.RippleDrawable
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioManager
 import android.net.Uri
 import android.os.*
+import android.os.VibrationEffect
 import android.telecom.Call
 import android.text.Spannable
 import android.text.SpannableString
@@ -63,6 +68,7 @@ class CallActivity : SimpleActivity() {
     private val binding by viewBinding(ActivityCallBinding::inflate)
 
     private var isMicrophoneOff = false
+    private var isMicrophoneInitialized = false
     private var isCallEnded = false
     private var callContact: CallContact? = null
     private var proximityWakeLock: PowerManager.WakeLock? = null
@@ -75,6 +81,11 @@ class CallActivity : SimpleActivity() {
     private var dialpadHeight = 0f
     private var needSelectSIM = false //true - if the call is called from a third-party application not via ACTION_CALL, for example, this is how MIUI applications do it.
     private var audioRoutePopupMenu: PopupMenu? = null
+    
+    // Shake to answer
+    private var sensorManager: SensorManager? = null
+    private var accelerometer: Sensor? = null
+    private var shakeDetector: ShakeDetector? = null
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -324,6 +335,7 @@ class CallActivity : SimpleActivity() {
         super.onDestroy()
         CallManager.removeListener(callCallback)
         disableProximitySensor()
+        disableShakeDetection()
 
         if (isOreoMr1Plus()) {
             setShowWhenLocked(false)
@@ -604,8 +616,12 @@ class CallActivity : SimpleActivity() {
         } else {
             callDraggableBackground.background.alpha = 51 // 20%
         }
-        val colorBg = if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND || configBackgroundCallScreen == BLUR_AVATAR || configBackgroundCallScreen == AVATAR || configBackgroundCallScreen == BLACK_BACKGROUND) Color.WHITE
-            else getProperTextColor()
+        val colorBg =
+            if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND
+                || configBackgroundCallScreen == BLUR_AVATAR
+                || configBackgroundCallScreen == AVATAR
+                || configBackgroundCallScreen == BLACK_BACKGROUND
+                ) Color.WHITE else getProperTextColor()
         callDraggableBackgroundIcon.drawable.mutate().setTint(getColor(R.color.green_call))
         callDraggableBackgroundIcon.background.mutate().setTint(colorBg)
         callDraggableBackground.background.mutate().setTint(colorBg)
@@ -756,8 +772,12 @@ class CallActivity : SimpleActivity() {
         }
 
         val configBackgroundCallScreen = config.backgroundCallScreen
-        val colorBg = if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND || configBackgroundCallScreen == BLUR_AVATAR || configBackgroundCallScreen == AVATAR || configBackgroundCallScreen == BLACK_BACKGROUND) Color.WHITE
-        else getProperTextColor()
+        val colorBg =
+            if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND
+                || configBackgroundCallScreen == BLUR_AVATAR
+                || configBackgroundCallScreen == AVATAR
+                || configBackgroundCallScreen == BLACK_BACKGROUND
+            ) Color.WHITE else getProperTextColor()
         callDraggableVertical.drawable.mutate().setTint(getColor(R.color.green_call))
         callDraggableVertical.background.mutate().setTint(colorBg)
         //callDraggableVertical.background.alpha = 51 // 20%
@@ -766,7 +786,7 @@ class CallActivity : SimpleActivity() {
         callDraggableVertical.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    dragDownX = event.y
+//                    dragDownX = event.y
                     //callDraggableBackground.animate().alpha(0f)
                     stopAnimation = true
                     callDownArrow.animate().alpha(0f)
@@ -940,8 +960,11 @@ class CallActivity : SimpleActivity() {
 
     private fun updateCallAudioState(route: AudioRoute?, changeProximitySensor: Boolean = true) {
         if (route != null) {
-            //If enabled, one of the users has his microphone turned off at the start of a call??
-            isMicrophoneOff = audioManager.isMicrophoneMute
+            //If enabled, one of the users (OnePlus 13r, Oxygen 16OS) has his microphone turned off at the start of a call??
+            //isMicrophoneOff = audioManager.isMicrophoneMute
+            if (isMicrophoneInitialized) isMicrophoneOff = audioManager.isMicrophoneMute
+            else isMicrophoneInitialized = true
+
             updateMicrophoneButton()
 
             isSpeakerOn = route == AudioRoute.SPEAKER
@@ -1581,10 +1604,12 @@ class CallActivity : SimpleActivity() {
 
     private fun callRinging() {
         binding.incomingCallHolder.beVisible()
+        enableShakeDetection()
     }
 
     private fun callStarted() {
         enableProximitySensor()
+        disableShakeDetection()
         binding.incomingCallHolder.beGone()
         binding.ongoingCallHolder.beVisible()
         binding.callEnd.beVisible()
@@ -1605,6 +1630,7 @@ class CallActivity : SimpleActivity() {
 
     private fun endCall(rejectWithMessage: Boolean = false, textMessage: String? = null, isBusy: Boolean = false) {
         CallManager.reject(rejectWithMessage, textMessage)
+        disableShakeDetection()
 
         if (isBusy) toast(R.string.busy)
 
@@ -1727,6 +1753,101 @@ class CallActivity : SimpleActivity() {
     private fun disableProximitySensor() {
         if (proximityWakeLock?.isHeld == true) {
             proximityWakeLock!!.release()
+        }
+    }
+
+    private fun enableShakeDetection() {
+        if (!config.shakeToAnswer) return
+        
+        try {
+            sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+            
+            if (accelerometer != null && shakeDetector == null) {
+                shakeDetector = ShakeDetector(this@CallActivity) {
+                    // Only answer if call is still ringing and it's an incoming call
+                    val primaryCall = CallManager.getPrimaryCall()
+                    if (primaryCall != null) {
+                        val callState = primaryCall.getStateCompat()
+                        if (callState == Call.STATE_RINGING && !primaryCall.isOutgoing()) {
+                            acceptCall()
+                        }
+                    }
+                }
+                sensorManager?.registerListener(shakeDetector, accelerometer, SensorManager.SENSOR_DELAY_UI)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun disableShakeDetection() {
+        try {
+            shakeDetector?.let {
+                sensorManager?.unregisterListener(it)
+            }
+            shakeDetector = null
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private class ShakeDetector(
+        private val context: Context,
+        private val onShake: () -> Unit
+    ) : SensorEventListener {
+        private val SHAKE_THRESHOLD = 12.0f
+        private val SHAKE_SLOP_TIME_MS = 500
+        private var lastShakeTime = 0L
+        private var lastX = 0f
+        private var lastY = 0f
+        private var lastZ = 0f
+        private var vibrator: Vibrator? = null
+
+        init {
+            vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+
+        override fun onSensorChanged(event: SensorEvent) {
+            val currentTime = System.currentTimeMillis()
+            
+            if (currentTime - lastShakeTime > SHAKE_SLOP_TIME_MS) {
+                val x = event.values[0]
+                val y = event.values[1]
+                val z = event.values[2]
+
+                val deltaX = abs(x - lastX)
+                val deltaY = abs(y - lastY)
+                val deltaZ = abs(z - lastZ)
+
+                if (deltaX > SHAKE_THRESHOLD || deltaY > SHAKE_THRESHOLD || deltaZ > SHAKE_THRESHOLD) {
+                    lastShakeTime = currentTime
+                    performVibration()
+                    onShake()
+                }
+
+                lastX = x
+                lastY = y
+                lastZ = z
+            }
+        }
+
+        private fun performVibration() {
+            try {
+                if (isOreoPlus()) {
+                    val vibrationEffect = VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE)
+                    vibrator?.vibrate(vibrationEffect)
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator?.vibrate(100)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
+            // Not used
         }
     }
 

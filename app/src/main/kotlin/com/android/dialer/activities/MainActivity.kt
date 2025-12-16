@@ -119,7 +119,7 @@ class MainActivity : SimpleActivity() {
                 if (!granted) {
                     toast(com.goodwy.commons.R.string.notifications_disabled)
                 } else {
-                    checkWhatsNewDialog()
+//                    checkWhatsNewDialog()
                 }
             }
         } else {

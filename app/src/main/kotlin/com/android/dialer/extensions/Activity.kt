@@ -186,6 +186,7 @@ fun SimpleActivity.getHandleToUse(
                     callback(config.getCustomSIM(phoneNumber))
                 }
 
+                areMultipleSIMsAvailable() -> showSelectSimDialog(phoneNumber, callback)
                 defaultHandle != null -> callback(defaultHandle)
                 else -> showSelectSimDialog(phoneNumber, callback)
             }

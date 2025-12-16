@@ -320,13 +320,6 @@ class DialpadActivity : SimpleActivity() {
                         it.beInvisible()
                     }
 
-                    val properTextColor = getProperTextColor()
-                    arrayOf(
-                        dialpadAsterisk, dialpadHashtag, dialpadVoicemail
-                    ).forEach {
-                        it.applyColorFilter(properTextColor)
-                    }
-
                     dialpadBottomMargin.apply {
                         setBackgroundColor(properBackgroundColor)
                         setHeight(100)
@@ -509,6 +502,13 @@ class DialpadActivity : SimpleActivity() {
                     val margin = pixels(R.dimen.one_dp).toInt()
                     setMargins(margin, margin, margin, margin)
                 }
+            }
+
+            val textColor = buttonsColor.getContrastColor()
+            arrayOf(
+                dialpadAsterisk, dialpadHashtag, dialpadVoicemail
+            ).forEach {
+                it.applyColorFilter(textColor)
             }
 
             //reduce the size of unnecessary buttons so that they don't look bigger than the others
@@ -1137,6 +1137,7 @@ class DialpadActivity : SimpleActivity() {
         (binding.dialpadRecentsList.adapter as? RecentCallsAdapter)?.finishActMode()
 
         val text = if (config.formatPhoneNumbers) textFormat.removeNumberFormatting() else textFormat
+
         val collator = Collator.getInstance(sysLocale())
         val filtered = allContacts.filter { contact ->
             val langPref = config.dialpadSecondaryLanguage ?: ""
@@ -1207,8 +1208,7 @@ class DialpadActivity : SimpleActivity() {
 
         binding.dialpadAddNumber.beVisibleIf(binding.dialpadInput.value.isNotEmpty())
         binding.dialpadAddNumber.setTextColor(getProperPrimaryColor())
-        binding.dialpadPlaceholder.beVisibleIf(filtered.isEmpty())
-        binding.dialpadList.beVisibleIf(filtered.isNotEmpty() && binding.dialpadInput.value.isNotEmpty())
+        binding.dialpadList.beVisibleIf(filtered.isNotEmpty() && binding.dialpadInput.value.isNotEmpty() && config.searchContactsInDialpad)
         val areMultipleSIMsAvailable = areMultipleSIMsAvailable()
         binding.dialpadClearWrapper.dialpadClearCharHolder.beVisibleIf((binding.dialpadInput.value.isNotEmpty() && config.dialpadStyle != DIALPAD_IOS && config.dialpadStyle != DIALPAD_CONCEPT) || areMultipleSIMsAvailable)
         binding.dialpadRectWrapper.dialpadClearCharHolder.beVisibleIf(config.dialpadStyle == DIALPAD_CONCEPT)
@@ -1217,6 +1217,12 @@ class DialpadActivity : SimpleActivity() {
         binding.dialpadRecentsList.beVisibleIf(
             (binding.dialpadInput.value.isEmpty() && config.showRecentCallsOnDialpad)
                 || (binding.dialpadInput.value.isNotEmpty() && filteredRecents.isNotEmpty() && filtered.isEmpty())
+                || (!config.searchContactsInDialpad && config.showRecentCallsOnDialpad)
+        )
+        binding.dialpadPlaceholder.beVisibleIf(
+            (filtered.isEmpty() && config.searchContactsInDialpad && !config.showRecentCallsOnDialpad)
+                || (filteredRecents.isEmpty() && config.showRecentCallsOnDialpad && !config.searchContactsInDialpad)
+                || (filteredRecents.isEmpty() && config.showRecentCallsOnDialpad && filtered.isEmpty() && config.searchContactsInDialpad)
         )
         refreshMenuItems()
     }

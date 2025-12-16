@@ -60,6 +60,8 @@ const val CALLER_NOTES = "caller_notes"
 const val BACK_PRESSED_END_CALL = "back_pressed_end_call"
 const val CALL_BLOCK_BUTTON = "call_block_button"
 const val KEEP_CALLS_IN_POPUP = "keep_calls_in_popup"
+const val SEARCH_CONTACT_IN_DIALPAD = "search_contact_in_dialpad"
+const val TURN_ON_SPEAKER_IN_POPUP = "turn_on_speaker_in_popup"
 const val INIT_CALL_BLOCKING_SETUP = "init_call_blocking_setup"
 const val RECENT_OUTGOING_NUMBERS = "recent_outgoing_numbers"
 const val ON_RECENT_CLICK = "on_recent_click"
@@ -67,6 +69,7 @@ const val ON_FAVORITE_CLICK = "on_favorite_click"
 const val AUTO_REDIAL_ENABLED = "auto_redial_enabled"
 const val AUTO_REDIAL_MAX_RETRIES = "auto_redial_max_retries"
 const val AUTO_REDIAL_DELAY_MS = "auto_redial_delay_ms"
+const val SHAKE_TO_ANSWER = "shake_to_answer"
 
 const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY
 
@@ -180,5 +183,6 @@ fun whatsNewList(): ArrayList<Release> {
         add(Release(700, R.string.release_700))
         add(Release(702, R.string.release_702))
         add(Release(800, R.string.release_800))
+        add(Release(803, R.string.release_803))
     }
 }
