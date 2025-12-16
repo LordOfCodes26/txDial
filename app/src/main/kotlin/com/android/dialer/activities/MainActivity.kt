@@ -170,9 +170,16 @@ class MainActivity : SimpleActivity() {
 
         val properTextColor = getProperTextColor()
         val properPrimaryColor = getProperPrimaryColor()
-        val dialpadIcon = resources.getColoredDrawableWithColor(this, R.drawable.ic_dialpad_vector, properPrimaryColor.getContrastColor())
-        binding.mainDialpadButton.setImageDrawable(dialpadIcon)
-        binding.mainDialpadButton.setBackgroundColor(getProperBackgroundColor())
+        val properBackgroundColor = getProperBackgroundColor()
+        val iconTintColor = properPrimaryColor.getContrastColor()
+        
+        binding.mainDialpadButton.setIcon(R.drawable.ic_dialpad_vector)
+        binding.mainDialpadButton.setIconTint(iconTintColor)
+        binding.mainDialpadButton.setBackgroundColor(properBackgroundColor)
+
+        binding.mainCallButton.setIcon(R.drawable.ic_phone_vector)
+        binding.mainCallButton.setIconTint(iconTintColor)
+        binding.mainCallButton.setBackgroundColor(properBackgroundColor)
 
         updateTextColors(binding.mainHolder)
 //        setupTabColors()
