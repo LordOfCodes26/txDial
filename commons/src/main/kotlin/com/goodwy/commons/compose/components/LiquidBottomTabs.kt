@@ -61,6 +61,7 @@ fun LiquidBottomTabs(
     selectedTabIndex: () -> Int,
     onTabSelected: (index: Int) -> Unit,
     backdrop: Backdrop,
+    backgroundColor: Color,
     tabsCount: Int,
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit
@@ -70,8 +71,8 @@ fun LiquidBottomTabs(
         if (isLightTheme) Color(0xFF0088FF)
         else Color(0xFF0091FF)
     val containerColor =
-        if (isLightTheme) Color(0xFFFAFAFA).copy(1.0f)
-        else Color(0xFF121212).copy(1.0f)
+        if (isLightTheme) backgroundColor.copy(0.4f)
+        else backgroundColor.copy(0.4f)
 
     val tabsBackdrop = rememberLayerBackdrop()
 

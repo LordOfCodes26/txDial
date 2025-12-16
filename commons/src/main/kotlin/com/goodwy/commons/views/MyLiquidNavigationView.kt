@@ -6,6 +6,8 @@ import android.widget.FrameLayout
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
+import com.goodwy.commons.extensions.getProperBackgroundColor
+import com.goodwy.commons.extensions.getSurfaceColor
 
 class MyLiquidNavigationView @JvmOverloads constructor(
     context: Context,
@@ -43,6 +45,7 @@ class MyLiquidNavigationView @JvmOverloads constructor(
             MyLiquidBottomTabs(
                 tabs = tabs.map { painterResource(it.iconRes) to it.label },
                 selectedTabIndex = this.selectedIndexState,
+                backgroundColor = context.getSurfaceColor(),
                 onTabSelected = { index ->
                     internalSelectFromUser(index)
                 }
