@@ -49,4 +49,9 @@
         android:title="@string/settings"
         android:icon="@drawable/ic_settings_cog_vector"
         app:showAsAction="never"/>
+    <item
+        android:id="@+id/select"
+        android:title="@string/select"
+        android:icon="@drawable/ic_check_vector"
+        app:showAsAction="never"/>
 </menu>

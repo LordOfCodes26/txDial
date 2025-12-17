@@ -56,6 +56,11 @@ abstract class MyViewPagerFragment<BINDING : MyViewPagerFragment.InnerBinding>(c
         (innerBinding.recentsList?.adapter as? MyRecyclerViewListAdapter<*>)?.finishActMode()
     }
 
+    fun startActMode() {
+        (innerBinding.fragmentList?.adapter as? MyRecyclerViewAdapter)?.startActMode()
+        (innerBinding.recentsList?.adapter as? MyRecyclerViewListAdapter<*>)?.startActMode()
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     fun fontSizeChanged() {
         if (this is RecentsFragment) {

@@ -402,6 +402,7 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.show_blocked_numbers).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.show_blocked_numbers).title =
                 if (config.showBlockedNumbers) getString(R.string.hide_blocked_numbers) else getString(R.string.show_blocked_numbers)
+            findItem(R.id.select).isVisible = currentFragment != null
         }
     }
 
@@ -444,6 +445,7 @@ class MainActivity : SimpleActivity() {
 //                    R.id.about -> launchAbout()
                     R.id.change_view_type -> changeViewType()
                     R.id.column_count -> changeColumnCount()
+                    R.id.select -> getCurrentFragment()?.startActMode()
                     else -> return@setOnMenuItemClickListener false
                 }
                 return@setOnMenuItemClickListener true
