@@ -18,6 +18,7 @@ import android.speech.RecognizerIntent
 import android.telecom.Call
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -34,6 +35,9 @@ import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.RadioItem
 import com.goodwy.commons.models.contacts.Contact
+import com.goodwy.commons.securebox.SecureBoxHelper
+import com.goodwy.commons.securebox.SecureBoxCall
+import com.goodwy.commons.securebox.SecureBoxContact
 import com.android.dialer.BuildConfig
 import com.android.dialer.R
 import com.android.dialer.adapters.ViewPagerAdapter
@@ -48,6 +52,7 @@ import com.android.dialer.fragments.RecentsFragment
 import com.android.dialer.helpers.*
 import com.android.dialer.models.AudioRoute
 import com.android.dialer.models.Events
+import com.goodwy.commons.views.TwoFingerSlideGestureDetector
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.fadeIn
 import com.mikhaellopez.rxanimation.fadeOut
@@ -79,6 +84,9 @@ class MainActivity : SimpleActivity() {
     private var storedContactShortcuts = ArrayList<Contact>()
     private var isSpeechToTextAvailable = false
     private var mSearchView: SearchView? = null
+
+    // Two-finger swipe detection for secure box
+    private lateinit var twoFingerSlideGestureDetector: TwoFingerSlideGestureDetector
 
     @SuppressLint("MissingSuperCall")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -152,6 +160,75 @@ class MainActivity : SimpleActivity() {
 
         CallManager.addListener(callCallback)
         binding.mainCallButton.setOnClickListener { startActivity(Intent(this, CallActivity::class.java)) }
+        
+        // Set up two-finger swipe detection on the main holder
+        setupTwoFingerSwipeDetection()
+    }
+    
+    private fun setupTwoFingerSwipeDetection() {
+        twoFingerSlideGestureDetector = TwoFingerSlideGestureDetector(
+            this,
+            object : TwoFingerSlideGestureDetector.OnTwoFingerSlideGestureListener {
+                override fun onTwoFingerSlide(
+                    firstFingerX: Float,
+                    firstFingerY: Float,
+                    secondFingerX: Float,
+                    secondFingerY: Float,
+                    avgDeltaX: Float,
+                    avgDeltaY: Float,
+                    avgDistance: Float
+                ) {
+                    unlockSecureBoxWithCipher(cipherNumber = 1)
+                }
+            }
+        )
+    }
+    
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        // Handle 2 finger gestures globally
+        if (ev.pointerCount == 2) {
+            twoFingerSlideGestureDetector.onTouchEvent(ev)
+            return true
+        }
+
+        // One finger gestures pass to default handling
+        return super.dispatchTouchEvent(ev)
+    }
+    
+    private fun unlockSecureBoxWithCipher(cipherNumber: Int) {
+        // Directly access secure box cipher number 1 without unlock check
+        val secureBoxHelper = SecureBoxHelper(this)
+        val (calls, contacts) = secureBoxHelper.getSecureBoxByCipherNumber(cipherNumber)
+        
+        // Navigate to RecentsFragment and show secure box contents filtered by cipher number
+        showSecureBoxInRecents(calls, contacts, cipherNumber)
+    }
+    
+    private fun showSecureBoxInRecents(calls: List<SecureBoxCall>, contacts: List<SecureBoxContact>, cipherNumber: Int) {
+        val totalItems = calls.size + contacts.size
+        
+        if (totalItems == 0) {
+            Toast.makeText(
+                this,
+                "Secure Box Cipher $cipherNumber is empty",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        
+        // Navigate to RecentsFragment (call history tab)
+        val recentsTabIndex = getAllFragments().indexOfFirst { it is RecentsFragment }
+        if (recentsTabIndex >= 0) {
+            binding.viewPager.currentItem = recentsTabIndex
+            // Pass secure box data to RecentsFragment with cipher number
+            getRecentsFragment()?.showSecureBoxByCipherNumber(calls, contacts, cipherNumber)
+        } else {
+            Toast.makeText(
+                this,
+                "Secure Box Cipher $cipherNumber: ${calls.size} calls, ${contacts.size} contacts",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     override fun onResume() {
@@ -450,7 +527,7 @@ class MainActivity : SimpleActivity() {
         MenuItemCompat.setOnActionExpandListener(mSearchMenuItem, object : MenuItemCompat.OnActionExpandListener {
             override fun onMenuItemActionExpand(item: MenuItem?): Boolean {
                 isSearchOpen = true
-                binding.mainDialpadButton.beGone()
+                // Keep dialpad button visible when search is opened
                 
                 // Animate search bar appearance with smooth translation (slide in from right)
                 mSearchView?.let { searchView ->

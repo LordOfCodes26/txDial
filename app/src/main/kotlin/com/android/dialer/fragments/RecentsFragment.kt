@@ -27,6 +27,8 @@ import com.goodwy.commons.helpers.ContactsHelper
 import com.goodwy.commons.helpers.PERMISSION_READ_CALL_LOG
 import com.goodwy.commons.helpers.ensureBackgroundThread
 import com.goodwy.commons.models.contacts.Contact
+import com.goodwy.commons.securebox.SecureBoxCall
+import com.goodwy.commons.securebox.SecureBoxContact
 import com.android.dialer.BuildConfig
 import com.android.dialer.R
 import com.android.dialer.activities.CallHistoryActivity
@@ -47,6 +49,7 @@ import com.android.dialer.helpers.CURRENT_RECENT_CALL
 import com.android.dialer.helpers.CURRENT_RECENT_CALL_LIST
 import com.android.dialer.helpers.RECENT_CALL_CACHE_SIZE
 import com.android.dialer.helpers.RecentsHelper
+import com.android.dialer.helpers.QUERY_LIMIT_MAX_VALUE
 import com.android.dialer.helpers.SWIPE_ACTION_CALL
 import com.android.dialer.helpers.SWIPE_ACTION_MESSAGE
 import com.android.dialer.helpers.SWIPE_ACTION_OPEN
@@ -410,6 +413,29 @@ class RecentsFragment(
     }
 
     override fun myRecyclerView() = binding.recentsList
+
+    /**
+     * Show secure box contents filtered by cipher number
+     */
+    fun showSecureBoxByCipherNumber(calls: List<SecureBoxCall>, contacts: List<SecureBoxContact>, cipherNumber: Int) {
+        ensureBackgroundThread {
+            // Get recent calls that match the secure box call IDs
+            val secureBoxCallIds = calls.map { it.callId }.toSet()
+            
+            // Get all recent calls and filter by secure box call IDs
+            recentsHelper.getRecentCalls(queryLimit = QUERY_LIMIT_MAX_VALUE) { recentCallsFromHelper ->
+                val secureBoxRecentCalls = recentCallsFromHelper.filter { it.id in secureBoxCallIds }
+                
+                prepareCallLog(secureBoxRecentCalls) { filteredCalls ->
+                    activity?.runOnUiThread {
+                        allRecentCalls = filteredCalls
+                        binding.recentsPlaceholder.text = "Secure Box Cipher $cipherNumber"
+                        gotRecents(filteredCalls)
+                    }
+                }
+            }
+        }
+    }
 
     private fun itemClickAction(action: Int, call: RecentCall) {
         when (action) {
