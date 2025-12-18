@@ -36,13 +36,14 @@ fun ContactsHelper.getContactsWithSecureBoxFilter(
     gettingDuplicates: Boolean = false,
     ignoredContactSources: HashSet<String> = HashSet(),
     showOnlyContactsWithNumbers: Boolean? = null,
+    loadExtendedFields: Boolean = true, // Set to false for faster list loading (addresses, events, notes, websites, relations, IMs)
     callback: (ArrayList<Contact>) -> Unit
 ) {
     val helperContext = this.context
     val showOnlyNumbers = showOnlyContactsWithNumbers ?: helperContext.baseConfig.showOnlyContactsWithNumbers
     val mainHandler = Handler(Looper.getMainLooper())
 
-    getContacts(getAll, gettingDuplicates, ignoredContactSources, showOnlyNumbers) { contacts ->
+    getContacts(getAll, gettingDuplicates, ignoredContactSources, showOnlyNumbers, loadExtendedFields) { contacts ->
         // Move secure box DB access and filtering off the main thread to avoid Room's
         // "Cannot access database on the main thread" IllegalStateException.
         ensureBackgroundThread {

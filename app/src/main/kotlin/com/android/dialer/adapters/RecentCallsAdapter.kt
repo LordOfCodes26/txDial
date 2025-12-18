@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.provider.CallLog.Calls
+import android.provider.ContactsContract
 import android.text.SpannableString
 import android.text.TextUtils
 import android.text.format.DateUtils
@@ -121,7 +122,8 @@ class RecentCallsAdapter(
             findItem(R.id.cab_show_call_details).isVisible = isOneItemSelected
             findItem(R.id.cab_copy_number).isVisible = isOneItemSelected
             findItem(R.id.web_search).isVisible = isOneItemSelected
-            findItem(R.id.cab_view_details)?.isVisible = isOneItemSelected && findContactByCall(selectedItems.first()) != null
+            // Note: Menu visibility check - we'll show the option, actual check happens on click
+            findItem(R.id.cab_view_details)?.isVisible = isOneItemSelected
         }
     }
 
@@ -159,7 +161,11 @@ class RecentCallsAdapter(
             R.id.cab_select_all -> selectAll()
             R.id.cab_view_details -> {
                 val selectItems = getSelectedItems().firstOrNull() ?: return
-                launchContactDetailsIntent(findContactByCall(selectItems))
+                findContactByCall(selectItems) { contact ->
+                    activity.runOnUiThread {
+                        launchContactDetailsIntent(contact)
+                    }
+                }
             }
         }
     }
@@ -413,11 +419,54 @@ class RecentCallsAdapter(
         }
     }
 
-    private fun findContactByCall(recentCall: RecentCall): Contact? {
-        return if (isDialpad) (activity as DialpadActivity).allContacts
-            .find { /*it.name == recentCall.name &&*/ it.doesHavePhoneNumber(recentCall.phoneNumber) }
-        else (activity as MainActivity).cachedContacts
-            .find { /*it.name == recentCall.name &&*/ it.doesHavePhoneNumber(recentCall.phoneNumber) }
+    private fun findContactByCall(recentCall: RecentCall, callback: (Contact?) -> Unit) {
+        if (isDialpad) {
+            // Use already loaded contacts in DialpadActivity
+            val contact = (activity as DialpadActivity).allContacts
+                .find { /*it.name == recentCall.name &&*/ it.doesHavePhoneNumber(recentCall.phoneNumber) }
+            callback(contact)
+        } else {
+            // Use PhoneLookup for fast single contact lookup instead of loading all contacts
+            // This is much more efficient than loading 900+ contacts just to find one
+            ensureBackgroundThread {
+                if (!activity.hasPermission(PERMISSION_READ_CONTACTS)) {
+                    callback(null)
+                    return@ensureBackgroundThread
+                }
+                
+                val uri = android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI
+                    .buildUpon()
+                    .appendPath(android.net.Uri.encode(recentCall.phoneNumber))
+                    .build()
+                
+                val projection = arrayOf(android.provider.ContactsContract.PhoneLookup._ID)
+                
+                var foundContact: Contact? = null
+                try {
+                    activity.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            // Query for raw contact ID using the phone number
+                            val phoneUri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                            val phoneProjection = arrayOf(android.provider.ContactsContract.Data.RAW_CONTACT_ID)
+                            val phoneSelection = "${android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER} = ? OR ${android.provider.ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER} = ?"
+                            val normalizedNumber = recentCall.phoneNumber.normalizePhoneNumber()
+                            val phoneSelectionArgs = arrayOf(recentCall.phoneNumber, normalizedNumber)
+                            
+                            activity.contentResolver.query(phoneUri, phoneProjection, phoneSelection, phoneSelectionArgs, null)?.use { phoneCursor ->
+                                if (phoneCursor.moveToFirst()) {
+                                    val rawContactId = phoneCursor.getIntValue(android.provider.ContactsContract.Data.RAW_CONTACT_ID)
+                                    val contactHelper = ContactsHelper(activity)
+                                    foundContact = contactHelper.getContactWithId(rawContactId)
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+                
+                callback(foundContact)
+            }
+        }
     }
 
     private fun launchContactDetailsIntent(contact: Contact?) {
@@ -486,9 +535,20 @@ class RecentCallsAdapter(
         finishActMode()
         val theme = activity.getPopupMenuTheme()
         val contextTheme = ContextThemeWrapper(activity, theme)
-        val contact = findContactByCall(call)
         val selectedNumber = "tel:${call.phoneNumber}".replace("+","%2B")
         getBlockedNumbers = activity.getBlockedNumbers()
+        
+        // Load contact asynchronously for popup menu
+        var contact: Contact? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+        findContactByCall(call) { foundContact ->
+            contact = foundContact
+            latch.countDown()
+        }
+        try {
+            latch.await(300, java.util.concurrent.TimeUnit.MILLISECONDS) // Short timeout for menu
+        } catch (_: InterruptedException) {
+        }
 
         // Determine gravity based on touch position: left side = START, right side = END
         val gravity = if (touchX >= 0 && touchX < view.width / 2) {
@@ -1232,15 +1292,31 @@ class RecentCallsAdapter(
 //        for (i in getCallList(call)){ callIdList.add(i.id) } // add all the individual records
 //        for (n in getCallList(call)){ callIdList.addAll(n.neighbourIDs) } // add all grouped records
         val recentCalls = call.groupedCalls as ArrayList<RecentCall>? ?: arrayListOf(call)
-        val matchingContact = findContactByCall(call)
-        Intent(activity, CallHistoryActivity::class.java).apply {
-            putExtra(CURRENT_RECENT_CALL, call)
-            putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
-            putExtra(CONTACT_ID, call.contactID)
-            if (matchingContact != null) {
-                putExtra(IS_PRIVATE, matchingContact.isPrivate())
+        // Use contactID from call if available, otherwise load contact
+        val contactId = call.contactID
+        if (contactId != null && contactId > 0) {
+            // Use contactID directly if available
+            Intent(activity, CallHistoryActivity::class.java).apply {
+                putExtra(CURRENT_RECENT_CALL, call)
+                putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
+                putExtra(CONTACT_ID, contactId)
+                activity.launchActivityIntent(this)
             }
-            activity.launchActivityIntent(this)
+        } else {
+            // Fallback: load contact by phone number
+            findContactByCall(call) { matchingContact ->
+                activity.runOnUiThread {
+                    Intent(activity, CallHistoryActivity::class.java).apply {
+                        putExtra(CURRENT_RECENT_CALL, call)
+                        putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
+                        putExtra(CONTACT_ID, matchingContact?.id)
+                        if (matchingContact != null) {
+                            putExtra(IS_PRIVATE, matchingContact.isPrivate())
+                        }
+                        activity.launchActivityIntent(this)
+                    }
+                }
+            }
         }
     }
 

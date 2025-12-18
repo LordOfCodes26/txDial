@@ -79,7 +79,6 @@ class MainActivity : SimpleActivity() {
     private var storedShowPhoneNumbers = false
     private var storedBackgroundColor = 0
     private var currentOldScrollY = 0
-    var cachedContacts = ArrayList<Contact>()
     private var cachedFavorites = ArrayList<Contact>()
     private var storedContactShortcuts = ArrayList<Contact>()
     private var isSpeechToTextAvailable = false
@@ -928,7 +927,6 @@ class MainActivity : SimpleActivity() {
     }
 
     fun refreshFragments() {
-        cacheContacts()
         getContactsFragment()?.refreshItems()
         getFavoritesFragment()?.refreshItems()
         getRecentsFragment()?.refreshItems()
@@ -1051,15 +1049,6 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-    fun cacheContacts() {
-        ContactsHelper(this).getContactsWithSecureBoxFilter(getAll = true, showOnlyContactsWithNumbers = true) { contacts ->
-            try {
-                cachedContacts.clear()
-                cachedContacts.addAll(contacts)
-            } catch (_: Exception) {
-            }
-        }
-    }
 
     fun cacheFavorites(contacts: List<Contact>) {
         try {

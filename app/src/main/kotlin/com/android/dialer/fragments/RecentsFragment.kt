@@ -21,11 +21,13 @@ import com.goodwy.commons.extensions.isDynamicTheme
 import com.goodwy.commons.extensions.isSystemInDarkMode
 import com.goodwy.commons.extensions.launchActivityIntent
 import com.goodwy.commons.extensions.launchCallIntent
+import com.goodwy.commons.extensions.normalizePhoneNumber
 import com.goodwy.commons.extensions.underlineText
 import com.goodwy.commons.helpers.CONTACT_ID
 import com.goodwy.commons.helpers.ContactsHelper
 import com.goodwy.commons.helpers.PERMISSION_READ_CALL_LOG
 import com.goodwy.commons.helpers.ensureBackgroundThread
+import android.provider.ContactsContract
 import com.goodwy.commons.models.contacts.Contact
 import com.goodwy.commons.securebox.SecureBoxCall
 import com.goodwy.commons.securebox.SecureBoxContact
@@ -56,6 +58,8 @@ import com.android.dialer.helpers.SWIPE_ACTION_OPEN
 import com.android.dialer.interfaces.RefreshItemsListener
 import com.android.dialer.models.CallLogItem
 import com.android.dialer.models.RecentCall
+import com.goodwy.commons.extensions.getIntValue
+import com.goodwy.commons.helpers.PERMISSION_READ_CONTACTS
 import com.google.gson.Gson
 
 class RecentsFragment(
@@ -247,11 +251,14 @@ class RecentsFragment(
                     },
                     profileIconClick = {
                         val recentCall = it as RecentCall
-                        val contact = findContactByCall(recentCall)
-                        if (contact != null) {
-                            activity?.startContactDetailsIntent(contact)
-                        } else {
-                            activity?.startAddContactIntent(recentCall.phoneNumber)
+                        findContactByCall(recentCall) { contact ->
+                            activity?.runOnUiThread {
+                                if (contact != null) {
+                                    activity?.startContactDetailsIntent(contact)
+                                } else {
+                                    activity?.startAddContactIntent(recentCall.phoneNumber)
+                                }
+                            }
                         }
                     }
                 )
@@ -368,15 +375,23 @@ class RecentsFragment(
         }
 
         return calls.map { call ->
-            if (call.phoneNumber == call.name) {
-                val contact = phoneNumberToContact[call.phoneNumber]
-                if (contact != null) {
+            val normalizedNumber = call.phoneNumber.normalizePhoneNumber()
+            val contact = phoneNumberToContact[normalizedNumber]
+            
+            if (contact != null) {
+                // Contact exists, update name if needed
+                if (call.phoneNumber == call.name || call.name != contact.getNameToDisplay()) {
                     withUpdatedName(call = call, name = contact.getNameToDisplay())
                 } else {
                     call
                 }
             } else {
-                call
+                // Contact doesn't exist (was deleted), revert to phone number
+                if (call.phoneNumber != call.name) {
+                    withUpdatedName(call = call, name = call.phoneNumber)
+                } else {
+                    call
+                }
             }
         }
     }
@@ -407,9 +422,48 @@ class RecentsFragment(
 //        return callLog
 //    }
 
-    private fun findContactByCall(recentCall: RecentCall): Contact? {
-        return (activity as MainActivity).cachedContacts
-            .find { /*it.name == recentCall.name &&*/ it.doesHavePhoneNumber(recentCall.phoneNumber) }
+    private fun findContactByCall(recentCall: RecentCall, callback: (Contact?) -> Unit) {
+        // Use PhoneLookup for fast single contact lookup instead of loading all contacts
+        // This is much more efficient than loading 900+ contacts just to find one
+        ensureBackgroundThread {
+            if (!context.hasPermission(PERMISSION_READ_CONTACTS)) {
+                callback(null)
+                return@ensureBackgroundThread
+            }
+            
+            val uri = ContactsContract.PhoneLookup.CONTENT_FILTER_URI
+                .buildUpon()
+                .appendPath(android.net.Uri.encode(recentCall.phoneNumber))
+                .build()
+            
+            val projection = arrayOf(ContactsContract.PhoneLookup._ID)
+            
+            var foundContact: Contact? = null
+            try {
+                context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        // PhoneLookup returns CONTACT_ID, but we need RAW_CONTACT_ID for getContactWithId
+                        // Query for raw contact ID using the phone number
+                        val phoneUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                        val phoneProjection = arrayOf(ContactsContract.Data.RAW_CONTACT_ID)
+                        val phoneSelection = "${ContactsContract.CommonDataKinds.Phone.NUMBER} = ? OR ${ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER} = ?"
+                        val normalizedNumber = recentCall.phoneNumber.normalizePhoneNumber()
+                        val phoneSelectionArgs = arrayOf(recentCall.phoneNumber, normalizedNumber)
+                        
+                        context.contentResolver.query(phoneUri, phoneProjection, phoneSelection, phoneSelectionArgs, null)?.use { phoneCursor ->
+                            if (phoneCursor.moveToFirst()) {
+                                val rawContactId = phoneCursor.getIntValue(ContactsContract.Data.RAW_CONTACT_ID)
+                                val contactHelper = ContactsHelper(context)
+                                foundContact = contactHelper.getContactWithId(rawContactId)
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+            }
+            
+            callback(foundContact)
+        }
     }
 
     override fun myRecyclerView() = binding.recentsList
@@ -463,12 +517,28 @@ class RecentsFragment(
 
     private fun actionOpen(call: RecentCall) {
         val recentCalls = call.groupedCalls as ArrayList<RecentCall>? ?: arrayListOf(call)
-        val contact = findContactByCall(call)
-        Intent(activity, CallHistoryActivity::class.java).apply {
-            putExtra(CURRENT_RECENT_CALL, call)
-            putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
-            putExtra(CONTACT_ID, call.contactID)
-            activity?.launchActivityIntent(this)
+        // Use contactID from call if available, otherwise load contact
+        val contactId = call.contactID
+        if (contactId != null && contactId > 0) {
+            // Use contactID directly if available
+            Intent(activity, CallHistoryActivity::class.java).apply {
+                putExtra(CURRENT_RECENT_CALL, call)
+                putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
+                putExtra(CONTACT_ID, contactId)
+                activity?.launchActivityIntent(this)
+            }
+        } else {
+            // Fallback: load contact by phone number
+            findContactByCall(call) { contact ->
+                activity?.runOnUiThread {
+                    Intent(activity, CallHistoryActivity::class.java).apply {
+                        putExtra(CURRENT_RECENT_CALL, call)
+                        putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
+                        putExtra(CONTACT_ID, contact?.id)
+                        activity?.launchActivityIntent(this)
+                    }
+                }
+            }
         }
     }
 }

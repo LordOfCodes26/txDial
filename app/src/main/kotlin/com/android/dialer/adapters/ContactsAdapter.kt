@@ -380,6 +380,9 @@ class ContactsAdapter(
 
         SimpleContactsHelper(activity).deleteContactRawIDs(idsToRemove) {
             activity.runOnUiThread {
+                // Refresh recents fragment to update contact names (remove deleted contact names)
+                (activity as? com.android.dialer.activities.MainActivity)?.refreshFragments()
+                
                 if (contacts.isEmpty()) {
                     refreshItemsListener?.refreshItems()
                     finishActMode()

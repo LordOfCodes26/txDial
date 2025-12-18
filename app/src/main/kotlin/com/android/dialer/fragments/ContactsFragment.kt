@@ -92,9 +92,10 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     override fun refreshItems(invalidate: Boolean, needUpdate: Boolean, callback: (() -> Unit)?) {
+        // Load contacts with all fields for search compatibility
+        // Performance optimizations are applied in ContactsHelper (HashMap lookups, optimized duplicate merging)
         ContactsHelper(context).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
             allContacts = contacts
-            (activity as MainActivity).cacheContacts()
 
             activity?.runOnUiThread {
                 gotContacts(contacts)
