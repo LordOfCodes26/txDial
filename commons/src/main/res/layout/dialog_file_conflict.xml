@@ -18,10 +18,7 @@
         android:id="@+id/conflict_dialog_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingLeft="@dimen/small_margin"
-        android:paddingTop="@dimen/small_margin"
-        android:paddingRight="@dimen/small_margin"
-        android:paddingBottom="@dimen/activity_margin"
+        style="@style/DialogTitleStyle"
         tools:text="File already exists"/>
 
     <RadioGroup
@@ -82,12 +79,7 @@
         android:id="@+id/buttons_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingLeft="@dimen/big_margin"
-        android:paddingRight="@dimen/big_margin"
-        android:paddingBottom="@dimen/big_margin"
-        android:paddingTop="@dimen/small_margin">
+        style="@style/DialogButtonContainerStyle">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/negative_button"

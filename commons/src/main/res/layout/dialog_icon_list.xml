@@ -11,11 +11,20 @@
     android:layout_height="wrap_content"
     android:gravity="center">
 
+    <com.goodwy.commons.views.MyTextView
+        android:id="@+id/dialog_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/DialogTitleStyle"
+        android:visibility="gone" />
+
     <RelativeLayout
         android:id="@+id/iconHolder"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true">
+        android:layout_below="@+id/dialog_title"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="@dimen/big_margin">
 
         <LinearLayout
             android:id="@+id/icon1Holder"
@@ -382,12 +391,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/description"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingLeft="@dimen/big_margin"
-        android:paddingRight="@dimen/big_margin"
-        android:paddingBottom="@dimen/big_margin"
-        android:paddingTop="@dimen/small_margin">
+        style="@style/DialogButtonContainerStyle">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/neutral_button"

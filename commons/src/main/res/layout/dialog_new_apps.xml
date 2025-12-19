@@ -53,12 +53,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingLeft="@dimen/big_margin"
-        android:paddingRight="@dimen/big_margin"
-        android:paddingBottom="@dimen/big_margin"
-        android:paddingTop="@dimen/small_margin">
+        style="@style/DialogButtonContainerStyle">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/neutral_button"

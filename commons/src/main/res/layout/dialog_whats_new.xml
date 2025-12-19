@@ -8,11 +8,7 @@
         android:id="@+id/dialog_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingLeft="@dimen/big_margin"
-        android:paddingTop="@dimen/big_margin"
-        android:paddingRight="@dimen/big_margin"
-        android:paddingBottom="@dimen/normal_margin"
-        android:textSize="@dimen/bigger_text_size"
+        style="@style/DialogTitleStyle"
         android:visibility="gone" />
 
 <ScrollView
@@ -44,12 +40,7 @@
         android:id="@+id/buttons_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingLeft="@dimen/big_margin"
-        android:paddingRight="@dimen/big_margin"
-        android:paddingBottom="@dimen/big_margin"
-        android:paddingTop="@dimen/small_margin">
+        style="@style/DialogButtonContainerStyle">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/positive_button"

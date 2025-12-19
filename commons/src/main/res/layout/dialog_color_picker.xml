@@ -26,13 +26,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:layout_centerHorizontal="true"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
-            android:gravity="center"
+            android:gravity="start|center_vertical"
             android:maxLines="2"
             android:text="@string/color_title"
-            android:textSize="@dimen/actionbar_text_size" />
+            android:textSize="@dimen/actionbar_text_size"
+            android:textStyle="bold" />
 
         <RelativeLayout
             android:id="@+id/color_picker_top_holder"
@@ -218,12 +218,7 @@
         android:id="@+id/buttons_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingLeft="@dimen/big_margin"
-        android:paddingRight="@dimen/big_margin"
-        android:paddingBottom="@dimen/big_margin"
-        android:paddingTop="@dimen/small_margin"
+        style="@style/DialogButtonContainerStyle"
         android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton

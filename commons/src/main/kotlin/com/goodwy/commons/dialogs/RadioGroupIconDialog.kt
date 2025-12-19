@@ -60,9 +60,10 @@ class RadioGroupIconDialog(
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
         
+        blurView.setOverlayColor(0xa3ffffff.toInt())
         blurView.setupWith(blurTarget)
             .setFrameClearDrawable(windowBackground)
-            .setBlurRadius(5f)
+            .setBlurRadius(8f)
             .setBlurAutoUpdate(true)
 
         // Setup title inside BlurView

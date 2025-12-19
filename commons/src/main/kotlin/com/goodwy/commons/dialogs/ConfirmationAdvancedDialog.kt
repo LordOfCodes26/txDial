@@ -40,10 +40,10 @@ class ConfirmationAdvancedDialog(
         val blurView = view.blurView
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
-        blurView.setOverlayColor(0xb3ffffff.toInt())
+        blurView.setOverlayColor(0xa3ffffff.toInt())
         blurView.setupWith(blurTarget)
             .setFrameClearDrawable(windowBackground) // Optional: makes background opaque when there's transparent space
-            .setBlurRadius(5f) // Blur radius - adjust as needed (typical range: 1-25)
+            .setBlurRadius(8f) // Blur radius - adjust as needed (typical range: 1-25)
             .setBlurAutoUpdate(true)
 
         // Setup custom buttons inside BlurView

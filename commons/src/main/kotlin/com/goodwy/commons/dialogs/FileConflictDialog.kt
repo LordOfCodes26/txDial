@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,9 +59,10 @@ class FileConflictDialog(
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
         
+        blurView?.setOverlayColor(0xa3ffffff.toInt())
         blurView?.setupWith(blurTarget)
             ?.setFrameClearDrawable(windowBackground)
-            ?.setBlurRadius(5f)
+            ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
         
         // Setup custom buttons inside BlurView
@@ -171,7 +173,8 @@ fun FileConflictAlertDialog(
                             .padding(top = 24.dp, bottom = SimpleTheme.dimens.padding.medium)
                             .padding(horizontal = 24.dp),
                         color = dialogTextColor,
-                        fontSize = 21.sp
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold
                     )
 
                     RadioGroupDialogComponent(

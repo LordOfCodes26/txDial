@@ -34,9 +34,10 @@ class IconListDialog(
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
         
+        blurView?.setOverlayColor(0xa3ffffff.toInt())
         blurView?.setupWith(blurTarget)
             ?.setFrameClearDrawable(windowBackground)
-            ?.setBlurRadius(5f)
+            ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
         
         view.apply {
@@ -138,6 +139,17 @@ class IconListDialog(
             }
         }
 
+        // Setup title inside BlurView
+        val titleView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        if (titleId != 0) {
+            titleView?.apply {
+                visibility = android.view.View.VISIBLE
+                text = activity.resources.getString(titleId)
+            }
+        } else {
+            titleView?.visibility = android.view.View.GONE
+        }
+
         // Setup custom buttons inside BlurView
         val primaryColor = activity.getProperPrimaryColor()
         val positiveButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
@@ -167,7 +179,8 @@ class IconListDialog(
         val builder = activity.getAlertDialogBuilder()
 
         builder.apply {
-            activity.setupDialogStuff(view.root, this, titleId, cancelOnTouchOutside = true) { alertDialog ->
+            // Pass titleId = 0 to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleId = 0, cancelOnTouchOutside = true) { alertDialog ->
                 dialog = alertDialog
             }
         }
