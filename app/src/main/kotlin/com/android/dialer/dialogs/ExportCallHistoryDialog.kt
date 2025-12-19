@@ -5,11 +5,25 @@ import com.goodwy.commons.extensions.*
 import com.android.dialer.R
 import com.android.dialer.activities.SimpleActivity
 import com.android.dialer.databinding.DialogExportCallHistoryBinding
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
-class ExportCallHistoryDialog(val activity: SimpleActivity, callback: (filename: String) -> Unit) {
+class ExportCallHistoryDialog(val activity: SimpleActivity, blurTarget: BlurTarget, callback: (filename: String) -> Unit) {
 
     init {
-        val binding = DialogExportCallHistoryBinding.inflate(activity.layoutInflater).apply {
+        val binding = DialogExportCallHistoryBinding.inflate(activity.layoutInflater)
+        
+        // Setup BlurView with the provided BlurTarget
+        val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
+        
+        binding.apply {
             exportCallHistoryFilename.setText("call_history_${getCurrentFormattedDateTime()}")
         }
 

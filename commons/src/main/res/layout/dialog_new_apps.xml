@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<eightbitlab.com.blurview.BlurView
+    android:id="@+id/blurView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+<RelativeLayout
     android:id="@+id/dialog_holder"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -43,4 +48,37 @@
 
     </RelativeLayout>
 
+    <LinearLayout
+        android:id="@+id/buttons_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingLeft="@dimen/big_margin"
+        android:paddingRight="@dimen/big_margin"
+        android:paddingBottom="@dimen/big_margin"
+        android:paddingTop="@dimen/small_margin">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/neutral_button"
+            style="@style/Widget.Material3.Button.TextButton.Dialog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0"
+            android:text="@string/do_not_show_again"
+            android:visibility="visible" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/positive_button"
+            style="@style/Widget.Material3.Button.TextButton.Dialog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/normal_margin"
+            android:layout_weight="0"
+            android:text="@string/later"
+            android:visibility="visible" />
+
+    </LinearLayout>
 </RelativeLayout>
+</eightbitlab.com.blurview.BlurView>

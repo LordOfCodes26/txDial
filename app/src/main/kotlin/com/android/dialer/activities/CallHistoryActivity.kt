@@ -18,6 +18,7 @@ import com.goodwy.commons.dialogs.CallConfirmationDialog
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.dialogs.ConfirmationDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.RadioItem
@@ -277,13 +278,16 @@ class CallHistoryActivity : SimpleActivity() {
 
     private fun changeNoteDialog(number: String) {
         val callerNote = callerNotesHelper.getCallerNotes(number)
+        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
         ChangeTextDialog(
             activity = this@CallHistoryActivity,
             title = getString(R.string.add_notes) + " ($number)",
             currentText = callerNote?.note,
             maxLength = CALLER_NOTES_MAX_LENGTH,
             showNeutralButton = true,
-            neutralTextRes = R.string.delete
+            neutralTextRes = R.string.delete,
+            blurTarget = blurTarget
         ) {
             if (it != "") {
                 callerNotesHelper.addCallerNotes(number, it, callerNote) {
@@ -321,7 +325,8 @@ class CallHistoryActivity : SimpleActivity() {
                             R.string.call_anonymously_warning,
                             R.string.ok,
                             R.string.do_not_show_again,
-                            fromHtml = true
+                            fromHtml = true,
+                            blurTarget = binding.mainBlurTarget
                         ) {
                             if (it) {
                                 makeCall(currentRecentCall!!, "#31#")
@@ -671,7 +676,9 @@ class CallHistoryActivity : SimpleActivity() {
         ensureBackgroundThread {
             runOnUiThread {
                 if (!isDestroyed && !isFinishing) {
-                    ChooseSocialDialog(this@CallHistoryActivity, actions) { action ->
+                    val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                        ?: throw IllegalStateException("mainBlurTarget not found")
+                    ChooseSocialDialog(this@CallHistoryActivity, actions, blurTarget) { action ->
                         Intent(Intent.ACTION_VIEW).apply {
                             val uri = ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI, action.dataId)
                             setDataAndType(uri, action.mimetype)
@@ -987,7 +994,9 @@ class CallHistoryActivity : SimpleActivity() {
                             items.add(RadioItem(index, email.value))
                         }
 
-                        RadioGroupDialog(this@CallHistoryActivity, items, R.string.email) {
+                        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                            ?: throw IllegalStateException("mainBlurTarget not found")
+                        RadioGroupDialog(this@CallHistoryActivity, items, R.string.email, blurTarget = blurTarget) {
                             sendEmailIntent(emails[it as Int].value)
                         }
                     }
@@ -1297,7 +1306,9 @@ class CallHistoryActivity : SimpleActivity() {
     private fun makeCall(call: RecentCall, prefix: String = "") {
         val phoneNumber = call.phoneNumber
         if (config.showCallConfirmation) {
-            CallConfirmationDialog(this as SimpleActivity, call.name) {
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            CallConfirmationDialog(this as SimpleActivity, call.name, blurTarget = blurTarget) {
                 launchCallIntent("$prefix$phoneNumber", key = BuildConfig.RIGHT_APP_KEY)
             }
         } else {
@@ -1317,7 +1328,9 @@ class CallHistoryActivity : SimpleActivity() {
             } else { R.string.block_confirmation }
             val question = String.format(resources.getString(baseString), currentRecentCall!!.phoneNumber)
 
-            ConfirmationDialog(this, question) {
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            ConfirmationDialog(this, question, blurTarget = blurTarget) {
                 blockNumbers()
             }
         } else toast(R.string.default_phone_app_prompt, Toast.LENGTH_LONG)
@@ -1343,7 +1356,9 @@ class CallHistoryActivity : SimpleActivity() {
         val message =
             if (showAll) getString(R.string.clear_history_confirmation)
             else getString(R.string.remove_confirmation)
-        ConfirmationDialog(this, message) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        ConfirmationDialog(this, message, blurTarget = blurTarget) {
             handlePermission(PERMISSION_WRITE_CALL_LOG) {
                 removeRecents()
             }

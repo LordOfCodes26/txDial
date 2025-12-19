@@ -31,6 +31,7 @@ import com.behaviorule.arturdumchev.library.pixels
 import com.google.android.material.snackbar.Snackbar
 import com.goodwy.commons.dialogs.ConfirmationDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.RadioItem
@@ -459,7 +460,9 @@ class MainActivity : SimpleActivity() {
         }
 
         val currentColumnCount = config.contactsGridColumnCount
-        RadioGroupDialog(this, ArrayList(items), currentColumnCount, R.string.column_count) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        RadioGroupDialog(this, ArrayList(items), currentColumnCount, R.string.column_count, blurTarget = blurTarget) {
             val newColumnCount = it as Int
             if (currentColumnCount != newColumnCount) {
                 config.contactsGridColumnCount = newColumnCount
@@ -598,7 +601,9 @@ class MainActivity : SimpleActivity() {
 
     private fun clearCallHistory() {
         val confirmationText = "${getString(R.string.clear_history_confirmation)}\n\n${getString(R.string.cannot_be_undone)}"
-        ConfirmationDialog(this, confirmationText) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        ConfirmationDialog(this, confirmationText, blurTarget = blurTarget) {
             RecentsHelper(this).removeAllRecentCalls(this) {
                 runOnUiThread {
                     getRecentsFragment()?.refreshItems(invalidate = true)
@@ -996,7 +1001,9 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showSortingDialog(showCustomSorting: Boolean) {
-        ChangeSortingDialog(this, showCustomSorting) {
+        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        ChangeSortingDialog(this, showCustomSorting, blurTarget) {
             getFavoritesFragment()?.refreshItems {
                 if (isSearchOpen) {
                     getCurrentFragment()?.onSearchQueryChanged(searchQuery)
@@ -1018,7 +1025,9 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showFilterDialog() {
-        FilterContactSourcesDialog(this) {
+        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        FilterContactSourcesDialog(this, blurTarget) {
             getFavoritesFragment()?.refreshItems {
                 if (isSearchOpen) {
                     getCurrentFragment()?.onSearchQueryChanged(searchQuery)

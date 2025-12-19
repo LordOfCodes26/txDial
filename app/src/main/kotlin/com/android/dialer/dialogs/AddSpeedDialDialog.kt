@@ -9,16 +9,31 @@ import com.goodwy.commons.extensions.showKeyboard
 import com.android.dialer.R
 import com.android.dialer.databinding.DialogAddSpeedDialBinding
 import com.android.dialer.models.SpeedDial
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
 class AddSpeedDialDialog(
     private val activity: Activity,
     private val speedDial: SpeedDial,
+    blurTarget: BlurTarget,
     private val callback: (name: String) -> Unit,
 ) {
     private var dialog: AlertDialog? = null
 
     init {
-        val binding = DialogAddSpeedDialBinding.inflate(activity.layoutInflater).apply {
+        val binding = DialogAddSpeedDialBinding.inflate(activity.layoutInflater)
+        
+        // Setup BlurView with the provided BlurTarget
+        val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
+        
+        binding.apply {
             addSpeedDialEditText.apply {
                 setText(speedDial.number)
                 hint = speedDial.number

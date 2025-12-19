@@ -10,14 +10,26 @@ import com.goodwy.commons.helpers.*
 import com.android.dialer.R
 import com.android.dialer.databinding.DialogChangeSortingBinding
 import com.android.dialer.extensions.config
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
-class ChangeSortingDialog(val activity: BaseSimpleActivity, private val showCustomSorting: Boolean = false, private val callback: () -> Unit) {
+class ChangeSortingDialog(val activity: BaseSimpleActivity, private val showCustomSorting: Boolean = false, blurTarget: BlurTarget, private val callback: () -> Unit) {
     private val binding by activity.viewBinding(DialogChangeSortingBinding::inflate)
 
     private var currSorting = 0
     private var config = activity.config
 
     init {
+        // Setup BlurView with the provided BlurTarget
+        val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
+        
         activity.getAlertDialogBuilder()
             .setPositiveButton(R.string.ok) { dialog, which -> dialogConfirmed() }
             .setNegativeButton(R.string.cancel, null)

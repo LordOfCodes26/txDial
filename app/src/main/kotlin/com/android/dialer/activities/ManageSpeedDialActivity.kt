@@ -5,6 +5,7 @@ import android.os.Bundle
 import com.google.gson.Gson
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.dialogs.RadioGroupIconDialog
 import com.goodwy.commons.extensions.getPhoneNumberTypeText
 import com.goodwy.commons.extensions.hideKeyboard
@@ -99,18 +100,24 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
                 )
             }
 
-            RadioGroupIconDialog(this, items, titleId = R.string.speed_dial) { newValue ->
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            RadioGroupIconDialog(this, items, titleId = R.string.speed_dial, blurTarget = blurTarget) { newValue ->
                 when (newValue) {
                     1 -> { showAddSpeedDialDialog(clickedContact) }
                     2 -> {
-                        SelectContactDialog(this, allContacts) { selectedContact ->
+                        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                            ?: throw IllegalStateException("mainBlurTarget not found")
+                        SelectContactDialog(this, allContacts, blurTarget) { selectedContact ->
                             if (selectedContact.phoneNumbers.size > 1) {
                                 val radioItems = selectedContact.phoneNumbers.mapIndexed { index, item ->
                                     RadioItem(index, "${item.value} (${getPhoneNumberTypeText(item.type, item.label)})", item)
                                 }
                                 val userPhoneNumbersList = selectedContact.phoneNumbers.map { it.value }
                                 val checkedItemId = userPhoneNumbersList.indexOf(clickedContact.number)
-                                RadioGroupDialog(this, ArrayList(radioItems), checkedItemId = checkedItemId) { selectedValue ->
+                                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                                    ?: throw IllegalStateException("mainBlurTarget not found")
+                                RadioGroupDialog(this, ArrayList(radioItems), checkedItemId = checkedItemId, blurTarget = blurTarget) { selectedValue ->
                                     val selectedNumber = selectedValue as PhoneNumber
                                     speedDialValues.first { it.id == clickedContact.id }.apply {
                                         displayName = selectedContact.getNameToDisplay()
@@ -136,7 +143,9 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
 
                     3 -> {
                         if (areMultipleSIMsAvailable()) {
-                            SelectSIMDialog(this, "") { handle, label ->
+                            val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                                ?: throw IllegalStateException("mainBlurTarget not found")
+                            SelectSIMDialog(this, "", blurTarget = blurTarget) { handle, label ->
                                 val voiceMailNumber = telecomManager.getVoiceMailNumber(handle)
                                 if (voiceMailNumber !=null) {
                                     speedDialValues.first { it.id == clickedContact.id }.apply {
@@ -195,7 +204,9 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
     }
 
     private fun showAddSpeedDialDialog(clickedContact: SpeedDial) {
-        AddSpeedDialDialog(this, clickedContact) { newNumber ->
+        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        AddSpeedDialDialog(this, clickedContact, blurTarget) { newNumber ->
             speedDialValues.first { it.id == clickedContact.id }.apply {
                 displayName = newNumber
                 number = newNumber
@@ -222,11 +233,14 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
     }
 
     private fun showHideVoicemailIconDialog() {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
         ConfirmationAdvancedDialog(
             this,
             messageId = R.string.show_voicemail_icon,
             positive = com.goodwy.commons.R.string.yes,
-            negative = com.goodwy.commons.R.string.no
+            negative = com.goodwy.commons.R.string.no,
+            blurTarget = blurTarget
         ) {
             config.showVoicemailIcon = it
         }

@@ -22,6 +22,7 @@ import com.behaviorule.arturdumchev.library.setHeight
 import com.goodwy.commons.dialogs.ColorPickerDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
 import com.goodwy.commons.dialogs.RadioGroupIconDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.RadioItem
@@ -990,12 +991,15 @@ class SettingsDialpadActivity : SimpleActivity() {
                 RadioItem(DIALPAD_CONCEPT, getString(R.string.concept_theme_g))
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupDialog(
                 this@SettingsDialpadActivity,
                 items,
                 config.dialpadStyle,
                 R.string.theme,
-                defaultItemId = DIALPAD_ORIGINAL
+                defaultItemId = DIALPAD_ORIGINAL,
+                blurTarget = blurTarget
             ) {
                 if (it as Int == DIALPAD_IOS) {
                     if (pro) {
@@ -1082,12 +1086,15 @@ class SettingsDialpadActivity : SimpleActivity() {
 
             if (pro) {
                 settingsSimCardColor1Holder.setOnClickListener {
+                    val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                        ?: throw IllegalStateException("mainBlurTarget not found")
                     ColorPickerDialog(
                         this@SettingsDialpadActivity,
                         config.simIconsColors[1],
                         addDefaultColorButton = true,
                         colorDefault = resources.getColor(R.color.ic_dialer, theme),
-                        title = resources.getString(R.string.color_sim_card_icons)
+                        title = resources.getString(R.string.color_sim_card_icons),
+                        blurTarget = blurTarget
                     ) { wasPositivePressed, color, wasDefaultPressed ->
                         if (wasPositivePressed || wasDefaultPressed) {
                             if (hasColorChanged(config.simIconsColors[1], color)) {
@@ -1100,12 +1107,15 @@ class SettingsDialpadActivity : SimpleActivity() {
                     }
                 }
                 settingsSimCardColor2Holder.setOnClickListener {
+                    val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                        ?: throw IllegalStateException("mainBlurTarget not found")
                     ColorPickerDialog(
                         this@SettingsDialpadActivity,
                         config.simIconsColors[2],
                         addDefaultColorButton = true,
                         colorDefault = resources.getColor(R.color.color_primary, theme),
-                        title = resources.getString(R.string.color_sim_card_icons)
+                        title = resources.getString(R.string.color_sim_card_icons),
+                        blurTarget = blurTarget
                     ) { wasPositivePressed, color, wasDefaultPressed ->
                         if (wasPositivePressed || wasDefaultPressed) {
                             if (hasColorChanged(config.simIconsColors[2], color)) {
@@ -1190,7 +1200,9 @@ class SettingsDialpadActivity : SimpleActivity() {
                     RadioItem(1, simList[1].label),
                 )
 
-                RadioGroupDialog(this@SettingsDialpadActivity, items, config.currentSIMCardIndex, R.string.primary_sim_card) {
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
+                RadioGroupDialog(this@SettingsDialpadActivity, items, config.currentSIMCardIndex, R.string.primary_sim_card, blurTarget = blurTarget) {
                     config.currentSIMCardIndex = it as Int
                     binding.settingsPrimarySimCard.text = if (config.currentSIMCardIndex == 0) simList[0].label else simList[1].label
                     initStyle()
@@ -1254,12 +1266,15 @@ class SettingsDialpadActivity : SimpleActivity() {
                 if (config.dialpadSecondaryLanguage == LANGUAGE_SYSTEM) SECONDARY_LANGUAGE_SYSTEM_ID
                 else supportedLanguages.indexOf(config.dialpadSecondaryLanguage)
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupDialog(
                 this@SettingsDialpadActivity,
                 items,
                 checkedItemId,
                 R.string.secondary_dialpad_language,
-                defaultItemId = SECONDARY_LANGUAGE_SYSTEM_ID
+                defaultItemId = SECONDARY_LANGUAGE_SYSTEM_ID,
+                blurTarget = blurTarget
             ) {
                 val index = it as Int
                 if (index == -2) {
@@ -1297,12 +1312,15 @@ class SettingsDialpadActivity : SimpleActivity() {
                 RadioItem(Typeface.BOLD_ITALIC, getString(R.string.typeface_bold_italic), icon = R.drawable.ic_bold_italic),
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsDialpadActivity,
                 items,
                 config.dialpadSecondaryTypeface,
                 R.string.typeface,
-                defaultItemId = Typeface.NORMAL
+                defaultItemId = Typeface.NORMAL,
+                blurTarget = blurTarget
             ) {
                 config.dialpadSecondaryTypeface = it as Int
                 binding.settingsDialpadSecondaryTypeface.text = getTypefaceName(config.dialpadSecondaryTypeface)
@@ -1330,11 +1348,14 @@ class SettingsDialpadActivity : SimpleActivity() {
                 RadioItem(DIALPAD_LONG_CLICK_SETTINGS_DIALPAD, getString(R.string.dialpad_preferences)),
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupDialog(
                 this@SettingsDialpadActivity,
                 items,
                 config.dialpadHashtagLongClick,
-                defaultItemId = DIALPAD_LONG_CLICK_WAIT
+                defaultItemId = DIALPAD_LONG_CLICK_WAIT,
+                blurTarget = blurTarget
             ) {
                 config.dialpadHashtagLongClick = it as Int
                 binding.settingsDialpadHashtagLongClick.text = getHashtagLongClickName(config.dialpadHashtagLongClick)

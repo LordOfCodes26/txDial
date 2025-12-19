@@ -48,8 +48,10 @@ import com.goodwy.commons.extensions.fromHtml
 import com.goodwy.commons.extensions.getAlertDialogBuilder
 import com.goodwy.commons.extensions.humanizePath
 import com.goodwy.commons.extensions.setupDialogStuff
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
-class WritePermissionDialog(activity: Activity, val writePermissionDialogMode: WritePermissionDialogMode, val callback: () -> Unit) {
+class WritePermissionDialog(activity: Activity, val writePermissionDialogMode: WritePermissionDialogMode, blurTarget: BlurTarget, val callback: () -> Unit) {
 
     @Immutable
     sealed class WritePermissionDialogMode {
@@ -75,6 +77,20 @@ class WritePermissionDialog(activity: Activity, val writePermissionDialogMode: W
             null,
             false
         )
+        
+        // Setup BlurView with the provided BlurTarget
+        val blurView = if (writePermissionDialogMode == WritePermissionDialogMode.SdCard) {
+            sdCardView.root.findViewById<BlurView>(R.id.blurView)
+        } else {
+            otgView.root.findViewById<BlurView>(R.id.blurView)
+        }
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
 
         var dialogTitle = R.string.confirm_storage_access_title
 

@@ -15,6 +15,7 @@ import androidx.core.content.res.ResourcesCompat
 import com.goodwy.commons.activities.BaseSimpleActivity
 import com.goodwy.commons.dialogs.CallConfirmationDialog
 import com.goodwy.commons.dialogs.PermissionRequiredDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.dialogs.NewAppDialog
 import com.goodwy.commons.extensions.canUseFullScreenIntent
 import com.goodwy.commons.extensions.darkenColor
@@ -77,7 +78,9 @@ fun SimpleActivity.startCallWithConfirmationCheck(
     forceSimSelector: Boolean = false
 ) {
     if (config.showCallConfirmation) {
-        CallConfirmationDialog(this, name) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        CallConfirmationDialog(this, name, blurTarget = blurTarget) {
             startCallIntent(recipient, forceSimSelector)
         }
     } else {
@@ -87,9 +90,12 @@ fun SimpleActivity.startCallWithConfirmationCheck(
 
 fun SimpleActivity.startCallWithConfirmationCheck(contact: Contact) {
     if (config.showCallConfirmation) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
         CallConfirmationDialog(
             activity = this,
-            callee = contact.getNameToDisplay()
+            callee = contact.getNameToDisplay(),
+            blurTarget = blurTarget
         ) {
             initiateCall(contact) { launchCallIntent(it, key = BuildConfig.RIGHT_APP_KEY) }
         }
@@ -125,7 +131,9 @@ fun BaseSimpleActivity.callContactWithSimWithConfirmationCheck(
     useMainSIM: Boolean
 ) {
     if (config.showCallConfirmation) {
-        CallConfirmationDialog(this, name) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        CallConfirmationDialog(this, name, blurTarget = blurTarget) {
             callContactWithSim(recipient, useMainSIM)
         }
     } else {
@@ -198,12 +206,14 @@ fun SimpleActivity.showSelectSimDialog(
     phoneNumber: String,
     callback: (handle: PhoneAccountHandle?) -> Unit
 ) {
+    val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+        ?: throw IllegalStateException("mainBlurTarget not found")
     if (config.simDialogStyle == SIM_DIALOG_STYLE_LIST) {
         SelectSIMDialog(this, phoneNumber, onDismiss = {
             if (this is DialerActivity) {
                 finish()
             }
-        }) { handle, _ ->
+        }, blurTarget = blurTarget) { handle, _ ->
             callback(handle)
         }
     } else {
@@ -211,7 +221,7 @@ fun SimpleActivity.showSelectSimDialog(
             if (this is DialerActivity) {
                 finish()
             }
-        }) { handle, _ ->
+        }, blurTarget = blurTarget) { handle, _ ->
             callback(handle)
         }
     }
@@ -223,9 +233,12 @@ fun SimpleActivity.handleFullScreenNotificationsPermission(callback: (granted: B
             if (canUseFullScreenIntent()) {
                 callback(true)
             } else {
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 PermissionRequiredDialog(
                     activity = this,
                     textId = R.string.allow_full_screen_notifications_incoming_calls,
+                    blurTarget = blurTarget,
                     positiveActionCallback = {
                         @SuppressLint("NewApi")
                         openFullScreenIntentSettings(BuildConfig.APPLICATION_ID)
@@ -236,9 +249,12 @@ fun SimpleActivity.handleFullScreenNotificationsPermission(callback: (granted: B
                 )
             }
         } else {
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             PermissionRequiredDialog(
                 activity = this,
                 textId = R.string.allow_notifications_incoming_calls,
+                blurTarget = blurTarget,
                 positiveActionCallback = {
                     openNotificationSettings()
                 },
@@ -359,9 +375,11 @@ fun Activity.launchSendSMSIntentRecommendation(recipient: String) {
         && (!isPackageInstalled(simpleSmsMessenger)
             && !isPackageInstalled(simpleSmsMessengerDebug))
     ) {
+        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
         NewAppDialog(
             this, simpleSmsMessenger, getString(R.string.recommendation_dialog_messages_g), getString(R.string.right_sms_messenger),
-            AppCompatResources.getDrawable(this, R.drawable.ic_sms_messenger)
+            AppCompatResources.getDrawable(this, R.drawable.ic_sms_messenger), blurTarget
         ) {
             launchSendSMSIntent(recipient)
         }
@@ -377,9 +395,11 @@ fun Activity.startContactDetailsIntentRecommendation(contact: Contact) {
         && (!isPackageInstalled(simpleContacts)
             && !isPackageInstalled(simpleContactsDebug))
     ) {
+        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
         NewAppDialog(
             this, simpleContacts, getString(R.string.recommendation_dialog_contacts_g), getString(R.string.right_contacts),
-            AppCompatResources.getDrawable(this, R.drawable.ic_contacts)
+            AppCompatResources.getDrawable(this, R.drawable.ic_contacts), blurTarget
         ) {
             startContactDetailsIntent(contact)
         }

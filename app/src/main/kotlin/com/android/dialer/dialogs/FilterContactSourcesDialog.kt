@@ -10,8 +10,10 @@ import com.android.dialer.activities.SimpleActivity
 import com.android.dialer.adapters.FilterContactSourcesAdapter
 import com.android.dialer.databinding.DialogFilterContactSourcesBinding
 import com.android.dialer.extensions.config
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
-class FilterContactSourcesDialog(val activity: SimpleActivity, private val callback: () -> Unit) {
+class FilterContactSourcesDialog(val activity: SimpleActivity, private val blurTarget: BlurTarget, private val callback: () -> Unit) {
     private val binding by activity.viewBinding(DialogFilterContactSourcesBinding::inflate)
 
     private var dialog: AlertDialog? = null
@@ -59,6 +61,16 @@ class FilterContactSourcesDialog(val activity: SimpleActivity, private val callb
             binding.filterContactSourcesList.adapter = FilterContactSourcesAdapter(activity, contactSourcesWithCount, selectedSources)
 
             if (dialog == null) {
+                // Setup BlurView with the provided BlurTarget
+                val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+                val decorView = activity.window.decorView
+                val windowBackground = decorView.background
+                
+                blurView?.setupWith(blurTarget)
+                    ?.setFrameClearDrawable(windowBackground)
+                    ?.setBlurRadius(5f)
+                    ?.setBlurAutoUpdate(true)
+                
                 activity.getAlertDialogBuilder()
                     .setPositiveButton(R.string.ok) { _, _ -> confirmContactSources() }
                     .setNegativeButton(R.string.cancel, null)

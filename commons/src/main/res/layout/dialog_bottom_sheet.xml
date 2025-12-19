@@ -9,6 +9,11 @@
     android:paddingBottom="@dimen/normal_margin"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
+    <eightbitlab.com.blurview.BlurView
+        android:id="@+id/blurView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/bottom_sheet_holder"
         android:layout_width="match_parent"
@@ -57,5 +62,7 @@
             app:layout_constraintVertical_bias="0" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </eightbitlab.com.blurview.BlurView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

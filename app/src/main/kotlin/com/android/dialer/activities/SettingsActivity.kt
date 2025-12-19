@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.behaviorule.arturdumchev.library.pixels
 import com.goodwy.commons.activities.ManageBlockedNumbersActivity
 import com.goodwy.commons.dialogs.*
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.RadioItem
@@ -404,12 +405,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(FONT_SIZE_LARGE, getString(R.string.large)),
                 RadioItem(FONT_SIZE_EXTRA_LARGE, getString(R.string.extra_large)))
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupDialog(
                 this@SettingsActivity,
                 items,
                 config.fontSize,
                 R.string.font_size,
-                defaultItemId = FONT_SIZE_MEDIUM
+                defaultItemId = FONT_SIZE_MEDIUM,
+                blurTarget = blurTarget
             ) {
                 config.fontSize = it as Int
                 settingsFontSize.text = getFontSizeText()
@@ -427,12 +431,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(TAB_CALL_HISTORY, getString(R.string.recents), icon = R.drawable.ic_clock_filled_scaled),
                 RadioItem(TAB_CONTACTS, getString(R.string.contacts_tab), icon = R.drawable.ic_person_rounded_scaled))
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsActivity,
                 items,
                 config.defaultTab,
                 R.string.default_tab,
-                defaultItemId = TAB_LAST_USED
+                defaultItemId = TAB_LAST_USED,
+                blurTarget = blurTarget
             ) {
                 config.defaultTab = it as Int
                 binding.settingsDefaultTab.text = getDefaultTabText()
@@ -494,7 +501,9 @@ class SettingsActivity : SimpleActivity() {
 
     private fun setupManageShownTabs() {
         binding.settingsManageShownTabsHolder.setOnClickListener {
-            ManageVisibleTabsDialog(this)
+            val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            ManageVisibleTabsDialog(this, blurTarget)
         }
     }
 
@@ -507,12 +516,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(2, getString(R.string.screen_slide_animation_depth), icon = R.drawable.ic_playing_cards),
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsActivity,
                 items,
                 config.screenSlideAnimation,
                 R.string.screen_slide_animation,
-                defaultItemId = 1
+                defaultItemId = 1,
+                blurTarget = blurTarget
             ) {
                 config.screenSlideAnimation = it as Int
                 config.needRestart = true
@@ -566,12 +578,15 @@ class SettingsActivity : SimpleActivity() {
                     RadioItem(CONTACT_THUMBNAILS_SIZE_EXTRA_LARGE, getString(R.string.extra_large), CONTACT_THUMBNAILS_SIZE_EXTRA_LARGE)
                 )
 
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 RadioGroupDialog(
                     this@SettingsActivity,
                     items,
                     config.contactThumbnailsSize,
                     R.string.contact_thumbnails_size,
-                    defaultItemId = CONTACT_THUMBNAILS_SIZE_MEDIUM
+                    defaultItemId = CONTACT_THUMBNAILS_SIZE_MEDIUM,
+                    blurTarget = blurTarget
                 ) {
                     config.contactThumbnailsSize = it as Int
                     settingsContactThumbnailsSize.text = getContactThumbnailsSizeText()
@@ -627,12 +642,15 @@ class SettingsActivity : SimpleActivity() {
                 com.goodwy.commons.R.drawable.ic_color_list_arc
             )
 
+            val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             IconListDialog(
                 activity = this@SettingsActivity,
                 items = items,
                 checkedItemId = config.contactColorList,
                 defaultItemId = LBC_ANDROID,
-                titleId = com.goodwy.strings.R.string.overflow_icon
+                titleId = com.goodwy.strings.R.string.overflow_icon,
+                blurTarget = blurTarget
             ) { wasPositivePressed, newValue ->
                 if (wasPositivePressed) {
                     if (config.contactColorList != newValue) {
@@ -667,12 +685,15 @@ class SettingsActivity : SimpleActivity() {
                 )
             }
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsActivity,
                 items,
                 config.backgroundCallScreen,
                 R.string.call_screen_background,
-                defaultItemId = BLUR_AVATAR
+                defaultItemId = BLUR_AVATAR,
+                blurTarget = blurTarget
             ) {
                 if (it as Int == TRANSPARENT_BACKGROUND) {
                     if (hasPermission(PERMISSION_READ_STORAGE)) {
@@ -759,12 +780,15 @@ class SettingsActivity : SimpleActivity() {
             RadioItem(ANSWER_SLIDER_VERTICAL, sliderVertical, icon = R.drawable.ic_slider_vertical),
         )
 
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
         RadioGroupIconDialog(
             this@SettingsActivity,
             items,
             config.answerStyle,
             R.string.answer_style,
-            defaultItemId = ANSWER_BUTTON
+            defaultItemId = ANSWER_BUTTON,
+            blurTarget = blurTarget
         ) {
             if (it as Int == ANSWER_SLIDER_OUTLINE || it == ANSWER_SLIDER_VERTICAL) {
                 if (pro) {
@@ -812,7 +836,9 @@ class SettingsActivity : SimpleActivity() {
             RadioItem(IOS17, iOS17Text, icon = R.drawable.ic_call_button_bottom),
         )
 
-        RadioGroupIconDialog(this@SettingsActivity, items, config.callButtonStyle, R.string.call_button_style) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        RadioGroupIconDialog(this@SettingsActivity, items, config.callButtonStyle, R.string.call_button_style, blurTarget = blurTarget) {
             if (it as Int == IOS17) {
                 if (pro) {
                     config.callButtonStyle = it
@@ -847,12 +873,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(SHOW_CALLER_COMPANY, getString(R.string.company)),
                 RadioItem(SHOW_CALLER_NICKNAME, getString(R.string.nickname)))
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupDialog(
                 this@SettingsActivity,
                 items,
                 config.showCallerDescription,
                 R.string.show_caller_description_g,
-                defaultItemId = SHOW_CALLER_COMPANY
+                defaultItemId = SHOW_CALLER_COMPANY,
+                blurTarget = blurTarget
             ) {
                 config.showCallerDescription = it as Int
                 binding.settingsShowCallerDescription.text = getCallerDescriptionText()
@@ -900,7 +929,9 @@ class SettingsActivity : SimpleActivity() {
             }
             settingsKeepCallsInPopUpFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
             settingsKeepCallsInPopUpFaq.setOnClickListener {
-                ConfirmationDialog(this@SettingsActivity, messageId = R.string.keep_calls_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
+                ConfirmationDialog(this@SettingsActivity, messageId = R.string.keep_calls_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0, blurTarget = blurTarget) {}
             }
         }
     }
@@ -915,7 +946,9 @@ class SettingsActivity : SimpleActivity() {
             }
             settingsTurnOnSpeakerInPopupFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
             settingsTurnOnSpeakerInPopupFaq.setOnClickListener {
-                ConfirmationDialog(this@SettingsActivity, messageId = R.string.turn_on_speaker_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
+                ConfirmationDialog(this@SettingsActivity, messageId = R.string.turn_on_speaker_in_popup_summary, positive = com.goodwy.commons.R.string.ok, negative = 0, blurTarget = blurTarget) {}
             }
         }
     }
@@ -963,12 +996,15 @@ class SettingsActivity : SimpleActivity() {
                     RadioItem(10, "10")
                 )
 
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 RadioGroupDialog(
                     this@SettingsActivity,
                     items,
                     config.autoRedialMaxRetries,
                     R.string.auto_redial_max_retries,
-                    defaultItemId = 3
+                    defaultItemId = 3,
+                    blurTarget = blurTarget
                 ) {
                     config.autoRedialMaxRetries = it as Int
                     settingsAutoRedialMaxRetries.text = config.autoRedialMaxRetries.toString()
@@ -989,12 +1025,15 @@ class SettingsActivity : SimpleActivity() {
                     RadioItem(10000, "10s")
                 )
 
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 RadioGroupDialog(
                     this@SettingsActivity,
                     items,
                     config.autoRedialDelayMs.toInt(),
                     R.string.auto_redial_delay,
-                    defaultItemId = 2000
+                    defaultItemId = 2000,
+                    blurTarget = blurTarget
                 ) {
                     config.autoRedialDelayMs = (it as Int).toLong()
                     settingsAutoRedialDelay.text = getAutoRedialDelayText()
@@ -1017,10 +1056,13 @@ class SettingsActivity : SimpleActivity() {
 
             settingsQuickAnswerOne.setOnClickListener {
                 val index = 0
+                val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 ChangeTextDialog(
                     this@SettingsActivity,
                     currentText = config.quickAnswers[index],
-                    showNeutralButton = true
+                    showNeutralButton = true,
+                    blurTarget = blurTarget
                 ) {
                     if (it == "") {
                         val text = getString(R.string.message_call_later)
@@ -1033,10 +1075,13 @@ class SettingsActivity : SimpleActivity() {
             }
             settingsQuickAnswerTwo.setOnClickListener {
                 val index = 1
+                val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 ChangeTextDialog(
                     this@SettingsActivity,
                     currentText = config.quickAnswers[index],
-                    showNeutralButton = true
+                    showNeutralButton = true,
+                    blurTarget = blurTarget
                 ) {
                     if (it == "") {
                         val text = getString(R.string.message_on_my_way)
@@ -1049,10 +1094,13 @@ class SettingsActivity : SimpleActivity() {
             }
             settingsQuickAnswerThree.setOnClickListener {
                 val index = 2
+                val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 ChangeTextDialog(
                     this@SettingsActivity,
                     currentText = config.quickAnswers[index],
-                    showNeutralButton = true
+                    showNeutralButton = true,
+                    blurTarget = blurTarget
                 ) {
                     if (it == "") {
                         val text = getString(R.string.message_cant_talk_right_now)
@@ -1077,7 +1125,9 @@ class SettingsActivity : SimpleActivity() {
 
     private fun setupCallsExport() {
         binding.settingsExportCallsHolder.setOnClickListener {
-            ExportCallHistoryDialog(this) { filename ->
+            val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            ExportCallHistoryDialog(this, blurTarget) { filename ->
                 saveDocument.launch("$filename.json")
             }
         }
@@ -1171,12 +1221,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(GROUP_CALLS_ALL, getString(R.string.group_all_calls))
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupDialog(
                 this@SettingsActivity,
                 items,
                 getGroupCallsCheckedItemId(),
                 R.string.group_calls,
-                defaultItemId = GROUP_CALLS_SUBSEQUENT
+                defaultItemId = GROUP_CALLS_SUBSEQUENT,
+                blurTarget = blurTarget
             ) {
                 when(it) {
                     GROUP_CALLS_SUBSEQUENT -> {
@@ -1336,7 +1389,9 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(SIM_DIALOG_STYLE_LIST, getString(R.string.list)),
                 RadioItem(SIM_DIALOG_STYLE_BUTTON, getString(R.string.buttons)))
 
-            RadioGroupDialog(this@SettingsActivity, items, config.simDialogStyle, R.string.sim_card_selection_dialog_style) {
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            RadioGroupDialog(this@SettingsActivity, items, config.simDialogStyle, R.string.sim_card_selection_dialog_style, blurTarget = blurTarget) {
                 config.simDialogStyle = it as Int
                 binding.settingsSimDialogStyle.text = getSimDialogStyleText()
             }
@@ -1380,7 +1435,9 @@ class SettingsActivity : SimpleActivity() {
                     RadioItem(10, resources.getQuantityString(com.goodwy.commons.R.plurals.seconds, 10, 10))
                 )
 
-                RadioGroupDialog(this@SettingsActivity, items, config.autoSimSelectDelaySeconds, R.string.auto_sim_select_delay) {
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
+                RadioGroupDialog(this@SettingsActivity, items, config.autoSimSelectDelaySeconds, R.string.auto_sim_select_delay, blurTarget = blurTarget) {
                     config.autoSimSelectDelaySeconds = it as Int
                     settingsAutoSimSelectDelay.text = config.autoSimSelectDelaySeconds.toString()
                 }
@@ -1395,7 +1452,9 @@ class SettingsActivity : SimpleActivity() {
                         items.add(RadioItem(index, "${index + 1} - ${sim.label}"))
                     }
 
-                    RadioGroupDialog(this@SettingsActivity, items, config.autoSimSelectIndex, R.string.auto_sim_select_sim) {
+                    val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                        ?: throw IllegalStateException("mainBlurTarget not found")
+                    RadioGroupDialog(this@SettingsActivity, items, config.autoSimSelectIndex, R.string.auto_sim_select_sim, blurTarget = blurTarget) {
                         config.autoSimSelectIndex = it as Int
                         settingsAutoSimSelectSim.text = getAutoSimSelectSimText()
                     }
@@ -1457,6 +1516,8 @@ class SettingsActivity : SimpleActivity() {
                     R.drawable.squircle_bg
                 )
 
+                val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 IconListDialog(
                     activity = this@SettingsActivity,
                     items = items,
@@ -1464,7 +1525,8 @@ class SettingsActivity : SimpleActivity() {
                     defaultItemId = 1,
                     titleId = com.goodwy.strings.R.string.floating_button_style,
                     size = pixels(com.goodwy.commons.R.dimen.normal_icon_size).toInt(),
-                    color = getProperTextColor()
+                    color = getProperTextColor(),
+                    blurTarget = blurTarget
                 ) { wasPositivePressed, newValue ->
                     if (wasPositivePressed) {
                         if (newValue != if (baseConfig.materialDesign3) 2 else 1) {
@@ -1511,12 +1573,15 @@ class SettingsActivity : SimpleActivity() {
 
             if (pro) {
                 settingsSimCardColor1Holder.setOnClickListener {
+                    val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                        ?: throw IllegalStateException("mainBlurTarget not found")
                     ColorPickerDialog(
                         this@SettingsActivity,
                         color = config.simIconsColors[1],
                         addDefaultColorButton = true,
                         colorDefault = resources.getColor(R.color.ic_dialer, theme),
-                        title = resources.getString(R.string.color_sim_card_icons)
+                        title = resources.getString(R.string.color_sim_card_icons),
+                        blurTarget = blurTarget
                     ) { wasPositivePressed, color, wasDefaultPressed ->
                         if (wasPositivePressed || wasDefaultPressed) {
                             if (hasColorChanged(config.simIconsColors[1], color)) {
@@ -1527,12 +1592,15 @@ class SettingsActivity : SimpleActivity() {
                     }
                 }
                 settingsSimCardColor2Holder.setOnClickListener {
+                    val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                        ?: throw IllegalStateException("mainBlurTarget not found")
                     ColorPickerDialog(
                         this@SettingsActivity,
                         color = config.simIconsColors[2],
                         addDefaultColorButton = true,
                         colorDefault = resources.getColor(R.color.color_primary, theme),
-                        title = resources.getString(R.string.color_sim_card_icons)
+                        title = resources.getString(R.string.color_sim_card_icons),
+                        blurTarget = blurTarget
                     ) { wasPositivePressed, color, wasDefaultPressed ->
                         if (wasPositivePressed || wasDefaultPressed) {
                             if (hasColorChanged(config.simIconsColors[2], color)) {
@@ -1659,12 +1727,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(SWIPE_ACTION_NONE, getString(com.goodwy.commons.R.string.nothing)),
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsActivity,
                 items,
                 config.onFavoriteClick,
                 R.string.on_favorite_click,
-                defaultItemId = SWIPE_ACTION_CALL
+                defaultItemId = SWIPE_ACTION_CALL,
+                blurTarget = blurTarget
             ) {
                 config.onFavoriteClick = it as Int
                 config.needRestart = true
@@ -1683,12 +1754,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(SWIPE_ACTION_NONE, getString(com.goodwy.commons.R.string.nothing)),
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsActivity,
                 items,
                 config.onRecentClick,
                 R.string.on_recent_click,
-                defaultItemId = SWIPE_ACTION_CALL
+                defaultItemId = SWIPE_ACTION_CALL,
+                blurTarget = blurTarget
             ) {
                 config.onRecentClick = it as Int
                 config.needRestart = true
@@ -1708,12 +1782,15 @@ class SettingsActivity : SimpleActivity() {
                 RadioItem(SWIPE_ACTION_NONE, getString(com.goodwy.commons.R.string.nothing)),
             )
 
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsActivity,
                 items,
                 config.onContactClick,
                 R.string.on_contact_click,
-                defaultItemId = SWIPE_ACTION_CALL
+                defaultItemId = SWIPE_ACTION_CALL,
+                blurTarget = blurTarget
             ) {
                 config.onContactClick = it as Int
                 config.needRestart = true
@@ -1791,12 +1868,15 @@ class SettingsActivity : SimpleActivity() {
 
             val title =
                 if (isRTLLayout) R.string.swipe_left_action else R.string.swipe_right_action
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             RadioGroupIconDialog(
                 this@SettingsActivity,
                 items,
                 config.swipeRightAction,
                 title,
-                defaultItemId = SWIPE_ACTION_MESSAGE
+                defaultItemId = SWIPE_ACTION_MESSAGE,
+                blurTarget = blurTarget
             ) {
                 config.swipeRightAction = it as Int
                 config.needRestart = true
@@ -1824,12 +1904,15 @@ class SettingsActivity : SimpleActivity() {
 
                 val title =
                     if (isRTLLayout) R.string.swipe_right_action else R.string.swipe_left_action
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
                 RadioGroupIconDialog(
                     this@SettingsActivity,
                     items,
                     config.swipeLeftAction,
                     title,
-                    defaultItemId = SWIPE_ACTION_DELETE
+                    defaultItemId = SWIPE_ACTION_DELETE,
+                    blurTarget = blurTarget
                 ) {
                     config.swipeLeftAction = it as Int
                     config.needRestart = true
@@ -1946,7 +2029,9 @@ class SettingsActivity : SimpleActivity() {
             }
             settingsBlockCallFromAnotherAppFaq.imageTintList = ColorStateList.valueOf(getProperTextColor())
             settingsBlockCallFromAnotherAppFaq.setOnClickListener {
-                ConfirmationDialog(this@SettingsActivity, messageId = R.string.open_dialpad_when_call_from_another_app_summary, positive = com.goodwy.commons.R.string.ok, negative = 0) {}
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
+                ConfirmationDialog(this@SettingsActivity, messageId = R.string.open_dialpad_when_call_from_another_app_summary, positive = com.goodwy.commons.R.string.ok, negative = 0, blurTarget = blurTarget) {}
             }
         }
     }

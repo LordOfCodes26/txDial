@@ -14,13 +14,25 @@ import com.android.dialer.activities.SimpleActivity
 import com.android.dialer.adapters.ContactsAdapter
 import com.android.dialer.databinding.DialogSelectContactBinding
 import com.android.dialer.extensions.setupWithContacts
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
-class SelectContactDialog(val activity: SimpleActivity, val contacts: List<Contact>, val callback: (selectedContact: Contact) -> Unit) {
+class SelectContactDialog(val activity: SimpleActivity, val contacts: List<Contact>, blurTarget: BlurTarget, val callback: (selectedContact: Contact) -> Unit) {
     private val binding by activity.viewBinding(DialogSelectContactBinding::inflate)
 
     private var dialog: AlertDialog? = null
 
     init {
+        // Setup BlurView with the provided BlurTarget
+        val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
+        
         binding.apply {
             letterFastscroller.textColor = activity.getProperTextColor().getColorStateList()
             letterFastscrollerThumb.setupWithFastScroller(letterFastscroller)

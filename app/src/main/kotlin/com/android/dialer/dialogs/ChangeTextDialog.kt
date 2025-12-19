@@ -9,6 +9,8 @@ import com.goodwy.commons.extensions.*
 import com.android.dialer.R
 import com.android.dialer.activities.SimpleActivity
 import com.android.dialer.databinding.DialogChangeTextBinding
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
 @SuppressLint("SetTextI18n")
 class ChangeTextDialog(
@@ -18,11 +20,22 @@ class ChangeTextDialog(
     val maxLength: Int = 0,
     val showNeutralButton: Boolean = false,
     val neutralTextRes: Int = com.goodwy.commons.R.string.use_default,
+    blurTarget: BlurTarget,
     val callback: (newText: String) -> Unit) {
 
     init {
         val binding = DialogChangeTextBinding.inflate(activity.layoutInflater)
         val view = binding.root
+        
+        // Setup BlurView with the provided BlurTarget
+        val blurView = view.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
         binding.text.apply {
 
             if (maxLength > 0) {

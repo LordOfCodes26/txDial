@@ -16,18 +16,30 @@ import com.android.dialer.extensions.config
 import com.android.dialer.extensions.getAvailableSIMCardLabels
 import douglasspgyn.com.github.circularcountdown.CircularCountdown
 import douglasspgyn.com.github.circularcountdown.listener.CircularListener
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
 @SuppressLint("MissingPermission", "SetTextI18n")
 class SelectSIMDialog(
     val activity: BaseSimpleActivity,
     val phoneNumber: String,
     onDismiss: () -> Unit = {},
+    blurTarget: BlurTarget,
     val callback: (handle: PhoneAccountHandle?, label: String?) -> Unit
 ) {
     private var dialog: AlertDialog? = null
     private val binding by activity.viewBinding(DialogSelectSimBinding::inflate)
 
     init {
+        // Setup BlurView with the provided BlurTarget
+        val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
         val isManageSpeedDial = phoneNumber == ""
         binding.selectSimLabel.beGoneIf(isManageSpeedDial)
         binding.divider.root.beGoneIf(isManageSpeedDial)

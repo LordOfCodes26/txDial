@@ -1307,11 +1307,14 @@ class CallActivity : SimpleActivity() {
 
     private fun changeNoteDialog(number: String) {
         val callerNote = callerNotesHelper.getCallerNotes(number)
+        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
         ChangeTextDialog(
             activity = this@CallActivity,
             title = number.normalizeString(),
             currentText = callerNote?.note,
             maxLength = CALLER_NOTES_MAX_LENGTH,
+            blurTarget = blurTarget,
             showNeutralButton = true,
             neutralTextRes = R.string.delete
         ) {
@@ -1517,7 +1520,7 @@ class CallActivity : SimpleActivity() {
                         val baseString = R.string.block_confirmation
                         val question = String.format(resources.getString(baseString), number)
 
-                        ConfirmationAdvancedDialog(this@CallActivity, question, cancelOnTouchOutside = false) {
+                        ConfirmationAdvancedDialog(this@CallActivity, question, cancelOnTouchOutside = false, blurTarget = binding.mainBlurTarget) {
                             if (it) {
                                 blockNumbers(number.normalizePhoneNumber())
                             }

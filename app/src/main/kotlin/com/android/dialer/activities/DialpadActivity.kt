@@ -26,6 +26,7 @@ import com.behaviorule.arturdumchev.library.setHeight
 import com.goodwy.commons.dialogs.CallConfirmationDialog
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.dialogs.ConfirmationDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.contacts.Contact
@@ -1264,7 +1265,9 @@ class DialpadActivity : SimpleActivity() {
                 initCall(speedDial.number, -1, speedDial.getName(this))
                 return true
             } else {
-                ConfirmationDialog(this, getString(R.string.open_speed_dial_manage)) {
+                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    ?: throw IllegalStateException("mainBlurTarget not found")
+                ConfirmationDialog(this, getString(R.string.open_speed_dial_manage), blurTarget = blurTarget) {
                     startActivity(Intent(applicationContext, ManageSpeedDialActivity::class.java))
                 }
             }
@@ -1379,12 +1382,15 @@ class DialpadActivity : SimpleActivity() {
         val dialpadValue = binding.dialpadInput.value
         if (config.showWarningAnonymousCall) {
             val text = String.format(getString(R.string.call_anonymously_warning), dialpadValue)
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
             ConfirmationAdvancedDialog(
                 this,
                 text,
                 R.string.call_anonymously_warning,
                 R.string.ok,
                 R.string.do_not_show_again,
+                blurTarget = blurTarget,
                 fromHtml = true
             ) {
                 if (it) {
@@ -1600,7 +1606,9 @@ class DialpadActivity : SimpleActivity() {
 
     private fun clearCallHistory() {
         val confirmationText = "${getString(R.string.clear_history_confirmation)}\n\n${getString(R.string.cannot_be_undone)}"
-        ConfirmationDialog(this, confirmationText) {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        ConfirmationDialog(this, confirmationText, blurTarget = blurTarget) {
             RecentsHelper(this).removeAllRecentCalls(this) {
                 allRecentCalls = emptyList()
                 runOnUiThread {
@@ -1627,7 +1635,9 @@ class DialpadActivity : SimpleActivity() {
     private fun actionCall(call: RecentCall) {
         val recentCall = call
         if (config.showCallConfirmation) {
-            CallConfirmationDialog(this, recentCall.name) {
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            CallConfirmationDialog(this, recentCall.name, blurTarget = blurTarget) {
                 callRecentNumber(recentCall)
             }
         } else {

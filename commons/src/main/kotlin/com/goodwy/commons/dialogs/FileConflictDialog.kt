@@ -32,6 +32,7 @@ import com.goodwy.commons.databinding.DialogFileConflictBinding
 import com.goodwy.commons.extensions.baseConfig
 import com.goodwy.commons.extensions.beVisibleIf
 import com.goodwy.commons.extensions.getAlertDialogBuilder
+import com.goodwy.commons.extensions.getProperPrimaryColor
 import com.goodwy.commons.extensions.setupDialogStuff
 import com.goodwy.commons.helpers.CONFLICT_KEEP_BOTH
 import com.goodwy.commons.helpers.CONFLICT_MERGE
@@ -40,15 +41,50 @@ import com.goodwy.commons.helpers.CONFLICT_SKIP
 import com.goodwy.commons.models.FileDirItem
 import com.goodwy.commons.models.FileDirItemReadOnly
 import com.goodwy.commons.models.asReadOnly
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
 
 class FileConflictDialog(
     val activity: Activity, val fileDirItem: FileDirItem, val showApplyToAllCheckbox: Boolean,
-    val callback: (resolution: Int, applyForAll: Boolean) -> Unit
+    blurTarget: BlurTarget, val callback: (resolution: Int, applyForAll: Boolean) -> Unit
 ) {
+    private var dialog: androidx.appcompat.app.AlertDialog? = null
     val view = DialogFileConflictBinding.inflate(activity.layoutInflater, null, false)
 
     init {
+        // Setup BlurView with the provided BlurTarget
+        val blurView = view.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
+        
+        // Setup custom buttons inside BlurView
+        val primaryColor = activity.getProperPrimaryColor()
+        val positiveButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+        val negativeButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+        val buttonsContainer = view.root.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+        
+        buttonsContainer?.visibility = android.view.View.VISIBLE
+        
+        positiveButton?.apply {
+            visibility = android.view.View.VISIBLE
+            text = activity.resources.getString(R.string.ok)
+            setTextColor(primaryColor)
+            setOnClickListener { dialogConfirmed() }
+        }
+        
+        negativeButton?.apply {
+            visibility = android.view.View.VISIBLE
+            text = activity.resources.getString(R.string.cancel)
+            setTextColor(primaryColor)
+            setOnClickListener { dialog?.dismiss() }
+        }
+        
         view.apply {
             val stringBase = if (fileDirItem.isDirectory) R.string.folder_already_exists else R.string.file_already_exists
             conflictDialogTitle.text = String.format(activity.getString(stringBase), fileDirItem.name)
@@ -66,10 +102,10 @@ class FileConflictDialog(
         }
 
         activity.getAlertDialogBuilder()
-            .setPositiveButton(R.string.ok) { _, _ -> dialogConfirmed() }
-            .setNegativeButton(R.string.cancel, null)
             .apply {
-                activity.setupDialogStuff(view.root, this)
+                activity.setupDialogStuff(view.root, this, titleId = 0) { alertDialog ->
+                    dialog = alertDialog
+                }
             }
     }
 

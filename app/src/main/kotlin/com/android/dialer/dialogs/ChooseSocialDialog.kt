@@ -11,12 +11,25 @@ import com.android.dialer.extensions.getPackageDrawable
 import com.android.dialer.databinding.DialogChooseSocialBinding
 import com.android.dialer.databinding.ItemChooseSocialBinding
 import com.goodwy.commons.models.contacts.SocialAction
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
+import com.android.dialer.R
 
-class ChooseSocialDialog(val activity: Activity, actions: ArrayList<SocialAction>, val callback: (action: SocialAction) -> Unit) {
+class ChooseSocialDialog(val activity: Activity, actions: ArrayList<SocialAction>, blurTarget: BlurTarget, val callback: (action: SocialAction) -> Unit) {
     private lateinit var dialog: AlertDialog
 
     init {
         val binding = DialogChooseSocialBinding.inflate(activity.layoutInflater)
+        
+        // Setup BlurView with the provided BlurTarget
+        val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
         actions.sortBy { it.type }
         actions.forEach { action ->
             val item = ItemChooseSocialBinding.inflate(activity.layoutInflater).apply {

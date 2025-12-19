@@ -34,6 +34,7 @@ import com.goodwy.commons.databinding.ItemContactWithNumberInfoBinding
 import com.goodwy.commons.dialogs.CallConfirmationDialog
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.dialogs.ConfirmationDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.interfaces.ItemMoveCallback
@@ -261,7 +262,9 @@ class ContactsAdapter(
         val baseString = R.string.block_confirmation
         val question = String.format(resources.getString(baseString), contact.name)
 
-        ConfirmationDialog(activity, question) {
+        val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        ConfirmationDialog(activity, question, blurTarget = blurTarget) {
             val contactBlocked = activity.blockContact(contact)
             callback(contactBlocked)
         }
@@ -301,7 +304,9 @@ class ContactsAdapter(
     private fun callContact() {
         val contact = getItemWithKey(selectedKeys.first()) ?: return
         if (activity.config.showCallConfirmation) {
-            CallConfirmationDialog(activity as SimpleActivity, contact.getNameToDisplay()) {
+            val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            CallConfirmationDialog(activity as SimpleActivity, contact.getNameToDisplay(), blurTarget = blurTarget) {
                 activity.apply {
                     initiateCall(contact) { launchCallIntent(it, key = BuildConfig.RIGHT_APP_KEY) }
                 }
@@ -359,7 +364,9 @@ class ContactsAdapter(
         val baseString = R.string.deletion_confirmation
         val question = String.format(resources.getString(baseString), items)
 
-        ConfirmationAdvancedDialog(activity, question, cancelOnTouchOutside = false) {
+        val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        ConfirmationAdvancedDialog(activity, question, cancelOnTouchOutside = false, blurTarget = blurTarget) {
             if (it) {
                 activity.handlePermission(PERMISSION_WRITE_CONTACTS) {
                     deleteContacts()
@@ -1120,7 +1127,9 @@ class ContactsAdapter(
 
     private fun swipedCall(contact: Contact) {
         if (activity.config.showCallConfirmation) {
-            CallConfirmationDialog(activity as SimpleActivity, contact.getNameToDisplay()) {
+            val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            CallConfirmationDialog(activity as SimpleActivity, contact.getNameToDisplay(), blurTarget = blurTarget) {
                 activity.apply {
                     initiateCall(contact) { launchCallIntent(it, key = BuildConfig.RIGHT_APP_KEY) }
                 }

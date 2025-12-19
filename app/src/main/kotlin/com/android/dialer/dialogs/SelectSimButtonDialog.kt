@@ -10,17 +10,29 @@ import com.android.dialer.databinding.DialogSelectSimButtonBinding
 import com.android.dialer.extensions.config
 import com.android.dialer.extensions.getAvailableSIMCardLabels
 import douglasspgyn.com.github.circularcountdown.listener.CircularListener
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
 class SelectSimButtonDialog(
     val activity: BaseSimpleActivity,
     val phoneNumber: String,
     onDismiss: () -> Unit = {},
+    blurTarget: BlurTarget,
     val callback: (handle: PhoneAccountHandle?, label: String?) -> Unit
 ) {
     private var dialog: AlertDialog? = null
     private val binding by activity.viewBinding(DialogSelectSimButtonBinding::inflate)
 
     init {
+        // Setup BlurView with the provided BlurTarget
+        val blurView = binding.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
 
         val textColor = activity.baseConfig.simIconsColors[1].getContrastColor()
 

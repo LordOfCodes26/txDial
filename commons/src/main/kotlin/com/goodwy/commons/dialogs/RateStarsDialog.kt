@@ -37,12 +37,26 @@ import com.goodwy.commons.compose.theme.Shapes
 import com.goodwy.commons.compose.theme.SimpleTheme
 import com.goodwy.commons.databinding.DialogRateStarsBinding
 import com.goodwy.commons.extensions.*
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
-class RateStarsDialog(val activity: Activity) {
+class RateStarsDialog(val activity: Activity, blurTarget: BlurTarget) {
     private var dialog: AlertDialog? = null
 
     init {
-        val view = DialogRateStarsBinding.inflate(activity.layoutInflater, null, false).apply {
+        val view = DialogRateStarsBinding.inflate(activity.layoutInflater, null, false)
+        
+        // Setup BlurView with the provided BlurTarget
+        val blurView = view.root.findViewById<BlurView>(R.id.blurView)
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(5f)
+            ?.setBlurAutoUpdate(true)
+        
+        view.apply {
             val primaryColor = activity.getProperPrimaryColor()
             arrayOf(rateStar1, rateStar2, rateStar3, rateStar4, rateStar5).forEach {
                 it.applyColorFilter(primaryColor)
@@ -58,11 +72,24 @@ class RateStarsDialog(val activity: Activity) {
             }
         }
 
+        // Setup custom button inside BlurView
+        val primaryColor = activity.getProperPrimaryColor()
+        val negativeButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+        val buttonsContainer = view.root.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+        
+        buttonsContainer?.visibility = android.view.View.VISIBLE
+        
+        negativeButton?.apply {
+            visibility = android.view.View.VISIBLE
+            text = activity.resources.getString(R.string.later)
+            setTextColor(primaryColor)
+            setOnClickListener { dialogCancelled(false) }
+        }
+
         activity.getAlertDialogBuilder()
-            .setNegativeButton(R.string.later) { _, _ -> dialogCancelled(false) }
             .setOnCancelListener { dialogCancelled(false) }
             .apply {
-                activity.setupDialogStuff(view.root, this, cancelOnTouchOutside = false) { alertDialog ->
+                activity.setupDialogStuff(view.root, this, titleId = 0, cancelOnTouchOutside = false) { alertDialog ->
                     dialog = alertDialog
                 }
             }

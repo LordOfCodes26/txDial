@@ -36,10 +36,13 @@ import com.goodwy.commons.compose.theme.AppThemeSurface
 import com.goodwy.commons.compose.theme.SimpleTheme
 import com.goodwy.commons.databinding.DialogRadioGroupBinding
 import com.goodwy.commons.extensions.getAlertDialogBuilder
+import com.goodwy.commons.extensions.getProperPrimaryColor
 import com.goodwy.commons.extensions.onGlobalLayout
 import com.goodwy.commons.extensions.setupDialogStuff
 import com.goodwy.commons.extensions.toast
 import com.goodwy.commons.models.RadioItem
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
 class RadioGroupDialog(
     val activity: Activity,
@@ -49,6 +52,7 @@ class RadioGroupDialog(
     showOKButton: Boolean = false,
     val defaultItemId: Int? = null,
     val cancelCallback: (() -> Unit)? = null,
+    blurTarget: BlurTarget,
     val callback: (newValue: Any) -> Unit
 ) {
     private var dialog: AlertDialog? = null
@@ -74,21 +78,62 @@ class RadioGroupDialog(
             }
         }
 
-        val builder = activity.getAlertDialogBuilder()
-                .setOnCancelListener { cancelCallback?.invoke() }
+        // Setup BlurView with the provided BlurTarget
+        val blurView = view.blurView
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView.setupWith(blurTarget)
+            .setFrameClearDrawable(windowBackground)
+            .setBlurRadius(5f)
+            .setBlurAutoUpdate(true)
 
-        if (selectedItemId != -1 && showOKButton) {
-            builder.setPositiveButton(R.string.ok) { dialog, which -> itemSelected(selectedItemId) }
+        // Setup title inside BlurView
+        val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        if (titleId != 0) {
+            titleTextView?.apply {
+                visibility = android.view.View.VISIBLE
+                text = activity.resources.getString(titleId)
+            }
+        } else {
+            titleTextView?.visibility = android.view.View.GONE
         }
 
-        builder.apply {
-            if (defaultItemId != null) {
-                setNeutralButton(R.string.default_color) { _, _ ->
-                    val checkedId = items.indexOfFirst {it.id == defaultItemId}
+        // Setup custom buttons inside BlurView
+        val primaryColor = activity.getProperPrimaryColor()
+        val positiveButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+        val neutralButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.neutral_button)
+        val buttonsContainer = view.root.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+
+        // Setup positive button (OK)
+        if (selectedItemId != -1 && showOKButton) {
+            buttonsContainer?.visibility = android.view.View.VISIBLE
+            if (positiveButton != null) {
+                positiveButton.visibility = android.view.View.VISIBLE
+                positiveButton.setTextColor(primaryColor)
+                positiveButton.setOnClickListener { itemSelected(selectedItemId) }
+            }
+        }
+
+        // Setup neutral button (Default)
+        if (defaultItemId != null) {
+            buttonsContainer?.visibility = android.view.View.VISIBLE
+            if (neutralButton != null) {
+                neutralButton.visibility = android.view.View.VISIBLE
+                neutralButton.setTextColor(primaryColor)
+                neutralButton.setOnClickListener {
+                    val checkedId = items.indexOfFirst { it.id == defaultItemId }
                     itemSelected(checkedId)
                 }
             }
-            activity.setupDialogStuff(view.root, this, titleId) { alertDialog ->
+        }
+
+        val builder = activity.getAlertDialogBuilder()
+                .setOnCancelListener { cancelCallback?.invoke() }
+
+        builder.apply {
+            // Pass titleId = 0 to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleId = 0) { alertDialog ->
                 dialog = alertDialog
             }
         }

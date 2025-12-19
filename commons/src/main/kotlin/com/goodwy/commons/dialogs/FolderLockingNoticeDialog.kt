@@ -17,20 +17,53 @@ import com.goodwy.commons.compose.theme.AppThemeSurface
 import com.goodwy.commons.databinding.DialogTextviewBinding
 import com.goodwy.commons.extensions.baseConfig
 import com.goodwy.commons.extensions.getAlertDialogBuilder
+import com.goodwy.commons.extensions.getProperPrimaryColor
 import com.goodwy.commons.extensions.setupDialogStuff
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 
-class FolderLockingNoticeDialog(val activity: Activity, val callback: () -> Unit) {
+class FolderLockingNoticeDialog(val activity: Activity, blurTarget: BlurTarget, val callback: () -> Unit) {
     init {
         val view = DialogTextviewBinding.inflate(activity.layoutInflater, null, false).apply {
             textView.text = activity.getString(R.string.lock_folder_notice)
         }
 
-        activity.getAlertDialogBuilder()
-            .setPositiveButton(R.string.ok) { _, _ -> dialogConfirmed() }
-            .setNegativeButton(R.string.cancel, null)
-            .apply {
-                activity.setupDialogStuff(view.root, this, R.string.disclaimer)
+        // Setup BlurView with the provided BlurTarget
+        val blurView = view.blurView
+        val decorView = activity.window.decorView
+        val windowBackground = decorView.background
+        
+        blurView.setupWith(blurTarget)
+            .setFrameClearDrawable(windowBackground)
+            .setBlurRadius(5f)
+            .setBlurAutoUpdate(true)
+
+        // Setup custom buttons inside BlurView
+        val primaryColor = activity.getProperPrimaryColor()
+        val positiveButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+        val negativeButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+        val buttonsContainer = view.root.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+
+        buttonsContainer?.visibility = android.view.View.VISIBLE
+
+        if (positiveButton != null) {
+            positiveButton.visibility = android.view.View.VISIBLE
+            positiveButton.setTextColor(primaryColor)
+            positiveButton.setOnClickListener { dialogConfirmed() }
+        }
+
+        if (negativeButton != null) {
+            negativeButton.visibility = android.view.View.VISIBLE
+            negativeButton.setTextColor(primaryColor)
+            negativeButton.setOnClickListener { /* dialog will be dismissed on cancel */ }
+        }
+
+        activity.getAlertDialogBuilder().apply {
+            // Pass titleId = 0 to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleId = 0) { alertDialog ->
+                // Store dialog reference for dismissal
             }
+        }
     }
 
     private fun dialogConfirmed() {

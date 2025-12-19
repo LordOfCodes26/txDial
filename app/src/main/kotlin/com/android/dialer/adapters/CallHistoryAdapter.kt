@@ -7,6 +7,7 @@ import android.view.*
 import android.widget.PopupMenu
 import com.goodwy.commons.adapters.MyRecyclerViewListAdapter
 import com.goodwy.commons.dialogs.ConfirmationDialog
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.views.MyRecyclerView
@@ -105,7 +106,9 @@ class CallHistoryAdapter(
     }
 
     private fun askConfirmRemove() {
-        ConfirmationDialog(activity, activity.getString(R.string.remove_confirmation)) {
+        val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        ConfirmationDialog(activity, activity.getString(R.string.remove_confirmation), blurTarget = blurTarget) {
             activity.handlePermission(PERMISSION_WRITE_CALL_LOG) {
                 if (it) removeRecents()
             }

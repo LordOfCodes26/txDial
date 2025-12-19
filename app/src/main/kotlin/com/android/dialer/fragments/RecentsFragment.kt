@@ -10,6 +10,7 @@ import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import com.goodwy.commons.dialogs.CallConfirmationDialog
 import com.goodwy.commons.extensions.baseConfig
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.beGone
 import com.goodwy.commons.extensions.beGoneIf
 import com.goodwy.commons.extensions.beVisible
@@ -503,7 +504,9 @@ class RecentsFragment(
     private fun actionCall(call: RecentCall) {
         val recentCall = call
         if (context.config.showCallConfirmation) {
-            CallConfirmationDialog(activity as SimpleActivity, recentCall.name) {
+            val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            CallConfirmationDialog(activity as SimpleActivity, recentCall.name, blurTarget = blurTarget) {
                 callRecentNumber(recentCall)
             }
         } else {

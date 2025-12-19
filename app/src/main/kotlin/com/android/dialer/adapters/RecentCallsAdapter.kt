@@ -23,6 +23,7 @@ import com.goodwy.commons.adapters.MyRecyclerViewListAdapter
 import com.goodwy.commons.dialogs.CallConfirmationDialog
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.extensions.*
+import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.contacts.Contact
 import com.goodwy.commons.views.MyRecyclerView
@@ -279,7 +280,9 @@ class RecentCallsAdapter(
             val baseString = R.string.block_confirmation
             val question = String.format(resources.getString(baseString), numbers)
 
-            ConfirmationAdvancedDialog(activity, question, cancelOnTouchOutside = false) {
+            val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            ConfirmationAdvancedDialog(activity, question, cancelOnTouchOutside = false, blurTarget = blurTarget) {
                 if (it) blockNumbers()
                 else selectedKeys.clear()
             }
@@ -317,7 +320,9 @@ class RecentCallsAdapter(
             val baseString = R.string.unblock_confirmation
             val question = String.format(resources.getString(baseString), numbers)
 
-            ConfirmationAdvancedDialog(activity, question, cancelOnTouchOutside = false) {
+            val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found")
+            ConfirmationAdvancedDialog(activity, question, cancelOnTouchOutside = false, blurTarget = blurTarget) {
                 if (it) unblockNumbers()
                 else selectedKeys.clear()
             }
@@ -387,7 +392,9 @@ class RecentCallsAdapter(
     }
 
     private fun askConfirmRemove() {
-        ConfirmationAdvancedDialog(activity, activity.getString(R.string.remove_confirmation), cancelOnTouchOutside = false) { result ->
+        val blurTarget = (activity as? MainActivity)?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found. Activity must be MainActivity.")
+        ConfirmationAdvancedDialog(activity, activity.getString(R.string.remove_confirmation), cancelOnTouchOutside = false, blurTarget = blurTarget) { result ->
             if (result) {
                 activity.handlePermission(PERMISSION_WRITE_CALL_LOG) {
                     if (it) removeRecents()
@@ -590,12 +597,15 @@ class RecentCallsAdapter(
                                 phoneNumber = getSelectedPhoneNumber() ?: "+1 234 567 8910"
                             }
                             val text = String.format(activity.getString(R.string.call_anonymously_warning), phoneNumber)
+                            val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                                ?: throw IllegalStateException("mainBlurTarget not found")
                             ConfirmationAdvancedDialog(
                                 activity,
                                 text,
                                 R.string.call_anonymously_warning,
                                 com.goodwy.commons.R.string.ok,
                                 com.goodwy.commons.R.string.do_not_show_again,
+                                blurTarget = blurTarget,
                                 fromHtml = true
                             ) {
                                 if (it) {
@@ -1373,7 +1383,9 @@ class RecentCallsAdapter(
 
     private fun swipedCall(call: RecentCall) {
         if (activity.config.showCallConfirmation) {
-            CallConfirmationDialog(activity as SimpleActivity, call.name) {
+            val blurTarget = (activity as? MainActivity)?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                ?: throw IllegalStateException("mainBlurTarget not found. Activity must be MainActivity.")
+            CallConfirmationDialog(activity as SimpleActivity, call.name, blurTarget = blurTarget) {
                 callRecentNumber(call)
             }
         } else {
