@@ -18,6 +18,7 @@ import com.android.dialer.extensions.config
 import com.android.dialer.extensions.getHandleToUse
 import com.android.dialer.helpers.SHOW_RECENT_CALLS_ON_DIALPAD
 import androidx.core.net.toUri
+import eightbitlab.com.blurview.BlurTarget
 
 class DialerActivity : SimpleActivity() {
     private var callNumber: Uri? = null
@@ -25,6 +26,7 @@ class DialerActivity : SimpleActivity() {
     @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_dialer)
 
         if (Build.VERSION.SDK_INT != Build.VERSION_CODES.O) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT

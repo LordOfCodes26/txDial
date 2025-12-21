@@ -125,8 +125,16 @@ class StoragePickerDialog(
             radioGroup.addView(rootButton, layoutParams)
         }
 
+        // Setup title inside BlurView
+        val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = activity.getString(R.string.select_storage)
+        }
+        
         activity.getAlertDialogBuilder().apply {
-            activity.setupDialogStuff(view.root, this, R.string.select_storage) { alertDialog ->
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleText = "") { alertDialog ->
                 dialog = alertDialog
             }
         }

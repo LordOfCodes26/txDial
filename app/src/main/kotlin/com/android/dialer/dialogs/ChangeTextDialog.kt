@@ -1,8 +1,6 @@
 package com.android.dialer.dialogs
 
 import android.annotation.SuppressLint
-import android.content.DialogInterface.BUTTON_NEUTRAL
-import android.content.DialogInterface.BUTTON_POSITIVE
 import android.text.InputFilter
 import android.text.InputFilter.LengthFilter
 import com.goodwy.commons.extensions.*
@@ -37,6 +35,14 @@ class ChangeTextDialog(
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
+        
+        // Setup title inside BlurView
+        val titleTextView = view.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = title
+        }
+        
         binding.text.apply {
 
             if (maxLength > 0) {
@@ -53,23 +59,48 @@ class ChangeTextDialog(
             setText(currentText)
         }
 
+        val primaryColor = activity.getProperPrimaryColor()
+        
         activity.getAlertDialogBuilder()
-            .setPositiveButton(com.goodwy.commons.R.string.ok, null)
-            .setNegativeButton(com.goodwy.commons.R.string.cancel, null)
-            .setNeutralButton(neutralTextRes, null)
             .apply {
-                activity.setupDialogStuff(view, this, titleText = title) { alertDialog ->
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                activity.setupDialogStuff(view, this, titleText = "") { alertDialog ->
                     alertDialog.showKeyboard(binding.text)
-                    alertDialog.getButton(BUTTON_POSITIVE).setOnClickListener {
-                        val text = binding.text.value
-                        alertDialog.dismiss()
-                        callback(text)
+                    
+                    // Setup buttons inside BlurView
+                    val positiveButton = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+                    val negativeButton = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+                    val neutralButton = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.neutral_button)
+                    val buttonsContainer = view.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+                    
+                    buttonsContainer?.visibility = android.view.View.VISIBLE
+                    
+                    positiveButton?.apply {
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            val text = binding.text.value
+                            alertDialog.dismiss()
+                            callback(text)
+                        }
                     }
-                    alertDialog.getButton(BUTTON_NEUTRAL).beVisibleIf(showNeutralButton)
-                    alertDialog.getButton(BUTTON_NEUTRAL).setOnClickListener {
-                        val text = ""
-                        alertDialog.dismiss()
-                        callback(text)
+                    
+                    negativeButton?.apply {
+                        beVisible()
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            alertDialog.dismiss()
+                        }
+                    }
+                    
+                    neutralButton?.apply {
+                        beVisibleIf(showNeutralButton)
+                        text = activity.getString(neutralTextRes)
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            val text = ""
+                            alertDialog.dismiss()
+                            callback(text)
+                        }
                     }
                 }
             }

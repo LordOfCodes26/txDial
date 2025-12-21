@@ -15,10 +15,7 @@ import com.goodwy.commons.compose.extensions.MyDevices
 import com.goodwy.commons.compose.extensions.andThen
 import com.goodwy.commons.compose.theme.AppThemeSurface
 import com.goodwy.commons.databinding.DialogTextviewBinding
-import com.goodwy.commons.extensions.baseConfig
-import com.goodwy.commons.extensions.getAlertDialogBuilder
-import com.goodwy.commons.extensions.getProperPrimaryColor
-import com.goodwy.commons.extensions.setupDialogStuff
+import com.goodwy.commons.extensions.*
 import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 
@@ -39,6 +36,13 @@ class FolderLockingNoticeDialog(val activity: Activity, blurTarget: BlurTarget, 
             .setBlurRadius(8f)
             .setBlurAutoUpdate(true)
 
+        // Setup title inside BlurView
+        val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = activity.getString(R.string.disclaimer)
+        }
+
         // Setup custom buttons inside BlurView
         val primaryColor = activity.getProperPrimaryColor()
         val positiveButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
@@ -54,14 +58,14 @@ class FolderLockingNoticeDialog(val activity: Activity, blurTarget: BlurTarget, 
         }
 
         if (negativeButton != null) {
-            negativeButton.visibility = android.view.View.VISIBLE
+            negativeButton.beVisible()
             negativeButton.setTextColor(primaryColor)
             negativeButton.setOnClickListener { /* dialog will be dismissed on cancel */ }
         }
 
         activity.getAlertDialogBuilder().apply {
-            // Pass titleId = 0 to prevent setupDialogStuff from adding title outside BlurView
-            activity.setupDialogStuff(view.root, this, titleId = 0) { alertDialog ->
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleText = "") { alertDialog ->
                 // Store dialog reference for dismissal
             }
         }

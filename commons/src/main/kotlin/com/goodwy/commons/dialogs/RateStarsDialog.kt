@@ -57,6 +57,15 @@ class RateStarsDialog(val activity: Activity, blurTarget: BlurTarget) {
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
         
+        // Setup title inside BlurView
+        val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = activity.getString(com.goodwy.strings.R.string.rate_g)
+        }
+        // Hide the old text view
+        view.rateStarsText.beGone()
+        
         view.apply {
             val primaryColor = activity.getProperPrimaryColor()
             arrayOf(rateStar1, rateStar2, rateStar3, rateStar4, rateStar5).forEach {
@@ -90,7 +99,8 @@ class RateStarsDialog(val activity: Activity, blurTarget: BlurTarget) {
         activity.getAlertDialogBuilder()
             .setOnCancelListener { dialogCancelled(false) }
             .apply {
-                activity.setupDialogStuff(view.root, this, titleId = 0, cancelOnTouchOutside = false) { alertDialog ->
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                activity.setupDialogStuff(view.root, this, titleText = "", cancelOnTouchOutside = false) { alertDialog ->
                     dialog = alertDialog
                 }
             }

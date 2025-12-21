@@ -35,24 +35,24 @@ class SelectSimButtonDialog(
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
 
-        val textColor = activity.baseConfig.simIconsColors[1].getContrastColor()
+        val primaryColor = activity.getProperPrimaryColor()
+        val sim1Color = activity.baseConfig.simIconsColors[1]
+        val sim2Color = activity.baseConfig.simIconsColors[2]
 
         activity.getAvailableSIMCardLabels().forEachIndexed { index, SIMAccount ->
             val indexText = index + 1
             if (indexText == 1) {
                 binding.sim1Button.apply {
-                    val drawable = resources.getColoredDrawableWithColor(activity, R.drawable.button_gray_bg, activity.baseConfig.simIconsColors[1])
-                    background = drawable
-                    setPadding(2, 2, 2, 2)
-                    setTextColor(textColor)
+                    beVisible()
+                    text = SIMAccount.label
+                    setTextColor(sim1Color)
                     setOnClickListener { selectedSIM(SIMAccount.handle, SIMAccount.label) }
                 }
             } else if (indexText == 2) {
                 binding.sim2Button.apply {
-                    val drawable = resources.getColoredDrawableWithColor(activity, R.drawable.button_gray_bg, activity.baseConfig.simIconsColors[2])
-                    background = drawable
-                    setPadding(2,2,2,2)
-                    setTextColor(textColor)
+                    beVisible()
+                    text = SIMAccount.label
+                    setTextColor(sim2Color)
                     setOnClickListener { selectedSIM(SIMAccount.handle, SIMAccount.label) }
                 }
             }
@@ -67,10 +67,7 @@ class SelectSimButtonDialog(
             }
 
         binding.cancelButton.apply {
-            val drawable = resources.getColoredDrawableWithColor(activity, R.drawable.button_gray_bg, 0xFFEB5545.toInt())
-            background = drawable
-            setPadding(2,2,2,2)
-            setTextColor(textColor)
+            setTextColor(primaryColor)
             setOnClickListener {
                 dialog?.dismiss()
             }

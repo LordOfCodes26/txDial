@@ -60,6 +60,10 @@ class CustomIntervalPickerDialog(val activity: Activity, val selectedSeconds: In
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
 
+        // Setup title inside BlurView - hide it as the dialog is self-explanatory
+        val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.beGone()
+
         // Setup custom buttons inside BlurView
         val primaryColor = activity.getProperPrimaryColor()
         val positiveButton = view.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
@@ -76,7 +80,7 @@ class CustomIntervalPickerDialog(val activity: Activity, val selectedSeconds: In
         }
         
         negativeButton?.apply {
-            visibility = android.view.View.VISIBLE
+            beVisible()
             text = activity.resources.getString(R.string.cancel)
             setTextColor(primaryColor)
             setOnClickListener { dialog?.dismiss() }
@@ -84,7 +88,8 @@ class CustomIntervalPickerDialog(val activity: Activity, val selectedSeconds: In
 
         activity.getAlertDialogBuilder()
             .apply {
-                activity.setupDialogStuff(view.root, this, titleId = 0) { alertDialog ->
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                activity.setupDialogStuff(view.root, this, titleText = "") { alertDialog ->
                     dialog = alertDialog
                     alertDialog.showKeyboard(view.dialogCustomIntervalValue)
                 }

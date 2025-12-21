@@ -120,11 +120,21 @@ class ColorPickerDialog(
             .setBlurRadius(8f)
             .setBlurAutoUpdate(true)
 
+        // Setup title inside BlurView
+        val titleTextView = binding.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = title
+        }
+        // Hide the old title
+        binding.colorPickerTitle.beGone()
+
         val builder = activity.getAlertDialogBuilder()
             .setOnCancelListener { dialogDismissed() }
 
         builder.apply {
-            activity.setupDialogStuff(binding.root, this, titleId = 0) { alertDialog ->
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(binding.root, this, titleText = "") { alertDialog ->
                 dialog = alertDialog
                 
                 val textColor = activity.getProperTextColor()
@@ -148,7 +158,7 @@ class ColorPickerDialog(
                 }
 
                 if (negativeButton != null) {
-                    negativeButton.visibility = android.view.View.VISIBLE
+                    negativeButton.beVisible()
                     negativeButton.setTextColor(primaryColor)
                     negativeButton.setOnClickListener { 
                         dialogDismissed()
@@ -157,14 +167,14 @@ class ColorPickerDialog(
                 }
 
                 if (addDefaultColorButton && neutralButton != null) {
-                    neutralButton.visibility = android.view.View.VISIBLE
+                    neutralButton.beVisible()
                     neutralButton.setTextColor(primaryColor)
                     neutralButton.setOnClickListener { 
                         confirmDefaultColor(colorDefault)
                         dialog?.dismiss()
                     }
                 } else {
-                    neutralButton?.visibility = android.view.View.GONE
+                    neutralButton?.beGone()
                 }
 
 //                binding.colorPickerArrow.applyColorFilter(textColor)

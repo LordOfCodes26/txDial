@@ -5,11 +5,7 @@ import android.graphics.drawable.Drawable
 import android.text.Html
 import com.goodwy.commons.R
 import com.goodwy.commons.databinding.DialogNewAppsBinding
-import com.goodwy.commons.extensions.baseConfig
-import com.goodwy.commons.extensions.getAlertDialogBuilder
-import com.goodwy.commons.extensions.getProperPrimaryColor
-import com.goodwy.commons.extensions.launchViewIntent
-import com.goodwy.commons.extensions.setupDialogStuff
+import com.goodwy.commons.extensions.*
 import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 
@@ -36,6 +32,13 @@ class NewAppDialog(
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
+        
+        // Setup title inside BlurView
+        val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = Html.fromHtml(title).toString()
+        }
         
         // Setup custom buttons inside BlurView
         val primaryColor = activity.getProperPrimaryColor()
@@ -69,7 +72,8 @@ class NewAppDialog(
         activity.getAlertDialogBuilder()
             .setOnCancelListener { dialogDismissed(8) }
             .apply {
-                activity.setupDialogStuff(view.root, this, titleId = 0)
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                activity.setupDialogStuff(view.root, this, titleText = "")
             }
     }
 

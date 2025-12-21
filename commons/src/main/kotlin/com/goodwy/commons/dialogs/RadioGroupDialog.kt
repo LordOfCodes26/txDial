@@ -36,11 +36,7 @@ import com.goodwy.commons.compose.extensions.MyDevices
 import com.goodwy.commons.compose.theme.AppThemeSurface
 import com.goodwy.commons.compose.theme.SimpleTheme
 import com.goodwy.commons.databinding.DialogRadioGroupBinding
-import com.goodwy.commons.extensions.getAlertDialogBuilder
-import com.goodwy.commons.extensions.getProperPrimaryColor
-import com.goodwy.commons.extensions.onGlobalLayout
-import com.goodwy.commons.extensions.setupDialogStuff
-import com.goodwy.commons.extensions.toast
+import com.goodwy.commons.extensions.*
 import com.goodwy.commons.models.RadioItem
 import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
@@ -94,11 +90,11 @@ class RadioGroupDialog(
         val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
         if (titleId != 0) {
             titleTextView?.apply {
-                visibility = android.view.View.VISIBLE
+                beVisible()
                 text = activity.resources.getString(titleId)
             }
         } else {
-            titleTextView?.visibility = android.view.View.GONE
+            titleTextView?.beGone()
         }
 
         // Setup custom buttons inside BlurView
@@ -134,8 +130,8 @@ class RadioGroupDialog(
                 .setOnCancelListener { cancelCallback?.invoke() }
 
         builder.apply {
-            // Pass titleId = 0 to prevent setupDialogStuff from adding title outside BlurView
-            activity.setupDialogStuff(view.root, this, titleId = 0) { alertDialog ->
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleText = "") { alertDialog ->
                 dialog = alertDialog
             }
         }

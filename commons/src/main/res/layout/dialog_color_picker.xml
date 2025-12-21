@@ -11,10 +11,25 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.goodwy.commons.views.MyTextView
+            android:id="@+id/dialog_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            style="@style/DialogTitleStyle"
+            android:visibility="gone" />
+    </RelativeLayout>
+
 <ScrollView
     android:id="@+id/color_picker_scrollview"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:maxHeight="400dp">
 
     <RelativeLayout
         android:id="@+id/color_picker_holder"
@@ -32,7 +47,8 @@
             android:maxLines="2"
             android:text="@string/color_title"
             android:textSize="@dimen/actionbar_text_size"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:visibility="gone" />
 
         <RelativeLayout
             android:id="@+id/color_picker_top_holder"

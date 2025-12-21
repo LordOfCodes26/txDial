@@ -70,11 +70,11 @@ class RadioGroupIconDialog(
         val titleTextView = view.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
         if (titleId != 0) {
             titleTextView?.apply {
-                visibility = android.view.View.VISIBLE
+                beVisible()
                 text = activity.resources.getString(titleId)
             }
         } else {
-            titleTextView?.visibility = android.view.View.GONE
+            titleTextView?.beGone()
         }
 
         // Setup custom buttons inside BlurView
@@ -110,8 +110,8 @@ class RadioGroupIconDialog(
                 .setOnCancelListener { cancelCallback?.invoke() }
 
         builder.apply {
-            // Pass titleId = 0 to prevent setupDialogStuff from adding title outside BlurView
-            activity.setupDialogStuff(view.root, this, titleId = 0) { alertDialog ->
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleText = "") { alertDialog ->
                 dialog = alertDialog
             }
         }

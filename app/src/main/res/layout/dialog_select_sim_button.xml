@@ -42,67 +42,40 @@
             android:text="@string/always_use_this_sim"/>
     </RelativeLayout>
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/cancelButton"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:layout_width="wrap_content"
-        android:layout_height="32dp"
-        android:layout_toStartOf="@+id/sim2Button"
+    <LinearLayout
+        android:id="@+id/buttons_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_below="@+id/selectSimRememberHolder"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="@dimen/normal_margin"
+        android:layout_marginTop="@dimen/normal_margin"
         android:layout_marginBottom="@dimen/normal_margin"
-        android:background="@drawable/button_gray_bg"
-        android:lines="1"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        android:text="@string/cancel"
-        android:textAllCaps="true"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
+        style="@style/DialogButtonContainerStyle"
+        android:orientation="horizontal"
+        android:gravity="end">
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/sim2Button"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:layout_width="wrap_content"
-        android:layout_height="32dp"
-        android:layout_toStartOf="@+id/sim1Button"
-        android:layout_below="@+id/selectSimRememberHolder"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="@dimen/normal_margin"
-        android:layout_marginBottom="@dimen/normal_margin"
-        android:background="@drawable/button_gray_bg"
-        android:lines="1"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        android:text="SIM 2"
-        android:textAllCaps="true"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/cancelButton"
+            style="@style/Widget.Material3.Button.TextButton.Dialog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/cancel"
+            android:visibility="visible" />
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/sim1Button"
-        style="@style/Widget.AppCompat.Button.Colored"
-        android:layout_width="wrap_content"
-        android:layout_height="32dp"
-        android:layout_below="@+id/selectSimRememberHolder"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="@dimen/normal_margin"
-        android:layout_marginBottom="@dimen/normal_margin"
-        android:background="@drawable/button_gray_bg"
-        android:lines="1"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        android:text="SIM 1"
-        android:textAllCaps="true"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/sim2Button"
+            style="@style/Widget.Material3.Button.TextButton.Dialog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SIM 2"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/sim1Button"
+            style="@style/Widget.Material3.Button.TextButton.Dialog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SIM 1"
+            android:visibility="gone" />
+    </LinearLayout>
 </RelativeLayout>
 </eightbitlab.com.blurview.BlurView>

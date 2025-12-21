@@ -179,8 +179,8 @@ class IconListDialog(
         val builder = activity.getAlertDialogBuilder()
 
         builder.apply {
-            // Pass titleId = 0 to prevent setupDialogStuff from adding title outside BlurView
-            activity.setupDialogStuff(view.root, this, titleId = 0, cancelOnTouchOutside = true) { alertDialog ->
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(view.root, this, titleText = "", cancelOnTouchOutside = true) { alertDialog ->
                 dialog = alertDialog
             }
         }

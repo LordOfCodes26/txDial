@@ -4,9 +4,7 @@ import android.app.Activity
 import android.view.ViewGroup
 import android.widget.RadioGroup
 import androidx.appcompat.app.AlertDialog
-import com.goodwy.commons.extensions.beGone
-import com.goodwy.commons.extensions.getAlertDialogBuilder
-import com.goodwy.commons.extensions.setupDialogStuff
+import com.goodwy.commons.extensions.*
 import com.android.dialer.extensions.getPackageDrawable
 import com.android.dialer.databinding.DialogChooseSocialBinding
 import com.android.dialer.databinding.ItemChooseSocialBinding
@@ -31,6 +29,11 @@ class ChooseSocialDialog(val activity: Activity, actions: ArrayList<SocialAction
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
+        
+        // Setup title inside BlurView (optional - this dialog doesn't need a title)
+        val titleTextView = binding.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.beGone()
+        
         actions.sortBy { it.type }
         actions.forEach { action ->
             val item = ItemChooseSocialBinding.inflate(activity.layoutInflater).apply {
@@ -54,7 +57,8 @@ class ChooseSocialDialog(val activity: Activity, actions: ArrayList<SocialAction
         val builder = activity.getAlertDialogBuilder()
 
         builder.apply {
-            activity.setupDialogStuff(binding.root, this) { alertDialog ->
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(binding.root, this, titleText = "") { alertDialog ->
                 dialog = alertDialog
             }
         }

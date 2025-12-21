@@ -2,10 +2,7 @@ package com.android.dialer.dialogs
 
 import android.view.View
 import com.goodwy.commons.activities.BaseSimpleActivity
-import com.goodwy.commons.extensions.beGoneIf
-import com.goodwy.commons.extensions.getAlertDialogBuilder
-import com.goodwy.commons.extensions.setupDialogStuff
-import com.goodwy.commons.extensions.viewBinding
+import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.android.dialer.R
 import com.android.dialer.databinding.DialogChangeSortingBinding
@@ -31,11 +28,42 @@ class ChangeSortingDialog(val activity: BaseSimpleActivity, private val showCust
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
         
+        // Setup title inside BlurView
+        val titleTextView = binding.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = activity.getString(R.string.sort_by)
+        }
+        
+        val primaryColor = activity.getProperPrimaryColor()
+        
         activity.getAlertDialogBuilder()
-            .setPositiveButton(R.string.ok) { dialog, which -> dialogConfirmed() }
-            .setNegativeButton(R.string.cancel, null)
             .apply {
-                activity.setupDialogStuff(binding.root, this, R.string.sort_by)
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                activity.setupDialogStuff(binding.root, this, titleText = "") { alertDialog ->
+                    // Setup buttons inside BlurView
+                    val positiveButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+                    val negativeButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+                    val buttonsContainer = binding.root.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+                    
+                    buttonsContainer?.visibility = android.view.View.VISIBLE
+                    
+                    positiveButton?.apply {
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            dialogConfirmed()
+                            alertDialog.dismiss()
+                        }
+                    }
+                    
+                    negativeButton?.apply {
+                        beVisible()
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            alertDialog.dismiss()
+                        }
+                    }
+                }
             }
 
         currSorting = if (showCustomSorting && config.isCustomOrderSelected) {

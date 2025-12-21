@@ -41,8 +41,15 @@ class SelectSIMDialog(
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)
             ?.setBlurAutoUpdate(true)
+        
+        // Setup title inside BlurView
+        val titleTextView = binding.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = activity.getString(R.string.select_sim)
+        }
+        
         val isManageSpeedDial = phoneNumber == ""
-        binding.selectSimLabel.beGoneIf(isManageSpeedDial)
         binding.divider.root.beGoneIf(isManageSpeedDial)
         binding.selectSimRememberHolder.beGoneIf(isManageSpeedDial)
         binding.selectSimRememberHolder.setOnClickListener {
@@ -72,13 +79,24 @@ class SelectSIMDialog(
             binding.selectSimRadioGroup.addView(radioButton.root, RadioGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
 
+        val primaryColor = activity.getProperPrimaryColor()
+        
         activity.getAlertDialogBuilder()
-            .setNegativeButton(R.string.cancel, null)
             .apply {
-                activity.setupDialogStuff(binding.root, this) { alertDialog ->
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                activity.setupDialogStuff(binding.root, this, titleText = "") { alertDialog ->
                     dialog = alertDialog
                     // Make dialog backdrop transparent
                     alertDialog.window?.setDimAmount(0f)
+                    
+                    // Setup cancel button inside BlurView after dialog is created
+                    val cancelButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.cancel_button)
+                    cancelButton?.apply {
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            alertDialog.dismiss()
+                        }
+                    }
                 }
             }
 
