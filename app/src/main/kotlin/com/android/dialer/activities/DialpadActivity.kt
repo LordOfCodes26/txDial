@@ -1574,7 +1574,8 @@ class DialpadActivity : SimpleActivity() {
                     } else {
                         startAddContactIntent(recentCall.phoneNumber)
                     }
-                }
+                },
+                contactsProvider = { allContacts }
             )
 
             binding.dialpadRecentsList.adapter = recentsAdapter

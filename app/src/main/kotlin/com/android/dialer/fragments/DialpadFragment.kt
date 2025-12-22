@@ -429,10 +429,19 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 initCall(speedDial.number, -1, speedDial.getName(context))
                 return true
             } else {
-                val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
-                if (blurTarget != null && activity != null) {
-                    ConfirmationDialog(activity!!, context.getString(R.string.open_speed_dial_manage), blurTarget = blurTarget) {
-                        activity?.startActivity(Intent(activity?.applicationContext, ManageSpeedDialActivity::class.java))
+                val currentActivity = activity
+                if (currentActivity != null) {
+                    val blurTarget = currentActivity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                    if (blurTarget != null) {
+                        ConfirmationDialog(currentActivity, context.getString(R.string.open_speed_dial_manage), blurTarget = blurTarget) {
+                            currentActivity.startActivity(Intent(currentActivity.applicationContext, ManageSpeedDialActivity::class.java))
+                        }
+                    } else {
+                        // Fallback when blurTarget is not available
+                        context.toast(R.string.open_speed_dial_manage)
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            currentActivity.startActivity(Intent(currentActivity.applicationContext, ManageSpeedDialActivity::class.java))
+                        }, 500)
                     }
                 }
             }
@@ -537,24 +546,34 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         }
         initSearch = false
 
-        binding.dialpadAddNumber.beVisibleIf(binding.dialpadInput.value.isNotEmpty())
-        binding.dialpadAddNumber.setTextColor(context.getProperPrimaryColor())
-        binding.dialpadList.beVisibleIf(filtered.isNotEmpty() && binding.dialpadInput.value.isNotEmpty() && context.config.searchContactsInDialpad)
+        val inputValue = binding.dialpadInput.value
+        val hasInput = inputValue.isNotEmpty()
+        val searchEnabled = context.config.searchContactsInDialpad
+        val recentsEnabled = context.config.showRecentCallsOnDialpad
+        val hasContacts = filtered.isNotEmpty()
+        val hasRecents = filteredRecents.isNotEmpty()
         val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
-        dialpadGridBinding?.dialpadClearCharHolder?.beVisibleIf((binding.dialpadInput.value.isNotEmpty() && context.config.dialpadStyle != DIALPAD_IOS && context.config.dialpadStyle != DIALPAD_CONCEPT) || areMultipleSIMsAvailable)
+
+        binding.dialpadAddNumber.beVisibleIf(hasInput)
+        binding.dialpadAddNumber.setTextColor(context.getProperPrimaryColor())
+        
+        // Show contacts list only when: has input, search enabled, and has matching contacts
+        binding.dialpadList.beVisibleIf(hasInput && searchEnabled && hasContacts)
+        
+        // Show recents list when:
+        // 1. No input, recents enabled, and has recents to show
+        // 2. Has input, no contacts match, but recents match (fallback to recents)
+        // 3. Search disabled, recents enabled, and has recents to show
+        val showRecentsList = (!hasInput && recentsEnabled && hasRecents) ||
+                (hasInput && !hasContacts && hasRecents && searchEnabled && recentsEnabled) ||
+                (!searchEnabled && recentsEnabled && hasRecents)
+        binding.dialpadRecentsList.beVisibleIf(showRecentsList)
+        
+
+        dialpadGridBinding?.dialpadClearCharHolder?.beVisibleIf((hasInput && context.config.dialpadStyle != DIALPAD_IOS && context.config.dialpadStyle != DIALPAD_CONCEPT) || areMultipleSIMsAvailable)
         binding.dialpadRectWrapper?.dialpadClearCharHolder?.beVisibleIf(context.config.dialpadStyle == DIALPAD_CONCEPT)
-        binding.dialpadRoundWrapper?.dialpadClearCharIosHolder?.beVisibleIf((binding.dialpadInput.value.isNotEmpty() && context.config.dialpadStyle == DIALPAD_IOS) || areMultipleSIMsAvailable)
-        binding.dialpadInput.beVisibleIf(binding.dialpadInput.value.isNotEmpty())
-        binding.dialpadRecentsList.beVisibleIf(
-            (binding.dialpadInput.value.isEmpty() && context.config.showRecentCallsOnDialpad)
-                || (binding.dialpadInput.value.isNotEmpty() && filteredRecents.isNotEmpty() && filtered.isEmpty())
-                || (!context.config.searchContactsInDialpad && context.config.showRecentCallsOnDialpad)
-        )
-        binding.dialpadPlaceholder.beVisibleIf(
-            (filtered.isEmpty() && context.config.searchContactsInDialpad && !context.config.showRecentCallsOnDialpad)
-                || (filteredRecents.isEmpty() && context.config.showRecentCallsOnDialpad && !context.config.searchContactsInDialpad)
-                || (filteredRecents.isEmpty() && context.config.showRecentCallsOnDialpad && filtered.isEmpty() && context.config.searchContactsInDialpad)
-        )
+        binding.dialpadRoundWrapper?.dialpadClearCharIosHolder?.beVisibleIf((hasInput && context.config.dialpadStyle == DIALPAD_IOS) || areMultipleSIMsAvailable)
+        binding.dialpadInput.beVisibleIf(hasInput)
 
         refreshMenuItems()
     }
@@ -724,7 +743,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                     } else {
                         activity?.startAddContactIntent(recentCall.phoneNumber)
                     }
-                }
+                },
+                contactsProvider = { allContacts }
             )
 
             binding.dialpadRecentsList.adapter = recentsAdapter
@@ -779,9 +799,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private fun actionCall(call: RecentCall) {
         val recentCall = call
         if (context.config.showCallConfirmation) {
-            val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
-            if (blurTarget != null) {
-                CallConfirmationDialog(activity!!, recentCall.name, blurTarget = blurTarget) {
+            val currentActivity = activity
+            if (currentActivity != null) {
+                val blurTarget = currentActivity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                if (blurTarget != null) {
+                    CallConfirmationDialog(currentActivity, recentCall.name, blurTarget = blurTarget) {
+                        callRecentNumber(recentCall)
+                    }
+                } else {
                     callRecentNumber(recentCall)
                 }
             } else {
@@ -955,7 +980,6 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         binding.dialpadInput.setTextColor(properTextColor)
         binding.dialpadInput.setHintTextColor(properTextColor.adjustAlpha(0.6f))
         binding.dialpadAddNumber.setTextColor(properPrimaryColor)
-        binding.dialpadPlaceholder.setTextColor(properTextColor.adjustAlpha(0.8f))
 
         // Update dialpadRoundWrapperUp colors
         val simOneColor = context.config.simIconsColors[1]
@@ -1032,24 +1056,32 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         if (dialpadValue.isEmpty()) return
         if (context.config.showWarningAnonymousCall) {
             val text = String.format(context.getString(R.string.call_anonymously_warning), dialpadValue)
-            val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
-            if (blurTarget != null && activity != null) {
-                ConfirmationAdvancedDialog(
-                    activity!!,
-                    text,
-                    R.string.call_anonymously_warning,
-                    R.string.ok,
-                    R.string.do_not_show_again,
-                    blurTarget = blurTarget,
-                    fromHtml = true
-                ) {
-                    if (it) {
-                        initCall("#31#$dialpadValue", 0)
-                    } else {
-                        context.config.showWarningAnonymousCall = false
-                        initCall("#31#$dialpadValue", 0)
+            val currentActivity = activity
+            if (currentActivity != null) {
+                val blurTarget = currentActivity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                if (blurTarget != null) {
+                    ConfirmationAdvancedDialog(
+                        currentActivity,
+                        text,
+                        R.string.call_anonymously_warning,
+                        R.string.ok,
+                        R.string.do_not_show_again,
+                        blurTarget = blurTarget,
+                        fromHtml = true
+                    ) {
+                        if (it) {
+                            initCall("#31#$dialpadValue", 0)
+                        } else {
+                            context.config.showWarningAnonymousCall = false
+                            initCall("#31#$dialpadValue", 0)
+                        }
                     }
+                } else {
+                    // Fallback when blurTarget is not available
+                    initCall("#31#$dialpadValue", 0)
                 }
+            } else {
+                initCall("#31#$dialpadValue", 0)
             }
         } else {
             initCall("#31#$dialpadValue", 0)
@@ -1067,15 +1099,21 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
 
     fun clearCallHistory() {
         val confirmationText = "${context.getString(R.string.clear_history_confirmation)}\n\n${context.getString(R.string.cannot_be_undone)}"
-        val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
-        if (blurTarget != null && activity != null) {
-            ConfirmationDialog(activity!!, confirmationText, blurTarget = blurTarget) {
-                RecentsHelper(context).removeAllRecentCalls(activity!!) {
-                    allRecentCalls = emptyList()
-                    Handler(Looper.getMainLooper()).post {
-                        refreshItems(invalidate = true)
+        val currentActivity = activity
+        if (currentActivity != null) {
+            val blurTarget = currentActivity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            if (blurTarget != null) {
+                ConfirmationDialog(currentActivity, confirmationText, blurTarget = blurTarget) {
+                    RecentsHelper(context).removeAllRecentCalls(currentActivity) {
+                        allRecentCalls = emptyList()
+                        Handler(Looper.getMainLooper()).post {
+                            refreshItems(invalidate = true)
+                        }
                     }
                 }
+            } else {
+                // Fallback: show a simple toast as warning
+                context.toast(R.string.clear_history_confirmation)
             }
         }
     }

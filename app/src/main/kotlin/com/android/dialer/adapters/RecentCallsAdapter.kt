@@ -60,7 +60,8 @@ class RecentCallsAdapter(
     private val itemDelete: (List<RecentCall>) -> Unit = {},
     itemClick: (Any) -> Unit,
     val profileInfoClick: ((RecentCall) -> Unit)? = null,
-    val profileIconClick: ((Any) -> Unit)? = null
+    val profileIconClick: ((Any) -> Unit)? = null,
+    private val contactsProvider: (() -> ArrayList<Contact>)? = null
 ) : MyRecyclerViewListAdapter<CallLogItem>(activity, recyclerView, RecentCallsDiffCallback(), itemClick) {
 
     private lateinit var outgoingCallIcon: Drawable
@@ -427,8 +428,13 @@ class RecentCallsAdapter(
     }
 
     private fun findContactByCall(recentCall: RecentCall, callback: (Contact?) -> Unit) {
-        if (isDialpad) {
-            // Use already loaded contacts in DialpadActivity
+        if (isDialpad && contactsProvider != null) {
+            // Use already loaded contacts from the provider (DialpadFragment or DialpadActivity)
+            val contact = contactsProvider.invoke()
+                .find { /*it.name == recentCall.name &&*/ it.doesHavePhoneNumber(recentCall.phoneNumber) }
+            callback(contact)
+        } else if (isDialpad && activity is DialpadActivity) {
+            // Fallback to DialpadActivity if contactsProvider is not available
             val contact = (activity as DialpadActivity).allContacts
                 .find { /*it.name == recentCall.name &&*/ it.doesHavePhoneNumber(recentCall.phoneNumber) }
             callback(contact)
