@@ -1,0 +1,1937 @@
+package com.android.dialer.fragments
+
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.graphics.Color
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.CallLog.Calls
+import android.telephony.PhoneNumberFormattingTextWatcher
+import android.telephony.TelephonyManager
+import android.util.AttributeSet
+import android.util.TypedValue
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.view.View.OnFocusChangeListener
+import android.view.ViewConfiguration
+import android.view.ViewGroup
+import android.widget.ImageView
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isGone
+import androidx.core.view.isVisible
+import androidx.core.view.setPadding
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
+import androidx.recyclerview.widget.RecyclerView
+import com.behaviorule.arturdumchev.library.pixels
+import com.behaviorule.arturdumchev.library.setHeight
+import com.reddit.indicatorfastscroll.FastScrollerThumbView
+import com.reddit.indicatorfastscroll.FastScrollerView
+import com.google.android.material.appbar.MaterialToolbar
+import com.goodwy.commons.helpers.NavigationIcon
+import com.goodwy.commons.views.MyAppBarLayout
+import com.goodwy.commons.extensions.*
+import com.goodwy.commons.helpers.*
+import com.goodwy.commons.models.contacts.Contact
+import com.goodwy.commons.views.MyRecyclerView
+import com.android.dialer.BuildConfig
+import com.android.dialer.R
+import com.android.dialer.activities.SimpleActivity
+import com.android.dialer.adapters.ContactsAdapter
+import com.android.dialer.adapters.RecentCallsAdapter
+import com.android.dialer.databinding.DialpadGridBinding
+import com.android.dialer.databinding.FragmentDialpadBinding
+import com.android.dialer.helpers.CallerNotesHelper
+import com.android.dialer.extensions.*
+import com.android.dialer.helpers.*
+import com.android.dialer.models.RecentCall
+import com.android.dialer.models.SpeedDial
+import com.android.dialer.activities.CallHistoryActivity
+import com.android.dialer.activities.ManageSpeedDialActivity
+import com.goodwy.commons.dialogs.CallConfirmationDialog
+import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
+import com.goodwy.commons.dialogs.ConfirmationDialog
+import com.google.gson.Gson
+import com.mikhaellopez.rxanimation.RxAnimation
+import com.mikhaellopez.rxanimation.shake
+import eightbitlab.com.blurview.BlurTarget
+import me.grantland.widget.AutofitHelper
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
+import com.android.dialer.models.Events
+import java.io.InputStreamReader
+import java.text.Collator
+import java.util.Locale
+import kotlin.math.roundToInt
+
+class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.DialpadInnerBinding>(context, attributeSet) {
+    private lateinit var binding: FragmentDialpadBinding
+    private var dialpadGridBinding: DialpadGridBinding? = null
+    
+    var allContacts = ArrayList<Contact>()
+    private var speedDialValues = ArrayList<SpeedDial>()
+    private var toneGeneratorHelper: ToneGeneratorHelper? = null
+    private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private val longPressHandler = Handler(Looper.getMainLooper())
+    private val pressedKeys = mutableSetOf<Char>()
+    private var hasBeenScrolled = false
+    private var storedDialpadStyle = 0
+    private var storedBackgroundColor = 0
+    private var storedToneVolume = 0
+    private var storedDialpadSize = 0
+    private var storedCallButtonPrimarySize = 0
+    private var storedCallButtonSecondarySize = 0
+    private var storedDialpadBottomMargin = 0
+    private var storedHideDialpadNumbers = false
+    private var storedHideDialpadLetters = false
+    private var storedDialpadSecondaryLanguage: String? = null
+    private var storedShowVoicemailIcon = false
+    private var storedFormatPhoneNumbers = false
+    private var phoneNumberFormattingWatcher: PhoneNumberFormattingTextWatcher? = null
+    private var allRecentCalls = listOf<RecentCall>()
+    private var recentsAdapter: RecentCallsAdapter? = null
+    private var recentsHelper = RecentsHelper(context)
+    private var callerNotesHelper = CallerNotesHelper(context)
+    private var isTalkBackOn = false
+    private var initSearch = true
+
+    override fun onFinishInflate() {
+        super.onFinishInflate()
+        binding = FragmentDialpadBinding.bind(this)
+        
+        val dialpadGridInclude = binding.dialpadGridInclude.root
+        dialpadGridBinding = DialpadGridBinding.bind(dialpadGridInclude)
+        
+        innerBinding = DialpadInnerBinding(this)
+    }
+
+    override fun setupFragment() {
+        EventBus.getDefault().register(this)
+        
+        // Override MyAppBarLayout's automatic window insets handling to keep toolbar at y=0
+        // MyAppBarLayout automatically adds top padding for system bars, but we want it at y=0
+        ViewCompat.setOnApplyWindowInsetsListener(binding.dialpadAppbar) { view, insets ->
+            val systemBars = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars())
+            // Don't add top padding - keep toolbar at y=0
+            view.updatePadding(top = 0, left = systemBars.left, right = systemBars.right)
+            insets
+        }
+
+        // Ensure dialpadInput is positioned at y=0 (absolute top of CoordinatorLayout)
+        // Remove any padding from CoordinatorLayout that might offset views
+        binding.dialpadCoordinator.setPadding(0, 0, 0, binding.dialpadCoordinator.paddingBottom)
+        
+        // Set dialpadInput position after layout
+        binding.dialpadInput.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                binding.dialpadInput.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                binding.dialpadInput.updateLayoutParams<androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams> {
+                    topMargin = 0
+                }
+                binding.dialpadInput.y = 0f
+                binding.dialpadInput.translationY = 0f
+            }
+        })
+        
+        ViewCompat.setOnApplyWindowInsetsListener(binding.dialpadInput) { view, insets ->
+            view.updateLayoutParams<androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams> {
+                topMargin = 0
+            }
+            // Force y position to 0 after insets are applied
+            view.post {
+                view.y = 0f
+                view.translationY = 0f
+            }
+            insets
+        }
+        
+        val useSurfaceColor = context.isDynamicTheme() && !context.isSystemInDarkMode()
+        val backgroundColor = if (useSurfaceColor) context.getSurfaceColor() else context.getProperBackgroundColor()
+        setBackgroundColor(backgroundColor)
+
+        // Initialize T9 if needed
+        if (!DialpadT9.Initialized) {
+            val reader = InputStreamReader(context.resources.openRawResource(R.raw.t9languages))
+            DialpadT9.readFromJson(reader.readText())
+        }
+
+        speedDialValues = context.config.getSpeedDialValues()
+
+        toneGeneratorHelper = ToneGeneratorHelper(context, DIALPAD_TONE_LENGTH_MS)
+        isTalkBackOn = context.isTalkBackOn()
+
+        binding.dialpadInput.apply {
+            if (context.config.formatPhoneNumbers) {
+                @Suppress("DEPRECATION")
+                phoneNumberFormattingWatcher = PhoneNumberFormattingTextWatcher(Locale.getDefault().country)
+                addTextChangedListener(phoneNumberFormattingWatcher)
+            }
+            onTextChangeListener { dialpadValueChanged(it) }
+            requestFocus()
+            AutofitHelper.create(this)
+            disableKeyboard()
+            // Always visible since it's positioned like a toolbar
+            beVisible()
+        }
+
+        ContactsHelper(context).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
+            gotContacts(contacts)
+        }
+        // Initialize stored values - use -1 for storedDialpadStyle to ensure first style change is detected
+        if (storedDialpadStyle == 0) {
+            storedDialpadStyle = -1 // Force style change detection on first setup
+        }
+        storedToneVolume = context.config.toneVolume
+        storedBackgroundColor = context.getProperBackgroundColor()
+        storedDialpadSize = context.config.dialpadSize
+        storedCallButtonPrimarySize = context.config.callButtonPrimarySize
+        storedCallButtonSecondarySize = context.config.callButtonSecondarySize
+        storedDialpadBottomMargin = context.config.dialpadBottomMargin
+        storedHideDialpadNumbers = context.config.hideDialpadNumbers
+        storedHideDialpadLetters = context.config.hideDialpadLetters
+        storedDialpadSecondaryLanguage = context.config.dialpadSecondaryLanguage
+        storedShowVoicemailIcon = context.config.showVoicemailIcon
+        storedFormatPhoneNumbers = context.config.formatPhoneNumbers
+
+        // Handle hideDialpadNumbers
+        if (context.config.hideDialpadNumbers) {
+            handleHideDialpadNumbers()
+        }
+
+        // Initialize dialpad style
+        initStyle()
+        
+        // Update dialpad size
+        updateDialpadSize()
+        
+        // Update call button size if needed
+        if (context.config.dialpadStyle == DIALPAD_GRID || context.config.dialpadStyle == DIALPAD_ORIGINAL) {
+            updateCallButtonSize()
+        }
+
+        // Load recent calls if enabled
+        if (context.config.showRecentCallsOnDialpad) {
+            refreshItems()
+        }
+
+        setupDialpadButtons()
+        setupCallAndClearButtons()
+        setupAddNumberButton()
+        setupScrollListeners()
+        
+        // Setup toolbar and appbar
+        val properBackgroundColor = if (useSurfaceColor) context.getSurfaceColor() else context.getProperBackgroundColor()
+        binding.dialpadToolbar.setBackgroundColor(properBackgroundColor)
+        activity?.let { act ->
+            act.setupTopAppBar(
+                topAppBar = binding.dialpadAppbar,
+                navigationIcon = NavigationIcon.Arrow,
+                topBarColor = properBackgroundColor,
+                navigationClick = false
+            )
+        }
+        setupOptionsMenu()
+        
+
+        // Setup dialpadRoundWrapperUp click listener
+        binding.dialpadRoundWrapperUp.setOnClickListener { dialpadHide() }
+        
+        // Ensure dialpad is visible initially
+        val view = dialpadView()
+        view?.apply {
+            visibility = View.VISIBLE
+            translationY = 0f
+            // Post to ensure layout is complete, especially for iOS style
+            post {
+                visibility = View.VISIBLE
+                translationY = 0f
+            }
+        }
+        
+        // Setup input focus and click listeners
+        binding.dialpadInput.setOnClickListener {
+            val currentView = dialpadView()
+            if (currentView?.isGone == true) dialpadHide()
+        }
+        binding.dialpadInput.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                val currentView = dialpadView()
+                if (currentView?.isGone == true) dialpadHide()
+            }
+        }
+        
+        if (binding.dialpadInput.value.isEmpty()) {
+            binding.dialpadRecentsList.beVisibleIf(
+                binding.dialpadInput.value.isEmpty() && context.config.showRecentCallsOnDialpad
+            )
+        }
+    }
+
+    private fun setupScrollListeners() {
+        binding.dialpadList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                if (!hasBeenScrolled) {
+                    hasBeenScrolled = true
+                    dialpadView()?.let { slideDown(it) }
+                }
+            }
+        })
+        binding.dialpadRecentsList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                if (!hasBeenScrolled) {
+                    hasBeenScrolled = true
+                    dialpadView()?.let { slideDown(it) }
+                }
+            }
+        })
+    }
+
+    private fun setupDialpadButtons() {
+        // Only setup for GRID and ORIGINAL styles (others would need their own setup)
+        // Note: initLetters() also sets up these buttons, but we keep this method
+        // for initial setup in setupFragment() before initStyle() is called
+        if (context.config.dialpadStyle == DIALPAD_GRID || context.config.dialpadStyle == DIALPAD_ORIGINAL) {
+            dialpadGridBinding?.apply {
+                setupCharClick(dialpad1Holder, '1')
+                setupCharClick(dialpad2Holder, '2')
+                setupCharClick(dialpad3Holder, '3')
+                setupCharClick(dialpad4Holder, '4')
+                setupCharClick(dialpad5Holder, '5')
+                setupCharClick(dialpad6Holder, '6')
+                setupCharClick(dialpad7Holder, '7')
+                setupCharClick(dialpad8Holder, '8')
+                setupCharClick(dialpad9Holder, '9')
+                setupCharClick(dialpad0Holder, '0')
+                setupCharClick(dialpadAsteriskHolder, '*')
+                setupCharClick(dialpadHashtagHolder, '#')
+            }
+        }
+    }
+
+    private fun setupCallAndClearButtons() {
+        // For GRID and ORIGINAL styles, call/clear buttons are set up in initLetters()
+        // This method is kept for backward compatibility
+        // initLetters() already sets up all the buttons, so this is essentially a no-op
+    }
+
+    private fun setupAddNumberButton() {
+        binding.dialpadAddNumber.setOnClickListener {
+            addNumberToContact()
+        }
+    }
+
+    private fun addNumberToContact() {
+        val number = binding.dialpadInput.value
+        if (number.isEmpty()) return
+        activity?.startAddContactIntent(number)
+    }
+
+    private fun clearChar(view: View?) {
+        binding.dialpadInput.dispatchKeyEvent(binding.dialpadInput.getKeyEvent(KeyEvent.KEYCODE_DEL))
+        maybePerformDialpadHapticFeedback(view)
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupCharClick(view: View?, char: Char, longClickable: Boolean = true) {
+        view ?: return
+        view.isClickable = true
+        view.isLongClickable = true
+        if (isTalkBackOn) {
+            view.setOnClickListener {
+                startDialpadTone(char)
+                dialpadPressed(char, view)
+                stopDialpadTone(char)
+            }
+            view.setOnLongClickListener { performLongClick(view, char); true}
+        }
+        else view.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    dialpadPressed(char, view)
+                    startDialpadTone(char)
+                    if (longClickable) {
+                        longPressHandler.removeCallbacksAndMessages(null)
+                        longPressHandler.postDelayed({
+                            performLongClick(view, char)
+                        }, longPressTimeout)
+                    }
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    stopDialpadTone(char)
+                    if (longClickable) {
+                        longPressHandler.removeCallbacksAndMessages(null)
+                    }
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val viewContainsTouchEvent = if (event.rawX.isNaN() || event.rawY.isNaN()) {
+                        false
+                    } else {
+                        view.boundingBox.contains(event.rawX.roundToInt(), event.rawY.roundToInt())
+                    }
+
+                    if (!viewContainsTouchEvent) {
+                        stopDialpadTone(char)
+                        if (longClickable) {
+                            longPressHandler.removeCallbacksAndMessages(null)
+                        }
+                    }
+                }
+            }
+            false
+        }
+    }
+
+    private fun dialpadPressed(char: Char, view: View?) {
+        binding.dialpadInput.addCharacter(char)
+        maybePerformDialpadHapticFeedback(view)
+    }
+
+    private fun startDialpadTone(char: Char) {
+        if (context.config.dialpadBeeps) {
+            pressedKeys.add(char)
+            toneGeneratorHelper?.startTone(char)
+        }
+    }
+
+    private fun stopDialpadTone(char: Char) {
+        if (context.config.dialpadBeeps) {
+            if (!pressedKeys.remove(char)) return
+            if (pressedKeys.isEmpty()) {
+                toneGeneratorHelper?.stopTone()
+            } else {
+                startDialpadTone(pressedKeys.last())
+            }
+        }
+    }
+
+    private fun maybePerformDialpadHapticFeedback(view: View?) {
+        if (context.config.dialpadVibration) {
+            view?.performHapticFeedback()
+        }
+    }
+
+    private fun performLongClick(view: View, char: Char) {
+        if (char == '0') {
+            clearChar(view)
+            dialpadPressed('+', view)
+        } else if (char == '*') {
+            clearChar(view)
+            dialpadPressed(',', view)
+        } else if (char == '#') {
+            clearChar(view)
+            when (context.config.dialpadHashtagLongClick) {
+                DIALPAD_LONG_CLICK_WAIT -> dialpadPressed(';', view)
+                DIALPAD_LONG_CLICK_SETTINGS_DIALPAD -> {
+                    activity?.startActivity(Intent(activity?.applicationContext, com.android.dialer.activities.SettingsDialpadActivity::class.java))
+                }
+                else -> {
+                    activity?.startActivity(Intent(activity?.applicationContext, com.android.dialer.activities.SettingsActivity::class.java))
+                }
+            }
+        } else {
+            val result = speedDial(char.digitToInt())
+            if (result) {
+                stopDialpadTone(char)
+                clearChar(view)
+            }
+        }
+    }
+
+    private fun speedDial(id: Int): Boolean {
+        if (binding.dialpadInput.value.length == 1) {
+            val speedDial = speedDialValues.firstOrNull { it.id == id }
+            if (speedDial?.isValid() == true) {
+                initCall(speedDial.number, -1, speedDial.getName(context))
+                return true
+            } else {
+                val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+                if (blurTarget != null && activity != null) {
+                    ConfirmationDialog(activity!!, context.getString(R.string.open_speed_dial_manage), blurTarget = blurTarget) {
+                        activity?.startActivity(Intent(activity?.applicationContext, ManageSpeedDialActivity::class.java))
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private fun dialpadValueChanged(textFormat: String) {
+        val len = textFormat.length
+        val view = dialpadView()
+        if (len == 0 && view?.isGone == true) {
+            slideUp(view)
+        }
+        //Only works for system apps, CALL_PRIVILEGED and MODIFY_PHONE_STATE permissions are required
+        if (len > 8 && textFormat.startsWith("*#*#") && textFormat.endsWith("#*#*")) {
+            val secretCode = textFormat.substring(4, textFormat.length - 4)
+            if (context.isDefaultDialer()) {
+                context.getSystemService(TelephonyManager::class.java)?.sendDialerSpecialCode(secretCode)
+            } else {
+                // Note: launchSetDefaultDialerIntent is protected, so we can't call it from fragment
+                // The activity should handle this if needed
+//                context.toast(R.string.set_as_default_dialer)
+                activity?.launchSetDefaultDialerIntent()
+            }
+            return
+        }
+
+        // Finish any active selection modes
+        (binding.dialpadList.adapter as? ContactsAdapter)?.finishActMode()
+        (binding.dialpadRecentsList.adapter as? RecentCallsAdapter)?.finishActMode()
+
+        val text = if (context.config.formatPhoneNumbers) textFormat.removeNumberFormatting() else textFormat
+
+        val collator = Collator.getInstance(context.sysLocale())
+        val filtered = allContacts.filter { contact ->
+            val langPref = context.config.dialpadSecondaryLanguage ?: ""
+            val langLocale = Locale.getDefault().language
+            val isAutoLang = DialpadT9.getSupportedSecondaryLanguages().contains(langLocale) && langPref == LANGUAGE_SYSTEM
+            val lang = if (isAutoLang) langLocale else langPref
+
+            val convertedName = DialpadT9.convertLettersToNumbers(
+                contact.name.normalizeString().uppercase(), lang)
+            val convertedNameWithoutSpaces = convertedName.filterNot { it.isWhitespace() }
+            val convertedNickname = DialpadT9.convertLettersToNumbers(
+                contact.nickname.normalizeString().uppercase(), lang)
+            val convertedCompany = DialpadT9.convertLettersToNumbers(
+                contact.organization.company.normalizeString().uppercase(), lang)
+            val convertedNameToDisplay = DialpadT9.convertLettersToNumbers(
+                contact.getNameToDisplay().normalizeString().uppercase(), lang)
+            val convertedNameToDisplayWithoutSpaces = convertedNameToDisplay.filterNot { it.isWhitespace() }
+
+            contact.doesContainPhoneNumber(text, convertLetters = true, search = true)
+                || (convertedName.contains(text, true))
+                || (convertedNameWithoutSpaces.contains(text, true))
+                || (convertedNameToDisplay.contains(text, true))
+                || (convertedNameToDisplayWithoutSpaces.contains(text, true))
+                || (convertedNickname.contains(text, true))
+                || (convertedCompany.contains(text, true))
+        }.sortedWith(compareBy(collator) {
+            it.getNameToDisplay()
+        }).toMutableList() as ArrayList<Contact>
+
+        ContactsAdapter(
+            activity = activity ?: return,
+            contacts = filtered,
+            recyclerView = binding.dialpadList,
+            highlightText = text,
+            refreshItemsListener = null,
+            showNumber = true,
+            allowLongClick = false,
+            itemClick = {
+                activity?.startCallWithConfirmationCheck(it as Contact)
+                if (context.config.showCallConfirmation) clearInputWithDelay()
+            },
+            profileIconClick = {
+                activity?.startContactDetailsIntent(it as Contact)
+            }).apply {
+            binding.dialpadList.adapter = this
+        }
+
+        // Filter recent calls
+        val filteredRecents = allRecentCalls
+            .filter {
+                it.name.contains(text, true) ||
+                    it.doesContainPhoneNumber(text) ||
+                    it.nickname.contains(text, true) ||
+                    it.company.contains(text, true) ||
+                    it.jobPosition.contains(text, true)
+            }
+            .sortedWith(
+                compareByDescending<RecentCall> { it.dayCode }
+                    .thenByDescending { it.name.startsWith(text, true) }
+                    .thenByDescending { it.startTS }
+            )
+
+        if (!initSearch) { //So that there is no adapter update on first launch
+            recentsAdapter?.updateItems(filteredRecents)
+        }
+        initSearch = false
+
+        binding.dialpadAddNumber.beVisibleIf(binding.dialpadInput.value.isNotEmpty())
+        binding.dialpadAddNumber.setTextColor(context.getProperPrimaryColor())
+        binding.dialpadList.beVisibleIf(filtered.isNotEmpty() && binding.dialpadInput.value.isNotEmpty() && context.config.searchContactsInDialpad)
+        val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
+        dialpadGridBinding?.dialpadClearCharHolder?.beVisibleIf((binding.dialpadInput.value.isNotEmpty() && context.config.dialpadStyle != DIALPAD_IOS && context.config.dialpadStyle != DIALPAD_CONCEPT) || areMultipleSIMsAvailable)
+        binding.dialpadRectWrapper?.dialpadClearCharHolder?.beVisibleIf(context.config.dialpadStyle == DIALPAD_CONCEPT)
+        binding.dialpadRoundWrapper?.dialpadClearCharIosHolder?.beVisibleIf((binding.dialpadInput.value.isNotEmpty() && context.config.dialpadStyle == DIALPAD_IOS) || areMultipleSIMsAvailable)
+        binding.dialpadInput.beVisibleIf(binding.dialpadInput.value.isNotEmpty())
+        binding.dialpadRecentsList.beVisibleIf(
+            (binding.dialpadInput.value.isEmpty() && context.config.showRecentCallsOnDialpad)
+                || (binding.dialpadInput.value.isNotEmpty() && filteredRecents.isNotEmpty() && filtered.isEmpty())
+                || (!context.config.searchContactsInDialpad && context.config.showRecentCallsOnDialpad)
+        )
+        binding.dialpadPlaceholder.beVisibleIf(
+            (filtered.isEmpty() && context.config.searchContactsInDialpad && !context.config.showRecentCallsOnDialpad)
+                || (filteredRecents.isEmpty() && context.config.showRecentCallsOnDialpad && !context.config.searchContactsInDialpad)
+                || (filteredRecents.isEmpty() && context.config.showRecentCallsOnDialpad && filtered.isEmpty() && context.config.searchContactsInDialpad)
+        )
+        
+        refreshMenuItems()
+    }
+
+    private fun refreshItems(invalidate: Boolean = false, needUpdate: Boolean = false) {
+        if (invalidate) {
+            allRecentCalls = emptyList()
+            context.config.recentCallsCache = ""
+        }
+
+        if (binding.dialpadInput.value.isNotEmpty()) {
+            dialpadValueChanged(binding.dialpadInput.value)
+        } else if (needUpdate || context.config.needUpdateRecents) {
+            refreshCallLog(loadAll = false) {
+                binding.dialpadRecentsList.runAfterAnimations {
+                    refreshCallLog(loadAll = true)
+                }
+            }
+        } else {
+            var recents = emptyList<RecentCall>()
+            if (!invalidate) {
+                try {
+                    recents = context.config.parseRecentCallsCache()
+                } catch (_: Exception) {
+                    context.config.recentCallsCache = ""
+                }
+            }
+
+            if (recents.isNotEmpty()) {
+                refreshCallLogFromCache(recents) {
+                    binding.dialpadRecentsList.runAfterAnimations {
+                        refreshCallLog(loadAll = true)
+                    }
+                }
+            } else {
+                refreshCallLog(loadAll = false) {
+                    binding.dialpadRecentsList.runAfterAnimations {
+                        refreshCallLog(loadAll = true)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun refreshCallLog(loadAll: Boolean = false, callback: (() -> Unit)? = null) {
+        getRecentCalls(loadAll) { recents ->
+            allRecentCalls = recents
+            Handler(Looper.getMainLooper()).post {
+                gotRecents(recents)
+                callback?.invoke()
+            }
+            
+            context.config.recentCallsCache = Gson().toJson(recents.take(RECENT_CALL_CACHE_SIZE))
+            
+            // Deleting notes if a call has already been deleted
+            callerNotesHelper.removeCallerNotes(
+                recents.map { recentCall -> recentCall.phoneNumber.numberForNotes() }
+            )
+        }
+
+        if (loadAll) {
+            with(recentsHelper) {
+                val queryCount = context.config.queryLimitRecent
+                getRecentCalls(queryLimit = queryCount, updateCallsCache = false) { calls ->
+                    ensureBackgroundThread {
+                        val recentOutgoingNumbers = calls
+                            .filter { it.type == Calls.OUTGOING_TYPE }
+                            .map { recentCall -> recentCall.phoneNumber }
+
+                        context.config.recentOutgoingNumbers = recentOutgoingNumbers.toMutableSet()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun refreshCallLogFromCache(cache: List<RecentCall>, callback: (() -> Unit)? = null) {
+        gotRecents(cache)
+        callback?.invoke()
+    }
+
+    private fun getRecentCalls(loadAll: Boolean, callback: (List<RecentCall>) -> Unit) {
+        val queryCount = if (loadAll) context.config.queryLimitRecent else RecentsHelper.QUERY_LIMIT
+        val existingRecentCalls = allRecentCalls
+
+        with(recentsHelper) {
+            if (context.config.groupSubsequentCalls) {
+                getGroupedRecentCalls(existingRecentCalls, queryCount, true) {
+                    prepareCallLog(it, callback)
+                }
+            } else {
+                getRecentCalls(existingRecentCalls, queryCount, isDialpad = true, updateCallsCache = true) { calls ->
+                    val filteredCalls = if (context.config.groupAllCalls) calls.distinctBy { it.phoneNumber } else calls
+                    prepareCallLog(filteredCalls, callback)
+                }
+            }
+        }
+    }
+
+    private fun prepareCallLog(calls: List<RecentCall>, callback: (List<RecentCall>) -> Unit) {
+        if (calls.isEmpty()) {
+            callback(emptyList())
+            return
+        }
+
+        ContactsHelper(context).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
+            ensureBackgroundThread {
+                val updatedCalls = updateNamesIfEmpty(calls, contacts)
+                callback(updatedCalls)
+            }
+        }
+    }
+
+    private fun updateNamesIfEmpty(calls: List<RecentCall>, contacts: List<Contact>): List<RecentCall> {
+        if (calls.isEmpty()) return mutableListOf()
+
+        val contactsWithNumbers = contacts.filter { it.phoneNumbers.isNotEmpty() }
+        return calls.map { call ->
+            if (call.phoneNumber == call.name) {
+                val contact = contactsWithNumbers.firstOrNull { it.phoneNumbers.first().normalizedNumber == call.phoneNumber }
+
+                when {
+                    contact != null -> withUpdatedName(call = call, name = contact.getNameToDisplay())
+                    else -> call
+                }
+            } else {
+                call
+            }
+        }
+    }
+
+    private fun withUpdatedName(call: RecentCall, name: String): RecentCall {
+        return call.copy(
+            name = name,
+            groupedCalls = call.groupedCalls
+                ?.map { it.copy(name = name) }
+                ?.toMutableList()
+                ?.ifEmpty { null }
+        )
+    }
+
+    private fun gotRecents(recents: List<RecentCall>) {
+        val currAdapter = binding.dialpadRecentsList.adapter
+        if (currAdapter == null) {
+            recentsAdapter = RecentCallsAdapter(
+                activity = activity!!,
+                recyclerView = binding.dialpadRecentsList,
+                refreshItemsListener = null,
+                showOverflowMenu = true,
+                showCallIcon = context.config.onRecentClick == SWIPE_ACTION_OPEN,
+                hideTimeAtOtherDays = true,
+                isDialpad = true,
+                itemDelete = { deleted ->
+                    allRecentCalls = allRecentCalls.filter { it !in deleted }
+                },
+                itemClick = {
+                    itemClickAction(context.config.onRecentClick, it as RecentCall)
+                },
+                profileInfoClick = { recentCall ->
+                    actionOpen(recentCall)
+                },
+                profileIconClick = {
+                    val recentCall = it as RecentCall
+                    val contact = findContactByCall(recentCall)
+                    if (contact != null) {
+                        activity?.startContactDetailsIntent(contact)
+                    } else {
+                        activity?.startAddContactIntent(recentCall.phoneNumber)
+                    }
+                }
+            )
+
+            binding.dialpadRecentsList.adapter = recentsAdapter
+            recentsAdapter?.updateItems(recents)
+        } else {
+            recentsAdapter?.updateItems(recents)
+        }
+    }
+
+    private fun gotContacts(newContacts: ArrayList<Contact>) {
+        allContacts = newContacts
+
+        Handler(Looper.getMainLooper()).post {
+            if (!checkDialIntent() && binding.dialpadInput.value.isEmpty()) {
+                dialpadValueChanged("")
+            }
+        }
+    }
+
+    private fun checkDialIntent(): Boolean {
+        val activity = activity ?: return false
+        val intent = activity.intent ?: return false
+        
+        return if (
+            (intent.action == Intent.ACTION_DIAL || intent.action == Intent.ACTION_VIEW)
+            && intent.data != null && intent.dataString?.contains("tel:") == true
+        ) {
+            val number = Uri.decode(intent.dataString).substringAfter("tel:")
+            binding.dialpadInput.setText(number)
+            binding.dialpadInput.setSelection(number.length)
+            true
+        } else {
+            false
+        }
+    }
+
+    private fun findContactByCall(recentCall: RecentCall): Contact? {
+        return allContacts.firstOrNull { contact ->
+            contact.doesHavePhoneNumber(recentCall.phoneNumber)
+        }
+    }
+
+    private fun itemClickAction(action: Int, call: RecentCall) {
+        when (action) {
+            SWIPE_ACTION_MESSAGE -> actionSMS(call)
+            SWIPE_ACTION_CALL -> actionCall(call)
+            SWIPE_ACTION_OPEN -> actionOpen(call)
+            else -> {}
+        }
+    }
+
+    private fun actionCall(call: RecentCall) {
+        val recentCall = call
+        if (context.config.showCallConfirmation) {
+            val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            if (blurTarget != null) {
+                CallConfirmationDialog(activity!!, recentCall.name, blurTarget = blurTarget) {
+                    callRecentNumber(recentCall)
+                }
+            } else {
+                callRecentNumber(recentCall)
+            }
+        } else {
+            callRecentNumber(recentCall)
+        }
+    }
+
+    private fun actionSMS(call: RecentCall) {
+        activity?.launchSendSMSIntentRecommendation(call.phoneNumber)
+    }
+
+    private fun callRecentNumber(recentCall: RecentCall) {
+        if (context.config.callUsingSameSim && recentCall.simID > 0) {
+            val sim = recentCall.simID == 1
+            activity?.callContactWithSim(recentCall.phoneNumber, sim)
+        } else {
+            activity?.launchCallIntent(recentCall.phoneNumber, key = BuildConfig.RIGHT_APP_KEY)
+        }
+    }
+
+    private fun actionOpen(call: RecentCall) {
+        val recentCalls = call.groupedCalls as ArrayList<RecentCall>? ?: arrayListOf(call)
+        val contact = findContactByCall(call)
+        Intent(activity?.applicationContext, CallHistoryActivity::class.java).apply {
+            putExtra(CURRENT_RECENT_CALL, call)
+            putExtra(CURRENT_RECENT_CALL_LIST, recentCalls)
+            putExtra(CONTACT_ID, call.contactID)
+            if (contact != null) {
+                putExtra(IS_PRIVATE, contact.isPrivate())
+            }
+            activity?.launchActivityIntent(this)
+        }
+    }
+
+    override fun setupColors(textColor: Int, primaryColor: Int, accentColor: Int) {
+        // Check for style/color changes (similar to onResume in DialpadActivity)
+        val styleChanged = storedDialpadStyle != context.config.dialpadStyle
+        val backgroundColorChanged = storedBackgroundColor != context.getProperBackgroundColor()
+        
+        // Check for other dialpad settings changes
+        val dialpadSizeChanged = storedDialpadSize != context.config.dialpadSize
+        val callButtonPrimarySizeChanged = storedCallButtonPrimarySize != context.config.callButtonPrimarySize
+        val callButtonSecondarySizeChanged = storedCallButtonSecondarySize != context.config.callButtonSecondarySize
+        val dialpadBottomMarginChanged = storedDialpadBottomMargin != context.config.dialpadBottomMargin
+        val hideDialpadNumbersChanged = storedHideDialpadNumbers != context.config.hideDialpadNumbers
+        val hideDialpadLettersChanged = storedHideDialpadLetters != context.config.hideDialpadLetters
+        val dialpadSecondaryLanguageChanged = storedDialpadSecondaryLanguage != context.config.dialpadSecondaryLanguage
+        val showVoicemailIconChanged = storedShowVoicemailIcon != context.config.showVoicemailIcon
+        val formatPhoneNumbersChanged = storedFormatPhoneNumbers != context.config.formatPhoneNumbers
+        
+        if (styleChanged || backgroundColorChanged) {
+            // Style or background color changed, reinitialize
+            storedDialpadStyle = context.config.dialpadStyle
+            storedBackgroundColor = context.getProperBackgroundColor()
+            
+            // Reinitialize everything for the new style
+            initStyle()
+        }
+        
+        // Always update dialpad size (like DialpadActivity.onResume())
+        updateDialpadSize()
+        storedDialpadSize = context.config.dialpadSize
+        storedDialpadBottomMargin = context.config.dialpadBottomMargin
+        
+        // Update call button size if needed
+        if (context.config.dialpadStyle == DIALPAD_GRID || context.config.dialpadStyle == DIALPAD_ORIGINAL) {
+            updateCallButtonSize()
+            storedCallButtonPrimarySize = context.config.callButtonPrimarySize
+            storedCallButtonSecondarySize = context.config.callButtonSecondarySize
+        }
+        
+        // Handle hideDialpadNumbers change
+        if (hideDialpadNumbersChanged) {
+            storedHideDialpadNumbers = context.config.hideDialpadNumbers
+            handleHideDialpadNumbers()
+        }
+        
+        // Handle hideDialpadLetters change - requires reinitializing letters
+        if (hideDialpadLettersChanged || dialpadSecondaryLanguageChanged || styleChanged) {
+            storedHideDialpadLetters = context.config.hideDialpadLetters
+            storedDialpadSecondaryLanguage = context.config.dialpadSecondaryLanguage
+            // Reinitialize style to update letters
+            if (!styleChanged) {
+                initStyle()
+            }
+        }
+        
+        // Handle showVoicemailIcon change
+        if (showVoicemailIconChanged || styleChanged) {
+            storedShowVoicemailIcon = context.config.showVoicemailIcon
+            // Voicemail icon visibility is handled in initStyle()
+            if (!styleChanged) {
+                initStyle()
+            }
+        }
+        
+        // Handle formatPhoneNumbers change
+        if (formatPhoneNumbersChanged) {
+            storedFormatPhoneNumbers = context.config.formatPhoneNumbers
+            binding.dialpadInput.apply {
+                // Remove existing PhoneNumberFormattingTextWatcher if present
+                phoneNumberFormattingWatcher?.let { removeTextChangedListener(it) }
+                phoneNumberFormattingWatcher = null
+                
+                // Add PhoneNumberFormattingTextWatcher if enabled
+                if (context.config.formatPhoneNumbers) {
+                    @Suppress("DEPRECATION")
+                    phoneNumberFormattingWatcher = PhoneNumberFormattingTextWatcher(Locale.getDefault().country)
+                    addTextChangedListener(phoneNumberFormattingWatcher)
+                }
+            }
+        }
+        
+        // Ensure dialpad is visible after style change
+        if (styleChanged) {
+            val dialpadViewAfterStyle = dialpadView()
+            dialpadViewAfterStyle?.apply {
+                visibility = View.VISIBLE
+                translationY = 0f
+                // Post to ensure layout is complete, especially for iOS style
+                post {
+                    visibility = View.VISIBLE
+                    translationY = 0f
+                    // Force a layout pass for iOS dialpad
+                    if (context.config.dialpadStyle == DIALPAD_IOS) {
+                        requestLayout()
+                        invalidate()
+                    }
+                }
+            }
+        }
+        
+        // Update speed dial values (like DialpadActivity.onResume())
+        speedDialValues = context.config.getSpeedDialValues()
+        
+        // Update TalkBack state
+        isTalkBackOn = context.isTalkBackOn()
+        
+        if (storedToneVolume != context.config.toneVolume) {
+            // Tone volume changed, recreate tone generator
+            storedToneVolume = context.config.toneVolume
+            toneGeneratorHelper?.stopTone()
+            toneGeneratorHelper = ToneGeneratorHelper(context, DIALPAD_TONE_LENGTH_MS)
+        }
+        
+        val useSurfaceColor = context.isDynamicTheme() && !context.isSystemInDarkMode()
+        val properBackgroundColor = if (useSurfaceColor) context.getSurfaceColor() else context.getProperBackgroundColor()
+        val properTextColor = context.getProperTextColor()
+        val properPrimaryColor = context.getProperPrimaryColor()
+        
+        // Update background colors
+        setBackgroundColor(properBackgroundColor)
+        binding.dialpadList.setBackgroundColor(properBackgroundColor)
+        binding.dialpadRecentsList.setBackgroundColor(properBackgroundColor)
+        binding.dialpadToolbar.setBackgroundColor(properBackgroundColor)
+        
+        // Update appbar style
+        activity?.let { act ->
+            act.setupTopAppBar(
+                topAppBar = binding.dialpadAppbar,
+                navigationIcon = NavigationIcon.Arrow,
+                topBarColor = properBackgroundColor,
+                navigationClick = false
+            )
+        }
+        
+        // Update input colors
+        binding.dialpadInput.setTextColor(properTextColor)
+        binding.dialpadInput.setHintTextColor(properTextColor.adjustAlpha(0.6f))
+        binding.dialpadAddNumber.setTextColor(properPrimaryColor)
+        binding.dialpadPlaceholder.setTextColor(properTextColor.adjustAlpha(0.8f))
+        
+        // Update dialpadRoundWrapperUp colors
+        val simOneColor = context.config.simIconsColors[1]
+        binding.dialpadRoundWrapperUp.background?.mutate()?.setColorFilter(simOneColor, android.graphics.PorterDuff.Mode.SRC_IN)
+        binding.dialpadRoundWrapperUp.setColorFilter(simOneColor.getContrastColor())
+        
+        dialpadGridBinding?.apply {
+            // Update clear button colors
+            dialpadClearChar?.applyColorFilter(Color.GRAY)
+            dialpadClearChar?.setAlpha((0.4f * 255).toInt())
+            dialpadClearCharX?.applyColorFilter(properTextColor)
+            
+            // Update call button colors
+            val simOnePrimary = context.config.currentSIMCardIndex == 0
+            val simOneColor = if (simOnePrimary) context.config.simIconsColors[1] else context.config.simIconsColors[2]
+            val drawablePrimary = if (simOnePrimary) R.drawable.ic_phone_one_vector else R.drawable.ic_phone_two_vector
+            val callIconId = if (context.areMultipleSIMsAvailable()) drawablePrimary else R.drawable.ic_phone_vector
+            val callIcon = context.resources.getColoredDrawableWithColor(context, callIconId, simOneColor.getContrastColor())
+            dialpadCallButton.apply {
+                setImageDrawable(callIcon)
+                background?.mutate()?.setColorFilter(simOneColor, android.graphics.PorterDuff.Mode.SRC_IN)
+            }
+            
+            // Update secondary call button if available
+            if (context.areMultipleSIMsAvailable()) {
+                val simTwoColor = if (simOnePrimary) context.config.simIconsColors[2] else context.config.simIconsColors[1]
+                val drawableSecondary = if (simOnePrimary) R.drawable.ic_phone_two_vector else R.drawable.ic_phone_one_vector
+                val callIconSecondary = context.resources.getColoredDrawableWithColor(context, drawableSecondary, simTwoColor.getContrastColor())
+                dialpadCallTwoButton?.apply {
+                    setImageDrawable(callIconSecondary)
+                    background?.mutate()?.setColorFilter(simTwoColor, android.graphics.PorterDuff.Mode.SRC_IN)
+                }
+            }
+        }
+        
+        // Update speed dial values
+        speedDialValues = context.config.getSpeedDialValues()
+    }
+
+    override fun onSearchClosed() {
+        // Dialpad doesn't use search functionality
+    }
+
+    override fun onSearchQueryChanged(text: String) {
+        // Dialpad doesn't use search functionality
+    }
+
+    override fun myRecyclerView(): MyRecyclerView {
+        // Return the contacts list RecyclerView
+        return binding.dialpadList
+    }
+
+    fun getDialedNumber(): String {
+        return binding.dialpadInput.value.removeNumberFormatting()
+    }
+
+    fun clearInput() {
+        binding.dialpadInput.setText("")
+    }
+    
+    // Expose methods for MainActivity menu handling
+    fun copyNumber() {
+        val clip = binding.dialpadInput.value
+        activity?.copyToClipboard(clip)
+    }
+
+    fun webSearch() {
+        val text = binding.dialpadInput.value
+        activity?.launchInternetSearch(text)
+    }
+
+    fun initCallAnonymous() {
+        val dialpadValue = binding.dialpadInput.value
+        if (dialpadValue.isEmpty()) return
+        if (context.config.showWarningAnonymousCall) {
+            val text = String.format(context.getString(R.string.call_anonymously_warning), dialpadValue)
+            val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            if (blurTarget != null && activity != null) {
+                ConfirmationAdvancedDialog(
+                    activity!!,
+                    text,
+                    R.string.call_anonymously_warning,
+                    R.string.ok,
+                    R.string.do_not_show_again,
+                    blurTarget = blurTarget,
+                    fromHtml = true
+                ) {
+                    if (it) {
+                        initCall("#31#$dialpadValue", 0)
+                    } else {
+                        context.config.showWarningAnonymousCall = false
+                        initCall("#31#$dialpadValue", 0)
+                    }
+                }
+            }
+        } else {
+            initCall("#31#$dialpadValue", 0)
+        }
+    }
+
+    fun showBlockedNumbers() {
+        context.config.showBlockedNumbers = !context.config.showBlockedNumbers
+        context.config.needUpdateRecents = true
+        Handler(Looper.getMainLooper()).post {
+            refreshItems()
+        }
+        refreshMenuItems()
+    }
+
+    fun clearCallHistory() {
+        val confirmationText = "${context.getString(R.string.clear_history_confirmation)}\n\n${context.getString(R.string.cannot_be_undone)}"
+        val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+        if (blurTarget != null && activity != null) {
+            ConfirmationDialog(activity!!, confirmationText, blurTarget = blurTarget) {
+                RecentsHelper(context).removeAllRecentCalls(activity!!) {
+                    allRecentCalls = emptyList()
+                    Handler(Looper.getMainLooper()).post {
+                        refreshItems(invalidate = true)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun clearInputWithDelay() {
+        Handler(Looper.getMainLooper()).postDelayed({
+            clearInput()
+        }, 1000)
+    }
+
+    private fun initCall(number: String = binding.dialpadInput.value, handleIndex: Int, displayName: String? = null) {
+        val numberToCall = if (number.isNotEmpty()) number else getDialedNumber()
+        if (numberToCall.isNotEmpty()) {
+            val nameToDisplay = displayName ?: numberToCall
+            if (handleIndex != -1 && context.areMultipleSIMsAvailable()) {
+                activity?.callContactWithSimWithConfirmationCheck(numberToCall, nameToDisplay, handleIndex == 0)
+            } else {
+                activity?.startCallWithConfirmationCheck(numberToCall, nameToDisplay)
+            }
+            if (context.config.dialpadClearWhenStartCall) {
+                clearInputWithDelay()
+            }
+        } else {
+            RecentsHelper(context).getRecentCalls(queryLimit = 1) {
+                val mostRecentNumber = it.firstOrNull()?.phoneNumber
+                if (!mostRecentNumber.isNullOrEmpty()) {
+                    Handler(Looper.getMainLooper()).post {
+                        binding.dialpadInput.setText(mostRecentNumber)
+                        binding.dialpadInput.setSelection(mostRecentNumber.length)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun initCallWithSim(simOne: Boolean) {
+        val number = getDialedNumber()
+        if (number.isNotEmpty()) {
+            activity?.callContactWithSimWithConfirmationCheck(number, number, simOne)
+            if (context.config.dialpadClearWhenStartCall) {
+                clearInputWithDelay()
+            }
+        }
+    }
+
+    private fun dialpadView(): View? {
+        return when (context.config.dialpadStyle) {
+            DIALPAD_IOS -> binding.dialpadRoundWrapper?.root
+            DIALPAD_CONCEPT -> binding.dialpadRectWrapper?.root
+            else -> binding.dialpadGridInclude?.root
+        }
+    }
+
+    private fun dialpadHide() {
+        val view = dialpadView()
+        if (view?.isVisible == true) {
+            slideDown(view)
+        } else {
+            slideUp(view)
+        }
+    }
+
+    private fun slideDown(view: View?) {
+        view ?: return
+        view.animate()
+            .translationY(view.height.toFloat())
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    view.visibility = View.GONE
+                    view.translationY = 0f
+                }
+            })
+        hasBeenScrolled = false
+        // Show dialpadRoundWrapperUp when dialpad is hidden
+        if ((view == binding.dialpadRoundWrapper?.root ||
+                view == dialpadGridBinding?.root ||
+                view == binding.dialpadRectWrapper?.root) &&
+            binding.dialpadRoundWrapperUp.isGone
+        ) {
+            slideUp(binding.dialpadRoundWrapperUp)
+        }
+    }
+
+    private fun slideUp(view: View?) {
+        view ?: return
+        view.visibility = View.VISIBLE
+        //view.alpha = 0f
+        if (view.height > 0) {
+            slideUpNow(view)
+        } else {
+            // wait till height is measured
+            view.post {
+                if (view.height > 0) {
+                    slideUpNow(view)
+                } else {
+                    // If still not measured, use ViewTreeObserver
+                    view.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                        override fun onGlobalLayout() {
+                            view.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                            slideUpNow(view)
+                        }
+                    })
+                }
+            }
+        }
+        // Hide dialpadRoundWrapperUp when dialpad is shown
+        if (view == binding.dialpadRoundWrapper?.root ||
+            view == dialpadGridBinding?.root ||
+            view == binding.dialpadRectWrapper?.root
+        ) {
+            slideDown(binding.dialpadRoundWrapperUp)
+        }
+    }
+
+    private fun slideUpNow(view: View) {
+        view.translationY = view.height.toFloat()
+        view.animate()
+            .translationY(0f)
+            //.alpha(1f)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    view.visibility = View.VISIBLE
+                    //view.alpha = 1f
+                }
+            })
+    }
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun refreshCallLog(event: Events.RefreshCallLog) {
+        context.config.needUpdateRecents = true
+        refreshItems(needUpdate = true)
+    }
+
+    private fun setupOptionsMenu() {
+        binding.dialpadToolbar.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.paste_number -> {
+                    val text = activity?.getTextFromClipboard()
+                    binding.dialpadInput.setText(text)
+                    if (!text.isNullOrEmpty()) {
+                        binding.dialpadInput.setSelection(text.length)
+                        binding.dialpadInput.requestFocusFromTouch()
+                    }
+                }
+                R.id.copy_number -> copyNumber()
+                R.id.web_search -> webSearch()
+                R.id.cab_call_anonymously -> initCallAnonymous()
+                R.id.show_blocked_numbers -> showBlockedNumbers()
+                R.id.clear_call_history -> clearCallHistory()
+                R.id.settings_dialpad -> activity?.startActivity(Intent(activity?.applicationContext, com.android.dialer.activities.SettingsDialpadActivity::class.java))
+                R.id.settings -> activity?.startActivity(Intent(activity?.applicationContext, com.android.dialer.activities.SettingsActivity::class.java))
+                R.id.add_number_to_contact -> addNumberToContact()
+                else -> return@setOnMenuItemClickListener false
+            }
+            return@setOnMenuItemClickListener true
+        }
+    }
+
+    private fun handleHideDialpadNumbers() {
+        dialpadGridBinding?.apply {
+            dialpad1Holder.beGone()
+            dialpad2Holder.beGone()
+            dialpad3Holder.beGone()
+            dialpad4Holder.beGone()
+            dialpad5Holder?.beGone()
+            dialpad6Holder?.beGone()
+            dialpad7Holder?.beGone()
+            dialpad8Holder?.beGone()
+            dialpad9Holder?.beGone()
+            dialpad0Holder?.visibility = View.INVISIBLE
+        }
+    }
+
+    private fun initStyle() {
+        if (!DialpadT9.Initialized) {
+            val reader = InputStreamReader(context.resources.openRawResource(R.raw.t9languages))
+            DialpadT9.readFromJson(reader.readText())
+        }
+        
+        val dialpadRoundWrapper = binding.dialpadRoundWrapper
+        val dialpadRectWrapper = binding.dialpadRectWrapper
+        val dialpadGridWrapper = dialpadGridBinding?.root
+        
+        when (context.config.dialpadStyle) {
+            DIALPAD_IOS -> {
+                val properBackgroundColor = if (context.isDynamicTheme() && !context.isSystemInDarkMode()) context.getSurfaceColor() else context.getProperBackgroundColor()
+                
+                dialpadGridWrapper?.beGone()
+                dialpadRectWrapper?.root?.beGone()
+                dialpadRoundWrapper?.apply {
+                    dialpadVoicemail.beVisibleIf(context.config.showVoicemailIcon)
+                    dialpadIosHolder.beVisible()
+                    dialpadIosHolder.setBackgroundColor(properBackgroundColor)
+                    
+                    arrayOf(
+                        dialpad0IosHolder, dialpad1IosHolder, dialpad2IosHolder, dialpad3IosHolder, dialpad4IosHolder,
+                        dialpad5IosHolder, dialpad6IosHolder, dialpad7IosHolder, dialpad8IosHolder, dialpad9IosHolder,
+                        dialpadAsteriskIosHolder, dialpadHashtagIosHolder
+                    ).forEach {
+                        it.foreground?.applyColorFilter(Color.GRAY)
+                        it.foreground?.alpha = 60
+                    }
+                    
+                    val properTextColor = context.getProperTextColor()
+                    arrayOf(dialpadAsteriskIos, dialpadHashtagIos, dialpadVoicemail).forEach {
+                        it.applyColorFilter(properTextColor)
+                    }
+                    
+                    dialpadBottomMargin.apply {
+                        setBackgroundColor(properBackgroundColor)
+                        setHeight(100)
+                    }
+                }
+                initLettersIos()
+            }
+            DIALPAD_CONCEPT -> {
+                dialpadRoundWrapper.root.beGone()
+                dialpadGridWrapper?.beGone()
+                dialpadRectWrapper.root.beVisible()
+                initLettersConcept()
+            }
+            DIALPAD_GRID -> {
+                dialpadRoundWrapper?.root?.beGone()
+                dialpadRectWrapper?.root?.beGone()
+                dialpadGridWrapper?.beVisible()
+                initLetters()
+            }
+            else -> {
+                dialpadRoundWrapper?.root?.beGone()
+                dialpadRectWrapper?.root?.beGone()
+                dialpadGridWrapper?.beVisible()
+                initLetters()
+            }
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun initLetters() {
+        val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
+        val properTextColor = context.getProperTextColor()
+        
+        dialpadGridBinding?.apply {
+            if (context.config.hideDialpadLetters) {
+                arrayOf(
+                    dialpad1Letters, dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
+                    dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
+                ).forEach { it?.beGone() }
+            } else {
+                dialpad1Letters?.apply {
+                    beInvisible()
+                    setTypeface(null, context.config.dialpadSecondaryTypeface)
+                }
+                arrayOf(
+                    dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
+                    dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
+                ).forEach {
+                    it?.beVisible()
+                    it?.setTypeface(null, context.config.dialpadSecondaryTypeface)
+                }
+
+                val langPref = context.config.dialpadSecondaryLanguage
+                val langLocale = Locale.getDefault().language
+                val isAutoLang = DialpadT9.getSupportedSecondaryLanguages().contains(langLocale) && langPref == LANGUAGE_SYSTEM
+                if (langPref != null && langPref != LANGUAGE_NONE && langPref != LANGUAGE_SYSTEM || isAutoLang) {
+                    val lang = if (isAutoLang) langLocale else langPref
+                    dialpad1Letters?.text = DialpadT9.getLettersForNumber(2, lang) + "\nABC"
+                    dialpad2Letters?.text = DialpadT9.getLettersForNumber(2, lang) + "\nABC"
+                    dialpad3Letters?.text = DialpadT9.getLettersForNumber(3, lang) + "\nDEF"
+                    dialpad4Letters?.text = DialpadT9.getLettersForNumber(4, lang) + "\nGHI"
+                    dialpad5Letters?.text = DialpadT9.getLettersForNumber(5, lang) + "\nJKL"
+                    dialpad6Letters?.text = DialpadT9.getLettersForNumber(6, lang) + "\nMNO"
+                    dialpad7Letters?.text = DialpadT9.getLettersForNumber(7, lang) + "\nPQRS"
+                    dialpad8Letters?.text = DialpadT9.getLettersForNumber(8, lang) + "\nTUV"
+                    dialpad9Letters?.text = DialpadT9.getLettersForNumber(9, lang) + "\nWXYZ"
+
+                    val fontSizeRu = context.getTextSize() - 16f
+                    arrayOf(
+                        dialpad1Letters, dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
+                        dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
+                    ).forEach { it?.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSizeRu) }
+                } else {
+                    val fontSize = context.getTextSize() - 8f
+                    arrayOf(
+                        dialpad1Letters, dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
+                        dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
+                    ).forEach { it?.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize) }
+                }
+            }
+
+            // Setup number buttons (1-9, 0, *, #) - this needs to be done every time initLetters is called
+            setupCharClick(dialpad1Holder, '1')
+            setupCharClick(dialpad2Holder, '2')
+            setupCharClick(dialpad3Holder, '3')
+            setupCharClick(dialpad4Holder, '4')
+            setupCharClick(dialpad5Holder, '5')
+            setupCharClick(dialpad6Holder, '6')
+            setupCharClick(dialpad7Holder, '7')
+            setupCharClick(dialpad8Holder, '8')
+            setupCharClick(dialpad9Holder, '9')
+            setupCharClick(dialpad0Holder, '0')
+            setupCharClick(dialpadAsteriskHolder, '*')
+            setupCharClick(dialpadHashtagHolder, '#')
+
+            val simOnePrimary = context.config.currentSIMCardIndex == 0
+            dialpadCallTwoButton?.apply {
+                if (areMultipleSIMsAvailable) {
+                    beVisible()
+                    val simTwoColor = if (simOnePrimary) context.config.simIconsColors[2] else context.config.simIconsColors[1]
+                    val drawableSecondary = if (simOnePrimary) R.drawable.ic_phone_two_vector else R.drawable.ic_phone_one_vector
+                    val callIcon = context.resources.getColoredDrawableWithColor(context, drawableSecondary, simTwoColor.getContrastColor())
+                    setImageDrawable(callIcon)
+                    background?.mutate()?.setColorFilter(simTwoColor, android.graphics.PorterDuff.Mode.SRC_IN)
+                    setOnClickListener {
+                        initCall(binding.dialpadInput.value, if (simOnePrimary) 1 else 0)
+                        maybePerformDialpadHapticFeedback(this)
+                    }
+                    contentDescription = context.getString(if (simOnePrimary) R.string.call_from_sim_2 else R.string.call_from_sim_1)
+                } else {
+                    beGone()
+                }
+            }
+
+            val simOneColor = if (simOnePrimary) context.config.simIconsColors[1] else context.config.simIconsColors[2]
+            val drawablePrimary = if (simOnePrimary) R.drawable.ic_phone_one_vector else R.drawable.ic_phone_two_vector
+            val callIconId = if (areMultipleSIMsAvailable) drawablePrimary else R.drawable.ic_phone_vector
+            val callIcon = context.resources.getColoredDrawableWithColor(context, callIconId, simOneColor.getContrastColor())
+            dialpadCallButton.apply {
+                setImageDrawable(callIcon)
+                background?.mutate()?.setColorFilter(simOneColor, android.graphics.PorterDuff.Mode.SRC_IN)
+                setOnClickListener {
+                    initCall(handleIndex = if (simOnePrimary || !areMultipleSIMsAvailable) 0 else 1)
+                    maybePerformDialpadHapticFeedback(this)
+                }
+                setOnLongClickListener {
+                    if (binding.dialpadInput.value.isEmpty()) {
+                        val text = activity?.getTextFromClipboard()
+                        binding.dialpadInput.setText(text)
+                        if (!text.isNullOrEmpty()) {
+                            binding.dialpadInput.setSelection(text.length)
+                            binding.dialpadInput.requestFocusFromTouch()
+                        }
+                        true
+                    } else {
+                        copyNumber()
+                        true
+                    }
+                }
+                contentDescription = context.getString(
+                    if (areMultipleSIMsAvailable) {
+                        if (simOnePrimary) R.string.call_from_sim_1 else R.string.call_from_sim_2
+                    } else R.string.call
+                )
+            }
+
+            dialpadClearCharHolder?.beVisibleIf((binding.dialpadInput.value.isNotEmpty()) || areMultipleSIMsAvailable)
+            dialpadClearChar?.applyColorFilter(Color.GRAY)
+            dialpadClearChar?.setAlpha((0.4f * 255).toInt())
+            dialpadClearCharX?.applyColorFilter(properTextColor)
+            dialpadClearCharHolder?.setOnClickListener { clearChar(it) }
+            dialpadClearCharHolder?.setOnLongClickListener { clearInput(); true }
+
+            dialpadGridHolder?.setOnClickListener { } // Do not press between the buttons
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun initLettersIos() {
+        val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
+        val properTextColor = context.getProperTextColor()
+        binding.dialpadRoundWrapper?.apply {
+            if (context.config.hideDialpadLetters) {
+                arrayOf(
+                    dialpad2IosLetters, dialpad3IosLetters, dialpad4IosLetters, dialpad5IosLetters,
+                    dialpad6IosLetters, dialpad7IosLetters, dialpad8IosLetters, dialpad9IosLetters,
+                    dialpad1IosLetters
+                ).forEach {
+                    it.beGone()
+                }
+            } else {
+                dialpad1IosLetters.apply {
+                    beInvisible()
+                    setTypeface(null, context.config.dialpadSecondaryTypeface)
+                }
+                arrayOf(
+                    dialpad2IosLetters, dialpad3IosLetters, dialpad4IosLetters, dialpad5IosLetters,
+                    dialpad6IosLetters, dialpad7IosLetters, dialpad8IosLetters, dialpad9IosLetters
+                ).forEach {
+                    it.beVisible()
+                    it.setTypeface(null, context.config.dialpadSecondaryTypeface)
+                }
+                
+                val langPref = context.config.dialpadSecondaryLanguage
+                val langLocale = Locale.getDefault().language
+                val isAutoLang = DialpadT9.getSupportedSecondaryLanguages().contains(langLocale) && langPref == LANGUAGE_SYSTEM
+                if (langPref != null && langPref != LANGUAGE_NONE && langPref != LANGUAGE_SYSTEM || isAutoLang) {
+                    val lang = if (isAutoLang) langLocale else langPref
+                    dialpad1IosLetters.text = DialpadT9.getLettersForNumber(2, lang) + "\nABC"
+                    dialpad2IosLetters.text = DialpadT9.getLettersForNumber(2, lang) + "\nABC"
+                    dialpad3IosLetters.text = DialpadT9.getLettersForNumber(3, lang) + "\nDEF"
+                    dialpad4IosLetters.text = DialpadT9.getLettersForNumber(4, lang) + "\nGHI"
+                    dialpad5IosLetters.text = DialpadT9.getLettersForNumber(5, lang) + "\nJKL"
+                    dialpad6IosLetters.text = DialpadT9.getLettersForNumber(6, lang) + "\nMNO"
+                    dialpad7IosLetters.text = DialpadT9.getLettersForNumber(7, lang) + "\nPQRS"
+                    dialpad8IosLetters.text = DialpadT9.getLettersForNumber(8, lang) + "\nTUV"
+                    dialpad9IosLetters.text = DialpadT9.getLettersForNumber(9, lang) + "\nWXYZ"
+                    
+                    val fontSizeRu = context.getTextSize() - 16f
+                    arrayOf(
+                        dialpad1IosLetters, dialpad2IosLetters, dialpad3IosLetters, dialpad4IosLetters, dialpad5IosLetters,
+                        dialpad6IosLetters, dialpad7IosLetters, dialpad8IosLetters, dialpad9IosLetters
+                    ).forEach {
+                        it.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSizeRu)
+                    }
+                } else {
+                    val fontSize = context.getTextSize() - 8f
+                    arrayOf(
+                        dialpad1IosLetters, dialpad2IosLetters, dialpad3IosLetters, dialpad4IosLetters, dialpad5IosLetters,
+                        dialpad6IosLetters, dialpad7IosLetters, dialpad8IosLetters, dialpad9IosLetters
+                    ).forEach {
+                        it.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize)
+                    }
+                }
+            }
+            
+            // Setup number buttons
+            setupCharClick(dialpad1IosHolder, '1')
+            setupCharClick(dialpad2IosHolder, '2')
+            setupCharClick(dialpad3IosHolder, '3')
+            setupCharClick(dialpad4IosHolder, '4')
+            setupCharClick(dialpad5IosHolder, '5')
+            setupCharClick(dialpad6IosHolder, '6')
+            setupCharClick(dialpad7IosHolder, '7')
+            setupCharClick(dialpad8IosHolder, '8')
+            setupCharClick(dialpad9IosHolder, '9')
+            setupCharClick(dialpad0IosHolder, '0')
+            setupCharClick(dialpadAsteriskIosHolder, '*')
+            setupCharClick(dialpadHashtagIosHolder, '#')
+            dialpadIosHolder.setOnClickListener { } // Do not press between the buttons
+            
+            if (areMultipleSIMsAvailable) {
+                dialpadSimIosHolder.beVisible()
+                dialpadSimIos.background.applyColorFilter(Color.GRAY)
+                dialpadSimIos.background.alpha = 60
+                dialpadSimIos.applyColorFilter(properTextColor)
+                dialpadSimIosHolder.setOnClickListener {
+                    if (context.config.currentSIMCardIndex == 0) {
+                        context.config.currentSIMCardIndex = 1
+                    } else {
+                        context.config.currentSIMCardIndex = 0
+                    }
+                    updateCallButtonIos()
+                    maybePerformDialpadHapticFeedback(dialpadSimIosHolder)
+                    RxAnimation.from(dialpadCallButtonIosHolder)
+                        .shake()
+                        .subscribe()
+                }
+                updateCallButtonIos()
+                dialpadCallButtonIosHolder.setOnClickListener {
+                    initCall(binding.dialpadInput.value, context.config.currentSIMCardIndex)
+                    maybePerformDialpadHapticFeedback(dialpadCallButtonIosHolder)
+                }
+                dialpadCallButtonIosHolder.contentDescription = context.getString(
+                    if (context.config.currentSIMCardIndex == 0) R.string.call_from_sim_1 else R.string.call_from_sim_2
+                )
+            } else {
+                dialpadSimIosHolder.beGone()
+                val color = context.config.simIconsColors[1]
+                val callIcon = context.resources.getColoredDrawableWithColor(context, R.drawable.ic_phone_vector, color.getContrastColor())
+                dialpadCallButtonIosIcon.setImageDrawable(callIcon)
+                dialpadCallButtonIosHolder.background.applyColorFilter(color)
+                dialpadCallButtonIosHolder.setOnClickListener {
+                    initCall(binding.dialpadInput.value, 0)
+                    maybePerformDialpadHapticFeedback(dialpadCallButtonIosHolder)
+                }
+                dialpadCallButtonIosHolder.contentDescription = context.getString(R.string.call)
+            }
+            
+            dialpadCallButtonIosHolder.setOnLongClickListener {
+                if (binding.dialpadInput.value.isEmpty()) {
+                    val text = activity?.getTextFromClipboard()
+                    binding.dialpadInput.setText(text)
+                    if (!text.isNullOrEmpty()) {
+                        binding.dialpadInput.setSelection(text.length)
+                        binding.dialpadInput.requestFocusFromTouch()
+                    }
+                    true
+                } else {
+                    copyNumber()
+                    true
+                }
+            }
+            
+            dialpadClearCharIos.applyColorFilter(Color.GRAY)
+            dialpadClearCharIos.alpha = 0.235f
+            dialpadClearCharXIos.applyColorFilter(properTextColor)
+            dialpadClearCharIosHolder.beVisibleIf(binding.dialpadInput.value.isNotEmpty() || areMultipleSIMsAvailable)
+            dialpadClearCharIosHolder.setOnClickListener { clearChar(it) }
+            dialpadClearCharIosHolder.setOnLongClickListener { clearInput(); true }
+        }
+        binding.dialpadAddNumber.setOnClickListener { addNumberToContact() }
+        
+        // Update dialpadRoundWrapperUp colors
+        val simOneColor = context.config.simIconsColors[1]
+        binding.dialpadRoundWrapperUp.background?.mutate()?.setColorFilter(simOneColor, android.graphics.PorterDuff.Mode.SRC_IN)
+        binding.dialpadRoundWrapperUp.setColorFilter(simOneColor.getContrastColor())
+    }
+    
+    private fun updateCallButtonIos() {
+        val oneSim = context.config.currentSIMCardIndex == 0
+        val simColor = if (oneSim) context.config.simIconsColors[1] else context.config.simIconsColors[2]
+        val callIconId = if (oneSim) R.drawable.ic_phone_one_vector else R.drawable.ic_phone_two_vector
+        val callIcon = context.resources.getColoredDrawableWithColor(context, callIconId, simColor.getContrastColor())
+        binding.dialpadRoundWrapper?.dialpadCallButtonIosIcon?.setImageDrawable(callIcon)
+        binding.dialpadRoundWrapper?.dialpadCallButtonIosHolder?.background?.applyColorFilter(simColor)
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun initLettersConcept() {
+        val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
+        val baseColor = context.baseConfig.backgroundColor
+        val buttonsColor = when {
+            context.isDynamicTheme() -> context.resources.getColor(R.color.you_status_bar_color, context.theme)
+            baseColor == Color.WHITE -> context.resources.getColor(R.color.dark_grey, context.theme)
+            baseColor == Color.BLACK -> context.resources.getColor(R.color.bottom_tabs_black_background, context.theme)
+            else -> context.baseConfig.backgroundColor.lightenColor(4)
+        }
+        val textColor = buttonsColor.getContrastColor()
+        val dialpadRectWrapper = binding.dialpadRectWrapper
+        
+        dialpadRectWrapper?.let { wrapper ->
+            val wrapperRoot = wrapper.root
+            // Find CONCEPT dialpad views
+            val dialpad1Holder = wrapperRoot.findViewById<View>(R.id.dialpad_1_holder)
+            val dialpad2Holder = wrapperRoot.findViewById<View>(R.id.dialpad_2_holder)
+            val dialpad3Holder = wrapperRoot.findViewById<View>(R.id.dialpad_3_holder)
+            val dialpad4Holder = wrapperRoot.findViewById<View>(R.id.dialpad_4_holder)
+            val dialpad5Holder = wrapperRoot.findViewById<View>(R.id.dialpad_5_holder)
+            val dialpad6Holder = wrapperRoot.findViewById<View>(R.id.dialpad_6_holder)
+            val dialpad7Holder = wrapperRoot.findViewById<View>(R.id.dialpad_7_holder)
+            val dialpad8Holder = wrapperRoot.findViewById<View>(R.id.dialpad_8_holder)
+            val dialpad9Holder = wrapperRoot.findViewById<View>(R.id.dialpad_9_holder)
+            val dialpad0Holder = wrapperRoot.findViewById<View>(R.id.dialpad_0_holder)
+            val dialpadAsteriskHolder = wrapperRoot.findViewById<View>(R.id.dialpad_asterisk_holder)
+            val dialpadHashtagHolder = wrapperRoot.findViewById<View>(R.id.dialpad_hashtag_holder)
+            val dialpadCallButtonHolder = wrapperRoot.findViewById<View>(R.id.dialpadCallButtonHolder)
+            val dialpadClearCharHolder = wrapperRoot.findViewById<View>(R.id.dialpadClearCharHolder)
+            val dialpadDownHolder = wrapperRoot.findViewById<View>(R.id.dialpadDownHolder)
+            val dialpadGridHolder = wrapperRoot.findViewById<View>(R.id.dialpadGridHolder)
+            val dialpadGridWrapper = wrapperRoot.findViewById<View>(R.id.dialpad_grid_wrapper)
+            
+            val dialpad1 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_1)
+            val dialpad2 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_2)
+            val dialpad3 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_3)
+            val dialpad4 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_4)
+            val dialpad5 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_5)
+            val dialpad6 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_6)
+            val dialpad7 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_7)
+            val dialpad8 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_8)
+            val dialpad9 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_9)
+            val dialpad0 = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_0)
+            val dialpadAsterisk = wrapperRoot.findViewById<ImageView>(R.id.dialpad_asterisk)
+            val dialpadHashtag = wrapperRoot.findViewById<ImageView>(R.id.dialpad_hashtag)
+            val dialpadVoicemail = wrapperRoot.findViewById<ImageView>(R.id.dialpadVoicemail)
+            val dialpadCallIcon = wrapperRoot.findViewById<ImageView>(R.id.dialpadCallIcon)
+            val dialpadDown = wrapperRoot.findViewById<ImageView>(R.id.dialpadDown)
+            val dialpadClearChar = wrapperRoot.findViewById<ImageView>(R.id.dialpadClearChar)
+            
+            val dialpad1Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_1_letters)
+            val dialpad2Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_2_letters)
+            val dialpad3Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_3_letters)
+            val dialpad4Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_4_letters)
+            val dialpad5Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_5_letters)
+            val dialpad6Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_6_letters)
+            val dialpad7Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_7_letters)
+            val dialpad8Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_8_letters)
+            val dialpad9Letters = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_9_letters)
+            val dialpadPlus = wrapperRoot.findViewById<android.widget.TextView>(R.id.dialpad_plus)
+            
+            // Setup letters visibility and text
+            if (context.config.hideDialpadLetters) {
+                arrayOf<android.widget.TextView?>(
+                    dialpad1Letters, dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
+                    dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
+                ).forEach {
+                    it?.beGone()
+                }
+            } else {
+                dialpad1Letters?.apply {
+                    beInvisible()
+                    setTypeface(null, context.config.dialpadSecondaryTypeface)
+                }
+                arrayOf<android.widget.TextView?>(
+                    dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters, dialpad6Letters,
+                    dialpad7Letters, dialpad8Letters, dialpad9Letters
+                ).forEach {
+                    it?.beVisible()
+                    it?.setTypeface(null, context.config.dialpadSecondaryTypeface)
+                }
+
+                val langPref = context.config.dialpadSecondaryLanguage
+                val langLocale = Locale.getDefault().language
+                val isAutoLang = DialpadT9.getSupportedSecondaryLanguages().contains(langLocale) && langPref == LANGUAGE_SYSTEM
+                if (langPref != null && langPref != LANGUAGE_NONE && langPref != LANGUAGE_SYSTEM || isAutoLang) {
+                    val lang = if (isAutoLang) langLocale else langPref
+                    dialpad1Letters?.text = DialpadT9.getLettersForNumber(2, lang) + "\nABC"
+                    dialpad2Letters?.text = DialpadT9.getLettersForNumber(2, lang) + "\nABC"
+                    dialpad3Letters?.text = DialpadT9.getLettersForNumber(3, lang) + "\nDEF"
+                    dialpad4Letters?.text = DialpadT9.getLettersForNumber(4, lang) + "\nGHI"
+                    dialpad5Letters?.text = DialpadT9.getLettersForNumber(5, lang) + "\nJKL"
+                    dialpad6Letters?.text = DialpadT9.getLettersForNumber(6, lang) + "\nMNO"
+                    dialpad7Letters?.text = DialpadT9.getLettersForNumber(7, lang) + "\nPQRS"
+                    dialpad8Letters?.text = DialpadT9.getLettersForNumber(8, lang) + "\nTUV"
+                    dialpad9Letters?.text = DialpadT9.getLettersForNumber(9, lang) + "\nWXYZ"
+
+                    val fontSizeRu = context.getTextSize() - 16f
+                    arrayOf<android.widget.TextView?>(
+                        dialpad1Letters, dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
+                        dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
+                    ).forEach { it?.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSizeRu) }
+                } else {
+                    val fontSize = context.getTextSize() - 8f
+                    arrayOf<android.widget.TextView?>(
+                        dialpad1Letters, dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
+                        dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
+                    ).forEach { it?.setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize) }
+                }
+            }
+
+            // Set text colors
+            arrayOf<android.widget.TextView?>(
+                dialpad1, dialpad2, dialpad3, dialpad4, dialpad5,
+                dialpad6, dialpad7, dialpad8, dialpad9, dialpad0,
+                dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters, dialpad6Letters,
+                dialpad7Letters, dialpad8Letters, dialpad9Letters, dialpadPlus
+            ).forEach {
+                it?.setTextColor(textColor)
+            }
+
+            // Setup button backgrounds and margins
+            arrayOf<View?>(
+                dialpad0Holder, dialpad1Holder, dialpad2Holder, dialpad3Holder, dialpad4Holder,
+                dialpad5Holder, dialpad6Holder, dialpad7Holder, dialpad8Holder, dialpad9Holder,
+                dialpadAsteriskHolder, dialpadHashtagHolder
+            ).forEach {
+                it?.background = ResourcesCompat.getDrawable(context.resources, R.drawable.button_dialpad_background, context.theme)
+                it?.background?.mutate()?.setColorFilter(buttonsColor, android.graphics.PorterDuff.Mode.SRC_IN)
+                it?.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    val margin = context.pixels(R.dimen.one_dp).toInt()
+                    setMargins(margin, margin, margin, margin)
+                }
+            }
+
+            // Setup icon colors
+            arrayOf<ImageView?>(
+                dialpadAsterisk, dialpadHashtag, dialpadVoicemail
+            ).forEach {
+                it?.applyColorFilter(textColor)
+            }
+
+            // Setup special buttons (down, call, clear)
+            arrayOf<View?>(
+                dialpadDownHolder, dialpadCallButtonHolder, dialpadClearCharHolder
+            ).forEach {
+                it?.background = ResourcesCompat.getDrawable(context.resources, R.drawable.button_dialpad_background, context.theme)
+                it?.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    val margin = context.pixels(R.dimen.one_dp).toInt()
+                    val marginBottom = context.pixels(R.dimen.tiny_margin).toInt()
+                    setMargins(margin, margin, margin, marginBottom)
+                }
+            }
+
+            dialpadGridWrapper?.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                val margin = context.pixels(R.dimen.tiny_margin).toInt()
+                setMargins(margin, margin, margin, margin)
+            }
+
+            // Setup call button
+            val simOnePrimary = context.config.currentSIMCardIndex == 0
+            val simTwoColor = if (areMultipleSIMsAvailable) {
+                if (simOnePrimary) context.config.simIconsColors[2] else context.config.simIconsColors[1]
+            } else context.getProperPrimaryColor()
+            val drawableSecondary = if (simOnePrimary) R.drawable.ic_phone_two_vector else R.drawable.ic_phone_one_vector
+            val dialpadIconColor = if (simTwoColor == Color.WHITE) simTwoColor.getContrastColor() else textColor
+            val downIcon = if (areMultipleSIMsAvailable) {
+                context.resources.getColoredDrawableWithColor(context, drawableSecondary, dialpadIconColor)
+            } else {
+                context.resources.getColoredDrawableWithColor(context, R.drawable.ic_dialpad_vector, dialpadIconColor)
+            }
+            dialpadDown?.setImageDrawable(downIcon)
+            dialpadDownHolder?.apply {
+                background?.mutate()?.setColorFilter(simTwoColor, android.graphics.PorterDuff.Mode.SRC_IN)
+                setOnClickListener {
+                    if (areMultipleSIMsAvailable) {
+                        initCall(handleIndex = if (simOnePrimary) 1 else 0)
+                    } else {
+                        dialpadHide()
+                    }
+                    maybePerformDialpadHapticFeedback(dialpadDownHolder)
+                }
+                contentDescription = context.getString(
+                    if (areMultipleSIMsAvailable) {
+                        if (simOnePrimary) R.string.call_from_sim_2 else R.string.call_from_sim_1
+                    } else {
+                        val view = dialpadView()
+                        if (view?.isVisible == true) R.string.hide_dialpad else R.string.show_dialpad
+                    }
+                )
+            }
+
+            val simOneColor = if (simOnePrimary) context.config.simIconsColors[1] else context.config.simIconsColors[2]
+            val drawablePrimary = if (simOnePrimary) R.drawable.ic_phone_one_vector else R.drawable.ic_phone_two_vector
+            val callIconId = if (areMultipleSIMsAvailable) drawablePrimary else R.drawable.ic_phone_vector
+            val callIconColor = if (simOneColor == Color.WHITE) simOneColor.getContrastColor() else textColor
+            val callIcon = context.resources.getColoredDrawableWithColor(context, callIconId, callIconColor)
+            dialpadCallIcon?.setImageDrawable(callIcon)
+            dialpadCallButtonHolder?.apply {
+                background?.mutate()?.setColorFilter(simOneColor, android.graphics.PorterDuff.Mode.SRC_IN)
+                setOnClickListener {
+                    initCall(handleIndex = if (simOnePrimary || !areMultipleSIMsAvailable) 0 else 1)
+                    maybePerformDialpadHapticFeedback(this)
+                }
+                setOnLongClickListener {
+                    if (binding.dialpadInput.value.isEmpty()) {
+                        val text = activity?.getTextFromClipboard()
+                        binding.dialpadInput.setText(text)
+                        if (!text.isNullOrEmpty()) {
+                            binding.dialpadInput.setSelection(text.length)
+                            binding.dialpadInput.requestFocusFromTouch()
+                        }
+                        true
+                    } else {
+                        copyNumber()
+                        true
+                    }
+                }
+                contentDescription = context.getString(
+                    if (areMultipleSIMsAvailable) {
+                        if (simOnePrimary) R.string.call_from_sim_1 else R.string.call_from_sim_2
+                    } else R.string.call
+                )
+            }
+
+            // Setup clear button
+            dialpadClearCharHolder?.beVisible()
+            dialpadClearCharHolder?.background?.mutate()?.setColorFilter(context.getColor(R.color.red_call), android.graphics.PorterDuff.Mode.SRC_IN)
+            dialpadClearCharHolder?.setOnClickListener { clearChar(it) }
+            dialpadClearCharHolder?.setOnLongClickListener { clearInput(); true }
+            dialpadClearChar?.setAlpha(255) // 1f = 255
+            dialpadClearChar?.applyColorFilter(textColor)
+
+            // Setup number buttons
+            setupCharClick(dialpad1Holder, '1')
+            setupCharClick(dialpad2Holder, '2')
+            setupCharClick(dialpad3Holder, '3')
+            setupCharClick(dialpad4Holder, '4')
+            setupCharClick(dialpad5Holder, '5')
+            setupCharClick(dialpad6Holder, '6')
+            setupCharClick(dialpad7Holder, '7')
+            setupCharClick(dialpad8Holder, '8')
+            setupCharClick(dialpad9Holder, '9')
+            setupCharClick(dialpad0Holder, '0')
+            setupCharClick(dialpadAsteriskHolder, '*')
+            setupCharClick(dialpadHashtagHolder, '#')
+            dialpadGridHolder?.setOnClickListener { } // Do not press between the buttons
+        }
+    }
+
+    private fun updateDialpadSize() {
+        val size = context.config.dialpadSize
+        val view = when (context.config.dialpadStyle) {
+            DIALPAD_IOS -> binding.dialpadRoundWrapper?.root?.findViewById<View>(R.id.dialpad_ios_wrapper)
+            DIALPAD_CONCEPT -> binding.dialpadRectWrapper?.root?.findViewById<View>(R.id.dialpad_grid_wrapper)
+            else -> dialpadGridBinding?.dialpadGridWrapper
+        }
+        
+        if (view != null) {
+            val dimens = if (context.config.dialpadStyle == DIALPAD_IOS) pixels(R.dimen.dialpad_ios_height) else pixels(R.dimen.dialpad_grid_height)
+            view.setHeight((dimens * (size / 100f)).toInt())
+        }
+
+        val margin = context.config.dialpadBottomMargin
+        val marginView = when (context.config.dialpadStyle) {
+            DIALPAD_IOS -> binding.dialpadRoundWrapper?.root?.findViewById<View>(R.id.dialpadBottomMargin)
+            DIALPAD_CONCEPT -> binding.dialpadRectWrapper?.root?.findViewById<View>(R.id.dialpadBottomMargin)
+            else -> dialpadGridBinding?.dialpadBottomMargin
+        }
+        
+        if (marginView != null) {
+            val start = if (context.config.dialpadStyle == DIALPAD_IOS) pixels(R.dimen.dialpad_margin_bottom_ios) else pixels(R.dimen.zero)
+            marginView.setHeight((start + margin).toInt())
+        }
+    }
+
+    private fun updateCallButtonSize() {
+        val size = context.config.callButtonPrimarySize
+        val view = dialpadGridBinding?.dialpadCallButton
+        if (view != null) {
+            val dimens = pixels(R.dimen.dialpad_phone_button_size)
+            view.setHeightAndWidth((dimens * (size / 100f)).toInt())
+            view.setPadding((dimens * 0.1765 * (size / 100f)).toInt())
+        }
+
+        if (context.areMultipleSIMsAvailable()) {
+            val sizeSecondary = context.config.callButtonSecondarySize
+            val viewSecondary = dialpadGridBinding?.dialpadCallTwoButton
+            if (viewSecondary != null) {
+                val dimensSecondary = pixels(R.dimen.dialpad_button_size_small)
+                viewSecondary.setHeightAndWidth((dimensSecondary * (sizeSecondary / 100f)).toInt())
+                val dimens = pixels(R.dimen.dialpad_phone_button_size)
+                viewSecondary.setPadding((dimens * 0.1765 * (sizeSecondary / 100f)).toInt())
+            }
+        }
+    }
+
+    private fun refreshMenuItems() {
+        binding.dialpadToolbar.menu.apply {
+            val dialpadInputValue = binding.dialpadInput.value
+            findItem(R.id.copy_number).isVisible = dialpadInputValue.isNotEmpty()
+            findItem(R.id.web_search).isVisible = dialpadInputValue.isNotEmpty()
+            findItem(R.id.cab_call_anonymously).isVisible = dialpadInputValue.isNotEmpty()
+            findItem(R.id.clear_call_history).isVisible = context.config.showRecentCallsOnDialpad
+            findItem(R.id.show_blocked_numbers).isVisible = context.config.showRecentCallsOnDialpad
+            findItem(R.id.show_blocked_numbers).title =
+                if (context.config.showBlockedNumbers) context.getString(R.string.hide_blocked_numbers) else context.getString(R.string.show_blocked_numbers)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        EventBus.getDefault().unregister(this)
+        longPressHandler.removeCallbacksAndMessages(null)
+        toneGeneratorHelper?.stopTone()
+        toneGeneratorHelper = null
+    }
+}

@@ -2,6 +2,7 @@ package com.android.dialer.helpers
 
 import com.goodwy.commons.helpers.TAB_CALL_HISTORY
 import com.goodwy.commons.helpers.TAB_CONTACTS
+import com.goodwy.commons.helpers.TAB_DIALPAD
 import com.goodwy.commons.helpers.TAB_FAVORITES
 import com.goodwy.commons.models.Release
 import com.android.dialer.R
@@ -71,9 +72,9 @@ const val AUTO_REDIAL_MAX_RETRIES = "auto_redial_max_retries"
 const val AUTO_REDIAL_DELAY_MS = "auto_redial_delay_ms"
 const val SHAKE_TO_ANSWER = "shake_to_answer"
 
-const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY
+const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY or TAB_DIALPAD
 
-val tabsList = arrayListOf(TAB_FAVORITES, TAB_CALL_HISTORY, TAB_CONTACTS)
+val tabsList = arrayListOf(TAB_FAVORITES, TAB_CALL_HISTORY, TAB_CONTACTS, TAB_DIALPAD)
 
 private const val PATH = "com.android.dialer.action."
 const val ACCEPT_CALL = PATH + "accept_call"

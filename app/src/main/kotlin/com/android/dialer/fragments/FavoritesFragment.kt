@@ -54,6 +54,11 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
         }
 
         binding.fragmentPlaceholder.text = context.getString(placeholderResId)
+        // Show placeholder initially until data is loaded
+        // It will be updated in gotContacts() after refreshItems() completes
+        // This ensures the placeholder is visible even if refreshItems() hasn't been called yet
+        binding.fragmentPlaceholder.beVisible()
+        binding.fragmentList.beGone()
         binding.fragmentPlaceholder2.beGone()
         binding.letterFastscrollerThumb.beGone()
         binding.letterFastscroller.beGone()

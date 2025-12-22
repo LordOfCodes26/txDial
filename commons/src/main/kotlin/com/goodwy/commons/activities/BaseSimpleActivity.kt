@@ -1384,7 +1384,7 @@ abstract class BaseSimpleActivity : EdgeToEdgeActivity() {
     }
 
     @SuppressLint("InlinedApi")
-    protected fun launchSetDefaultDialerIntent() {
+    fun launchSetDefaultDialerIntent() {
         if (isQPlus()) {
             val roleManager = getSystemService(RoleManager::class.java)
             if (

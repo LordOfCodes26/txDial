@@ -47,9 +47,11 @@ import com.android.dialer.dialogs.ChangeSortingDialog
 import com.android.dialer.dialogs.FilterContactSourcesDialog
 import com.android.dialer.extensions.*
 import com.android.dialer.fragments.ContactsFragment
+import com.android.dialer.fragments.DialpadFragment
 import com.android.dialer.fragments.FavoritesFragment
 import com.android.dialer.fragments.MyViewPagerFragment
 import com.android.dialer.fragments.RecentsFragment
+import com.android.dialer.activities.SettingsDialpadActivity
 import com.android.dialer.helpers.*
 import com.android.dialer.models.AudioRoute
 import com.android.dialer.models.Events
@@ -277,7 +279,7 @@ class MainActivity : SimpleActivity() {
             refreshItems(true)
         }
 
-        if (binding.viewPager.adapter != null && config.bottomNavigationBar) {
+        if (binding.viewPager.adapter != null) {
             getAllFragments().forEach {
                 it?.setupColors(properTextColor, properPrimaryColor, getProperAccentColor())
             }
@@ -308,6 +310,13 @@ class MainActivity : SimpleActivity() {
             it?.setBackgroundColor(backgroundColor)
         }
         if (getCurrentFragment() is RecentsFragment) clearMissedCalls()
+
+        // Hide main menu when dialpad fragment is shown
+        if (getCurrentFragment() is DialpadFragment) {
+            binding.mainMenu.beGone()
+        } else {
+            binding.mainMenu.beVisible()
+        }
 
         checkShortcuts()
     }
@@ -391,18 +400,19 @@ class MainActivity : SimpleActivity() {
         val currentFragment = getCurrentFragment()
         val getRecentsFragment = getRecentsFragment()
         val getFavoritesFragment = getFavoritesFragment()
+        val dialpadFragment = getDialpadFragment()
         binding.mainMenu.requireToolbar().menu.apply {
             findItem(R.id.search).isVisible = /*!config.bottomNavigationBar*/ true // always show the search menu icon
             findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment
-            findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment
-            findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment
+            findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment && currentFragment != dialpadFragment
+            findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment && currentFragment != dialpadFragment
             findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
             findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment
             findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment && config.viewType == VIEW_TYPE_GRID
             findItem(R.id.show_blocked_numbers).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.show_blocked_numbers).title =
                 if (config.showBlockedNumbers) getString(R.string.hide_blocked_numbers) else getString(R.string.show_blocked_numbers)
-            findItem(R.id.select).isVisible = currentFragment != null
+            findItem(R.id.select).isVisible = currentFragment != null && currentFragment != dialpadFragment
         }
     }
 
@@ -436,8 +446,22 @@ class MainActivity : SimpleActivity() {
 
             requireToolbar().setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
-                    R.id.show_blocked_numbers -> showBlockedNumbers()
-                    R.id.clear_call_history -> clearCallHistory()
+                    R.id.show_blocked_numbers -> {
+                        val dialpadFragment = getDialpadFragment()
+                        if (dialpadFragment != null) {
+                            dialpadFragment.showBlockedNumbers()
+                        } else {
+                            showBlockedNumbers()
+                        }
+                    }
+                    R.id.clear_call_history -> {
+                        val dialpadFragment = getDialpadFragment()
+                        if (dialpadFragment != null) {
+                            dialpadFragment.clearCallHistory()
+                        } else {
+                            clearCallHistory()
+                        }
+                    }
                     R.id.create_new_contact -> launchCreateNewContactIntent()
                     R.id.sort -> showSortingDialog(showCustomSorting = getCurrentFragment() is FavoritesFragment)
                     R.id.filter -> showFilterDialog()
@@ -726,6 +750,10 @@ class MainActivity : SimpleActivity() {
             icons.add(R.drawable.ic_person_rounded_scaled)
         }
 
+        if (showTabs and TAB_DIALPAD != 0) {
+            icons.add(R.drawable.ic_dialpad_vector)
+        }
+
         return icons
     }
 
@@ -743,6 +771,10 @@ class MainActivity : SimpleActivity() {
 
         if (showTabs and TAB_CONTACTS != 0) {
             icons.add(R.drawable.ic_person_rounded)
+        }
+
+        if (showTabs and TAB_DIALPAD != 0) {
+            icons.add(R.drawable.ic_dialpad_vector)
         }
 
         return icons
@@ -766,7 +798,28 @@ class MainActivity : SimpleActivity() {
                 getAllFragments().forEach {
                     it?.finishActMode()
                 }
+                
+                // Hide main menu when dialpad fragment is shown
+                val currentFragment = getCurrentFragment()
+                if (currentFragment is DialpadFragment) {
+                    // Close search if open
+                    if (binding.mainMenu.isSearchOpen) {
+                        binding.mainMenu.closeSearch()
+                    }
+                    if (isSearchOpen && mSearchMenuItem != null) {
+                        mSearchMenuItem!!.collapseActionView()
+                        isSearchOpen = false
+                    }
+                    binding.mainMenu.beGone()
+                } else {
+                    binding.mainMenu.beVisible()
+                }
+                
                 refreshMenuItems()
+                
+                // Refresh only the current fragment when switching tabs
+                refreshFragments()
+                
                 if (getCurrentFragment() == getRecentsFragment()) {
                     clearMissedCalls()
                 }
@@ -874,7 +927,8 @@ class MainActivity : SimpleActivity() {
         val stringId = when (position) {
             0 -> R.string.favorites_tab
             1 -> R.string.recents
-            else -> R.string.contacts_tab
+            2 -> R.string.contacts_tab
+            else -> R.string.dialpad
         }
 
         return resources.getString(stringId)
@@ -884,7 +938,8 @@ class MainActivity : SimpleActivity() {
         return when (position) {
             0 -> R.drawable.ic_star_vector
             1 -> R.drawable.ic_clock_filled_vector
-            else -> R.drawable.ic_person_rounded
+            2 -> R.drawable.ic_person_rounded
+            else -> R.drawable.ic_dialpad_vector
         }
     }
 
@@ -892,7 +947,8 @@ class MainActivity : SimpleActivity() {
         val drawableId = when (position) {
             0 -> R.drawable.ic_star_vector
             1 -> R.drawable.ic_clock_filled_vector
-            else -> R.drawable.ic_person_rounded
+            2 -> R.drawable.ic_person_rounded
+            else -> R.drawable.ic_dialpad_vector
         }
         return resources.getColoredDrawableWithColor(this@MainActivity, drawableId, getProperTextColor())!!
     }
@@ -901,7 +957,8 @@ class MainActivity : SimpleActivity() {
         val stringId = when (position) {
             0 -> R.string.favorites_tab
             1 -> R.string.call_history_tab
-            else -> R.string.contacts_tab
+            2 -> R.string.contacts_tab
+            else -> R.string.dialpad
         }
 
         return resources.getString(stringId)
@@ -918,6 +975,12 @@ class MainActivity : SimpleActivity() {
                 viewPager.currentItem = if (openLastTab) config.lastUsedViewPagerPage else getDefaultTab()
                 viewPager.onGlobalLayout {
                     refreshFragments()
+                    // Update menu visibility based on initial fragment
+                    if (getCurrentFragment() is DialpadFragment) {
+                        binding.mainMenu.beGone()
+                    } else {
+                        binding.mainMenu.beVisible()
+                    }
                 }
             } else {
                 refreshFragments()
@@ -932,6 +995,17 @@ class MainActivity : SimpleActivity() {
     }
 
     fun refreshFragments() {
+        // Only refresh the currently visible fragment instead of all fragments
+        when (getCurrentFragment()) {
+            is ContactsFragment -> getContactsFragment()?.refreshItems()
+            is FavoritesFragment -> getFavoritesFragment()?.refreshItems()
+            is RecentsFragment -> getRecentsFragment()?.refreshItems()
+            // DialpadFragment doesn't have refreshItems() method
+        }
+    }
+
+    fun refreshAllFragments() {
+        // Refresh all fragments - use this only when needed (e.g., after settings change)
         getContactsFragment()?.refreshItems()
         getFavoritesFragment()?.refreshItems()
         getRecentsFragment()?.refreshItems()
@@ -953,6 +1027,10 @@ class MainActivity : SimpleActivity() {
             fragments.add(getContactsFragment())
         }
 
+        if (showTabs and TAB_DIALPAD > 0) {
+            fragments.add(getDialpadFragment())
+        }
+
         return fragments
     }
 
@@ -964,13 +1042,26 @@ class MainActivity : SimpleActivity() {
 
     private fun getRecentsFragment(): RecentsFragment? = findViewById(R.id.recents_fragment)
 
+    private fun getDialpadFragment(): DialpadFragment? = findViewById(R.id.dialpad_fragment)
+
     private fun getDefaultTab(): Int {
         val showTabsMask = config.showTabs
         val mainTabsHolder = binding.mainTabsHolder
         return when (config.defaultTab) {
             TAB_LAST_USED -> if (config.lastUsedViewPagerPage < mainTabsHolder.tabCount) config.lastUsedViewPagerPage else 0
             TAB_FAVORITES -> 0
-            TAB_CALL_HISTORY -> if (showTabsMask and TAB_FAVORITES > 0) 1 else 0
+            TAB_CALL_HISTORY -> {
+                var index = 0
+                if (showTabsMask and TAB_FAVORITES > 0) index++
+                index
+            }
+            TAB_DIALPAD -> {
+                var index = 0
+                if (showTabsMask and TAB_FAVORITES > 0) index++
+                if (showTabsMask and TAB_CALL_HISTORY > 0) index++
+                if (showTabsMask and TAB_CONTACTS > 0) index++
+                index
+            }
             else -> {
                 if (showTabsMask and TAB_CONTACTS > 0) {
                     if (showTabsMask and TAB_FAVORITES > 0) {
