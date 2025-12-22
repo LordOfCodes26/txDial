@@ -42,24 +42,25 @@
 
                 <!-- Enable Recording -->
                 <TextView
-                    android:id="@+id/settings_general_label"
+                    android:id="@+id/settingsGeneralLabel"
                     style="@style/SettingsSectionLabelStyle"
                     android:text="@string/general"
-                    tools:textColor="@color/color_primary" />
+                    tools:textColor="@color/primary" />
 
                 <androidx.cardview.widget.CardView
-                    android:id="@+id/settings_recording_card"
+                    android:id="@+id/settingsRecordingGeneralHolder"
                     style="@style/SettingsSectionHolder"
                     app:cardCornerRadius="@dimen/activity_margin"
                     app:cardElevation="0dp">
 
                     <LinearLayout
+                        android:id="@+id/settingsRecordingGeneralWrapper"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
                         <RelativeLayout
-                            android:id="@+id/settings_recording_enabled_holder"
+                            android:id="@+id/settingsRecordingEnabledHolder"
                             style="@style/SettingsHolderStyle">
 
                             <com.goodwy.commons.views.MyLiquidSwitch
@@ -71,18 +72,18 @@
 
                         <!-- Auto-recording Rule -->
                         <RelativeLayout
-                            android:id="@+id/settings_recording_auto_rule_holder"
+                            android:id="@+id/settingsRecordingAutoRuleHolder"
                             style="@style/SettingsHolderStyle">
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_auto_rule_label"
+                                android:id="@+id/settingsRecordingAutoRuleLabel"
                                 style="@style/SettingsTextLabelStyle"
                                 android:layout_centerVertical="true"
                                 android:layout_marginEnd="68dp"
                                 android:text="@string/auto_recording_rule" />
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_auto_rule"
+                                android:id="@+id/settingsRecordingAutoRule"
                                 style="@style/SettingsTextValueStyle"
                                 android:layout_alignParentEnd="true"
                                 android:layout_centerVertical="true"
@@ -94,36 +95,37 @@
 
                 <!-- Format and Location -->
                 <TextView
-                    android:id="@+id/settings_format_location_label"
+                    android:id="@+id/settingsFormatLocationLabel"
                     style="@style/SettingsSectionLabelStyle"
                     android:text="@string/format_and_location"
-                    tools:textColor="@color/color_primary" />
+                    tools:textColor="@color/primary" />
 
                 <androidx.cardview.widget.CardView
-                    android:id="@+id/settings_format_location_card"
+                    android:id="@+id/settingsFormatLocationHolder"
                     style="@style/SettingsSectionHolder"
                     app:cardCornerRadius="@dimen/activity_margin"
                     app:cardElevation="0dp">
 
                     <LinearLayout
+                        android:id="@+id/settingsFormatLocationWrapper"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
                         <!-- Audio Format -->
                         <RelativeLayout
-                            android:id="@+id/settings_recording_format_holder"
+                            android:id="@+id/settingsRecordingFormatHolder"
                             style="@style/SettingsHolderStyle">
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_format_label"
+                                android:id="@+id/settingsRecordingFormatLabel"
                                 style="@style/SettingsTextLabelStyle"
                                 android:layout_centerVertical="true"
                                 android:layout_marginEnd="68dp"
                                 android:text="@string/recording_format" />
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_format"
+                                android:id="@+id/settingsRecordingFormat"
                                 style="@style/SettingsTextValueStyle"
                                 android:layout_alignParentEnd="true"
                                 android:layout_centerVertical="true"
@@ -133,18 +135,18 @@
 
                         <!-- Save Location -->
                         <RelativeLayout
-                            android:id="@+id/settings_recording_save_location_holder"
+                            android:id="@+id/settingsRecordingSaveLocationHolder"
                             style="@style/SettingsHolderStyle">
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_save_location_label"
+                                android:id="@+id/settingsRecordingSaveLocationLabel"
                                 style="@style/SettingsTextLabelStyle"
                                 android:layout_centerVertical="true"
                                 android:layout_marginEnd="68dp"
                                 android:text="@string/save_location" />
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_save_location"
+                                android:id="@+id/settingsRecordingSaveLocation"
                                 style="@style/SettingsTextValueStyle"
                                 android:layout_alignParentEnd="true"
                                 android:layout_centerVertical="true"
@@ -154,21 +156,21 @@
 
                         <!-- Custom Path (visible only if Custom location selected) -->
                         <RelativeLayout
-                            android:id="@+id/settings_recording_custom_path_holder"
+                            android:id="@+id/settingsRecordingCustomPathHolder"
                             style="@style/SettingsHolderStyle"
                             android:visibility="gone"
                             tools:visibility="visible">
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_custom_path_label"
+                                android:id="@+id/settingsRecordingCustomPathLabel"
                                 style="@style/SettingsTextLabelStyle"
                                 android:layout_centerVertical="true"
                                 android:text="@string/custom_path" />
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_custom_path"
+                                android:id="@+id/settingsRecordingCustomPath"
                                 style="@style/SettingsTextValueStyle"
-                                android:layout_below="@id/settings_recording_custom_path_label"
+                                android:layout_below="@id/settingsRecordingCustomPathLabel"
                                 android:layout_alignParentEnd="true"
                                 android:layout_marginTop="@dimen/tiny_margin"
                                 android:layout_marginEnd="@dimen/settings_margin"
@@ -179,19 +181,19 @@
 
                         <!-- Current Path (info only) -->
                         <LinearLayout
-                            android:id="@+id/settings_recording_current_path_holder"
+                            android:id="@+id/settingsRecordingCurrentPathHolder"
                             style="@style/SettingsHolderStyle"
                             android:clickable="false"
                             android:focusable="false"
                             android:orientation="vertical">
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_current_path_label"
+                                android:id="@+id/settingsRecordingCurrentPathLabel"
                                 style="@style/SettingsTextLabelStyle"
                                 android:text="@string/current_save_path" />
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_current_path"
+                                android:id="@+id/settingsRecordingCurrentPath"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="@dimen/tiny_margin"
@@ -204,35 +206,36 @@
 
                 <!-- File Naming -->
                 <TextView
-                    android:id="@+id/settings_file_naming_label"
+                    android:id="@+id/settingsFileNamingLabel"
                     style="@style/SettingsSectionLabelStyle"
                     android:text="@string/file_naming"
-                    tools:textColor="@color/color_primary" />
+                    tools:textColor="@color/primary" />
 
                 <androidx.cardview.widget.CardView
-                    android:id="@+id/settings_file_naming_card"
+                    android:id="@+id/settingsFileNamingHolder"
                     style="@style/SettingsSectionHolder"
                     app:cardCornerRadius="@dimen/activity_margin"
                     app:cardElevation="0dp">
 
                     <LinearLayout
+                        android:id="@+id/settingsFileNamingWrapper"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
                         <!-- File Name Template -->
                         <LinearLayout
-                            android:id="@+id/settings_recording_file_template_holder"
+                            android:id="@+id/settingsRecordingFileTemplateHolder"
                             style="@style/SettingsHolderStyle"
                             android:orientation="vertical">
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_file_template_label"
+                                android:id="@+id/settingsRecordingFileTemplateLabel"
                                 style="@style/SettingsTextLabelStyle"
                                 android:text="@string/file_name_template" />
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_file_template"
+                                android:id="@+id/settingsRecordingFileTemplate"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="@dimen/tiny_margin"
@@ -243,17 +246,17 @@
 
                         <!-- Preview -->
                         <LinearLayout
-                            android:id="@+id/settings_recording_preview_holder"
+                            android:id="@+id/settingsRecordingPreviewHolder"
                             style="@style/SettingsHolderStyle"
                             android:orientation="vertical">
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_preview_label"
+                                android:id="@+id/settingsRecordingPreviewLabel"
                                 style="@style/SettingsTextLabelStyle"
                                 android:text="@string/preview_example" />
 
                             <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_recording_preview"
+                                android:id="@+id/settingsRecordingPreview"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="@dimen/tiny_margin"
@@ -266,23 +269,23 @@
 
                 <!-- Actions -->
                 <TextView
-                    android:id="@+id/settings_actions_label"
+                    android:id="@+id/settingsActionsLabel"
                     style="@style/SettingsSectionLabelStyle"
                     android:text="@string/actions"
-                    tools:textColor="@color/color_primary" />
+                    tools:textColor="@color/primary" />
 
                 <androidx.cardview.widget.CardView
-                    android:id="@+id/settings_actions_card"
+                    android:id="@+id/settingsActionsHolder"
                     style="@style/SettingsSectionHolder"
                     app:cardCornerRadius="@dimen/activity_margin"
                     app:cardElevation="0dp">
 
                     <RelativeLayout
-                        android:id="@+id/settings_recording_open_folder_holder"
+                        android:id="@+id/settingsRecordingOpenFolderHolder"
                         style="@style/SettingsHolderStyle">
 
                         <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/settings_recording_open_folder_label"
+                            android:id="@+id/settingsRecordingOpenFolderLabel"
                             style="@style/SettingsTextLabelStyle"
                             android:layout_centerVertical="true"
                             android:text="@string/open_recordings_folder" />

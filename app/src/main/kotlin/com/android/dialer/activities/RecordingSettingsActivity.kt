@@ -24,6 +24,7 @@ import com.goodwy.commons.dialogs.ConfirmationDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
 import com.goodwy.commons.models.RadioItem
 import com.goodwy.commons.extensions.*
+import com.goodwy.commons.helpers.NavigationIcon
 import com.goodwy.commons.helpers.PERMISSION_WRITE_STORAGE
 import com.goodwy.commons.helpers.ensureBackgroundThread
 
@@ -49,7 +50,9 @@ class RecordingSettingsActivity : SimpleActivity() {
     
     override fun onResume() {
         super.onResume()
-        setupToolbar(binding.recordingSettingsToolbar)
+//        setupToolbar(binding.recordingSettingsToolbar)
+        setupTopAppBar(binding.recordingSettingsAppbar, NavigationIcon.Arrow)
+
         updateUI()
     }
     
