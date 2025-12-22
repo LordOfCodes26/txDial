@@ -434,6 +434,11 @@ class CallActivity : SimpleActivity() {
             true
         }
 
+        callToggleRecording.setOnClickListener {
+            toggleRecording()
+            maybePerformDialpadHapticFeedback(it)
+        }
+
         callDialpadHolder.setOnClickListener {
             toggleDialpadVisibility()
             maybePerformDialpadHapticFeedback(it)
@@ -1032,6 +1037,34 @@ class CallActivity : SimpleActivity() {
         }
     }
 
+    private fun toggleRecording() {
+        CallManager.toggleRecording(this)
+        // Update button state
+        updateRecordingButton()
+    }
+
+    private fun updateRecordingButton() {
+        binding.apply {
+            val isRecording = CallManager.isRecording
+            
+            val configBackgroundCallScreen = config.backgroundCallScreen
+            if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND ||
+                configBackgroundCallScreen == BLUR_AVATAR ||
+                configBackgroundCallScreen == AVATAR
+            ) {
+                val color = if (isRecording) Color.RED else Color.GRAY
+                callToggleRecording.background.applyColorFilter(color)
+                val colorIcon = if (isRecording) Color.WHITE else Color.WHITE
+                callToggleRecording.applyColorFilter(colorIcon)
+            }
+            callToggleRecording.background.alpha = if (isRecording) 255 else 60
+            callToggleRecording.contentDescription =
+                getString(if (isRecording) R.string.stop_recording else R.string.start_recording)
+            callToggleRecordingLabel.text =
+                getString(if (isRecording) R.string.recording_active else R.string.record)
+        }
+    }
+
     private fun toggleDialpadVisibility() {
         if (binding.dialpadWrapper.isVisible()) hideDialpad() else showDialpad()
     }
@@ -1458,6 +1491,7 @@ class CallActivity : SimpleActivity() {
         runOnUiThread {
             updateCallAudioState(CallManager.getCallAudioRoute(), changeProximitySensor)
             updateMicrophoneButton()
+            updateRecordingButton()
             updateRedialButtonVisibility()
         }
     }
@@ -1619,8 +1653,22 @@ class CallActivity : SimpleActivity() {
         callDurationHandler.removeCallbacks(updateCallDurationTask)
         callDurationHandler.post(updateCallDurationTask)
         updateRedialButtonVisibility()
+        updateRecordingButtonVisibility()
         maybePerformCallHapticFeedback(binding.callerNameLabel)
 //        if (config.flashForAlerts) MyCameraImpl.newInstance(this).toggleSOS()
+    }
+
+    private fun updateRecordingButtonVisibility() {
+        val shouldShow = config.callRecordingEnabled
+        binding.apply {
+            if (shouldShow) {
+                callToggleRecording.beVisible()
+                callToggleRecordingLabel.beVisible()
+            } else {
+                callToggleRecording.beGone()
+                callToggleRecordingLabel.beGone()
+            }
+        }
     }
 
     private fun showPhoneAccountPicker() {

@@ -304,6 +304,27 @@
                     </RelativeLayout>
 
                     <RelativeLayout
+                        android:id="@+id/settingsCallRecordingHolder"
+                        style="@style/SettingsHolderStyle">
+
+                        <com.goodwy.commons.views.MyTextView
+                            android:id="@+id/settingsCallRecordingLabel"
+                            style="@style/SettingsTextLabelStyle"
+                            android:layout_centerVertical="true"
+                            android:layout_alignParentStart="true"
+                            android:layout_toStartOf="@+id/settingsCallRecordingChevron"
+                            android:layout_marginEnd="12dp"
+                            android:text="@string/call_recording"/>
+
+                        <ImageView
+                            android:id="@+id/settingsCallRecordingChevron"
+                            style="@style/SettingsChevronStyle"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            android:contentDescription="@string/call_recording"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
                         android:id="@+id/settings_open_dialpad_at_launch_holder"
                         style="@style/SettingsHolderSwitchStyle">
 

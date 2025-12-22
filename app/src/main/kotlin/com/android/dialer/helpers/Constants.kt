@@ -72,6 +72,20 @@ const val AUTO_REDIAL_MAX_RETRIES = "auto_redial_max_retries"
 const val AUTO_REDIAL_DELAY_MS = "auto_redial_delay_ms"
 const val SHAKE_TO_ANSWER = "shake_to_answer"
 
+// Call Recording
+const val CALL_RECORDING_ENABLED = "call_recording_enabled"
+const val CALL_RECORDING_FORMAT = "call_recording_format"
+const val RECORDING_SAVE_LOCATION = "recording_save_location"
+const val RECORDING_CUSTOM_PATH = "recording_custom_path"
+const val RECORDING_FILE_NAME_TEMPLATE = "recording_file_name_template"
+const val CALL_RECORDING_AUTO_RULE = "call_recording_auto_rule"
+
+// Auto-recording rules
+const val RECORDING_RULE_NONE = 0
+const val RECORDING_RULE_ALL_CALLS = 1
+const val RECORDING_RULE_UNKNOWN_NUMBERS = 2
+const val RECORDING_RULE_KNOWN_CONTACTS = 3
+
 const val ALL_TABS_MASK = TAB_CONTACTS or TAB_FAVORITES or TAB_CALL_HISTORY or TAB_DIALPAD
 
 val tabsList = arrayListOf(TAB_FAVORITES, TAB_CALL_HISTORY, TAB_CONTACTS, TAB_DIALPAD)
@@ -81,6 +95,7 @@ const val ACCEPT_CALL = PATH + "accept_call"
 const val DECLINE_CALL = PATH + "decline_call"
 const val MICROPHONE_CALL = PATH + "microphone_call"
 const val SPEAKER_CALL = PATH + "speaker_call"
+const val RECORD_CALL = PATH + "record_call"
 const val MISSED_CALLS = PATH + "missed_call"
 const val MISSED_CALL_BACK = PATH + "missed_call_back"
 const val MISSED_CALL_MESSAGE = PATH + "missed_call_message"

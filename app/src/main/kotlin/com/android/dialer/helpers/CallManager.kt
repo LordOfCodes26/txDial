@@ -31,6 +31,10 @@ class CallManager {
         var isSpeakerOn: Boolean = false
         private var previousAudioRoute: Int = CallAudioState.ROUTE_WIRED_OR_EARPIECE
         
+        // Call Recording
+        var isRecording: Boolean = false
+            private set
+        
         // Redial and Auto Redial
         private var lastDialedNumber: String? = null
         private var lastDialedHandle: PhoneAccountHandle? = null
@@ -392,6 +396,16 @@ class CallManager {
         }
 
         fun getAutoRedialRetryCount(): Int = autoRedialRetryCount
+
+        // Call Recording
+        fun toggleRecording(context: Context) {
+            (inCallService as? com.android.dialer.services.CallService)?.toggleRecording()
+        }
+
+        fun updateRecordingState(recording: Boolean) {
+            isRecording = recording
+            updateState()
+        }
     }
 }
 

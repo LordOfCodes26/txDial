@@ -11,6 +11,7 @@ import com.android.dialer.helpers.CallManager
 import com.android.dialer.helpers.CallNotificationManager
 import com.android.dialer.helpers.DECLINE_CALL
 import com.android.dialer.helpers.MICROPHONE_CALL
+import com.android.dialer.helpers.RECORD_CALL
 import com.android.dialer.helpers.SPEAKER_CALL
 
 class CallActionReceiver : BroadcastReceiver() {
@@ -46,6 +47,11 @@ class CallActionReceiver : BroadcastReceiver() {
 //                CallNotificationManager(context).updateNotification()
 
                 CallManager.toggleSpeakerRoute()
+                CallNotificationManager(context).updateNotification()
+            }
+
+            RECORD_CALL -> {
+                CallManager.toggleRecording(context)
                 CallNotificationManager(context).updateNotification()
             }
         }

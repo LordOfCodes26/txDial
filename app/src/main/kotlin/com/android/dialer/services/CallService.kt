@@ -4,28 +4,44 @@ import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.DisconnectCause
 import android.telecom.InCallService
+import android.util.Log
 import com.goodwy.commons.extensions.baseConfig
 import com.goodwy.commons.extensions.canUseFullScreenIntent
 import com.goodwy.commons.extensions.hasPermission
 import com.goodwy.commons.helpers.PERMISSION_POST_NOTIFICATIONS
 import com.android.dialer.activities.CallActivity
 import com.android.dialer.extensions.config
+import com.android.dialer.extensions.getStateCompat
 import com.android.dialer.extensions.isOutgoing
 import com.android.dialer.extensions.keyguardManager
 import com.android.dialer.extensions.powerManager
 import com.android.dialer.helpers.*
 import com.android.dialer.models.Events
+import com.android.dialer.recording.CallRecorder
+import com.android.dialer.recording.RecordingNotificationManager
+import com.android.dialer.recording.AutoRecordingHelper
 import org.greenrobot.eventbus.EventBus
 
 class CallService : InCallService() {
     private val context = this
     private val callNotificationManager by lazy { CallNotificationManager(this) }
+    
+    // Call recording
+    private var callRecorder: CallRecorder? = null
+    private val recordingNotificationManager by lazy { RecordingNotificationManager(this) }
 
     private val callListener = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             super.onStateChanged(call, state)
+            
+            // Handle call recording based on state
+            handleRecordingState(call, state)
+            
             if (state == Call.STATE_DISCONNECTED || state == Call.STATE_DISCONNECTING) {
                 callNotificationManager.cancelNotification()
+                
+                // Stop recording when call ends
+                stopRecording()
                 
                 // Check if auto redial should be triggered
                 if (state == Call.STATE_DISCONNECTED && call.isOutgoing()) {
@@ -131,8 +147,124 @@ class CallService : InCallService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopRecording()
         callNotificationManager.cancelNotification()
         if (baseConfig.flashForAlerts) MyCameraImpl.newInstance(this).stopSOS()
+    }
+    
+    /**
+     * Handle call recording based on call state
+     */
+    private fun handleRecordingState(call: Call, state: Int) {
+        if (!config.callRecordingEnabled) return
+        
+        when (state) {
+            Call.STATE_ACTIVE -> {
+                // Check if this call should be recorded based on auto-recording rule
+                if (callRecorder == null) {
+                    if (AutoRecordingHelper.shouldRecordCall(this, call)) {
+                        startRecording(call)
+                    } else {
+                        Log.i("CallService", "Call does not match auto-recording rule, skipping")
+                    }
+                } else {
+                    // Resume if was paused
+                    callRecorder?.resumeRecording()
+                }
+            }
+            Call.STATE_HOLDING -> {
+                // Pause recording when call is on hold
+                callRecorder?.markOnHold()
+                callRecorder?.pauseRecording()
+            }
+            Call.STATE_DIALING, Call.STATE_RINGING -> {
+                // Don't record during dialing/ringing
+                // Recording will start when call becomes active
+            }
+            Call.STATE_DISCONNECTED, Call.STATE_DISCONNECTING -> {
+                // Stop recording when call ends
+                stopRecording()
+            }
+        }
+    }
+    
+    /**
+     * Start recording the call
+     */
+    private fun startRecording(call: Call) {
+        try {
+            if (callRecorder != null) {
+                Log.w("CallService", "Recorder already exists")
+                return
+            }
+            
+            // Create and start recorder
+            val format = when (config.callRecordingFormat) {
+                0 -> CallRecorder.OutputFormat.WAV
+                1 -> CallRecorder.OutputFormat.OGG_OPUS
+                2 -> CallRecorder.OutputFormat.M4A_AAC
+                3 -> CallRecorder.OutputFormat.FLAC
+                else -> CallRecorder.OutputFormat.WAV
+            }
+            
+            callRecorder = CallRecorder(
+                context = this,
+                call = call,
+                outputFormat = format,
+                notificationManager = recordingNotificationManager
+            )
+            
+            val success = callRecorder?.startRecording() ?: false
+            if (success) {
+                Log.i("CallService", "Call recording started")
+                CallManager.updateRecordingState(true)
+            } else {
+                Log.e("CallService", "Failed to start call recording")
+                callRecorder = null
+                CallManager.updateRecordingState(false)
+            }
+        } catch (e: Exception) {
+            Log.e("CallService", "Error starting recording", e)
+            callRecorder = null
+            CallManager.updateRecordingState(false)
+        }
+    }
+    
+    /**
+     * Stop recording the call
+     */
+    private fun stopRecording() {
+        callRecorder?.stopRecording()
+        callRecorder = null
+        CallManager.updateRecordingState(false)
+    }
+
+    /**
+     * Toggle recording (for manual control)
+     */
+    fun toggleRecording() {
+        val currentCall = CallManager.getPhoneState()
+        
+        if (callRecorder == null) {
+            // Start recording
+            when (currentCall) {
+                is SingleCall -> {
+                    if (currentCall.call.getStateCompat() == Call.STATE_ACTIVE) {
+                        startRecording(currentCall.call)
+                    }
+                }
+                is TwoCalls -> {
+                    // Record primary call if available
+                    currentCall.active.let { startRecording(it) }
+                }
+                else -> {
+                    Log.w("CallService", "Cannot start recording: no active call")
+                }
+            }
+        } else {
+            // Stop recording
+            stopRecording()
+        }
     }
 }
 

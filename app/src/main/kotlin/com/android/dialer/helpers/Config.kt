@@ -389,5 +389,31 @@ class Config(context: Context) : BaseConfig(context) {
     var shakeToAnswer: Boolean
         get() = prefs.getBoolean(SHAKE_TO_ANSWER, false)
         set(shakeToAnswer) = prefs.edit { putBoolean(SHAKE_TO_ANSWER, shakeToAnswer) }
+
+    // Call Recording
+    var callRecordingEnabled: Boolean
+        get() = prefs.getBoolean(CALL_RECORDING_ENABLED, false)
+        set(callRecordingEnabled) = prefs.edit { putBoolean(CALL_RECORDING_ENABLED, callRecordingEnabled) }
+
+    var callRecordingFormat: Int
+        get() = prefs.getInt(CALL_RECORDING_FORMAT, 0) // 0 = WAV (default)
+        set(callRecordingFormat) = prefs.edit { putInt(CALL_RECORDING_FORMAT, callRecordingFormat) }
+
+    var callRecordingAutoRule: Int
+        get() = prefs.getInt(CALL_RECORDING_AUTO_RULE, RECORDING_RULE_ALL_CALLS) // All calls by default
+        set(callRecordingAutoRule) = prefs.edit { putInt(CALL_RECORDING_AUTO_RULE, callRecordingAutoRule) }
+
+    var recordingSaveLocation: Int
+        get() = prefs.getInt(RECORDING_SAVE_LOCATION, 0) // 0 = App Files (default)
+        set(recordingSaveLocation) = prefs.edit { putInt(RECORDING_SAVE_LOCATION, recordingSaveLocation) }
+
+    var recordingCustomPath: String
+        get() = prefs.getString(RECORDING_CUSTOM_PATH, "") ?: ""
+        set(recordingCustomPath) = prefs.edit { putString(RECORDING_CUSTOM_PATH, recordingCustomPath) }
+
+    var recordingFileNameTemplate: String
+        get() = prefs.getString(RECORDING_FILE_NAME_TEMPLATE, "{timestamp}_{direction}_{phone_number}") 
+            ?: "{timestamp}_{direction}_{phone_number}"
+        set(recordingFileNameTemplate) = prefs.edit { putString(RECORDING_FILE_NAME_TEMPLATE, recordingFileNameTemplate) }
 }
 

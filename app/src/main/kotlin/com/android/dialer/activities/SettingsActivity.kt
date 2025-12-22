@@ -117,6 +117,7 @@ class SettingsActivity : SimpleActivity() {
         setupSimCardColorList()
 
         setupManageBlockedNumbers()
+        setupCallRecording()
         setupUseSpeechToText()
 //        setupChangeDateTimeFormat()
 //        setupFormatPhoneNumbers()
@@ -358,6 +359,14 @@ class SettingsActivity : SimpleActivity() {
 
         settingsManageBlockedNumbersHolder.setOnClickListener {
             Intent(this@SettingsActivity, ManageBlockedNumbersActivity::class.java).apply {
+                startActivity(this)
+            }
+        }
+    }
+
+    private fun setupCallRecording() = binding.apply {
+        settingsCallRecordingHolder.setOnClickListener {
+            Intent(this@SettingsActivity, RecordingSettingsActivity::class.java).apply {
                 startActivity(this)
             }
         }
