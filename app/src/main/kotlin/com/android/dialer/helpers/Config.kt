@@ -171,15 +171,15 @@ class Config(context: Context) : BaseConfig(context) {
         set(backgroundCallScreen) = prefs.edit { putInt(BACKGROUND_CALL_SCREEN, backgroundCallScreen) }
 
     var dialpadStyle: Int
-        get() = prefs.getInt(DIALPAD_STYLE, DIALPAD_ORIGINAL)
+        get() = prefs.getInt(DIALPAD_STYLE, DIALPAD_IOS)
         set(dialpadStyle) = prefs.edit { putInt(DIALPAD_STYLE, dialpadStyle) }
 
     var dialpadSize: Int
-        get() = prefs.getInt(DIALPAD_SIZE, 100)
+        get() = prefs.getInt(DIALPAD_SIZE, 85)
         set(dialpadSize) = prefs.edit { putInt(DIALPAD_SIZE, dialpadSize) }
 
     var dialpadBottomMargin: Int
-        get() = prefs.getInt(DIALPAD_BOTTOM_MARGIN, 0)
+        get() = prefs.getInt(DIALPAD_BOTTOM_MARGIN, 150)
         set(dialpadBottomMargin) = prefs.edit { putInt(DIALPAD_BOTTOM_MARGIN, dialpadBottomMargin) }
 
     var callButtonPrimarySize: Int

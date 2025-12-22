@@ -20,12 +20,14 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.MenuItemCompat
+import androidx.core.view.updateLayoutParams
 import androidx.viewpager.widget.ViewPager
 import com.behaviorule.arturdumchev.library.pixels
 import com.google.android.material.snackbar.Snackbar
@@ -313,9 +315,9 @@ class MainActivity : SimpleActivity() {
 
         // Hide main menu when dialpad fragment is shown
         if (getCurrentFragment() is DialpadFragment) {
-            binding.mainMenu.beGone()
+            setMainMenuHeight(0)
         } else {
-            binding.mainMenu.beVisible()
+            setMainMenuHeight(null)
         }
 
         checkShortcuts()
@@ -336,6 +338,24 @@ class MainActivity : SimpleActivity() {
             needRestart = false
         }
         storedBackgroundColor = getProperBackgroundColor()
+    }
+
+    private fun setMainMenuHeight(height: Int?) {
+        binding.mainMenu.apply {
+            if (height != null) {
+                // Set specific height (e.g., 0 to hide while keeping it in layout)
+                beVisible()
+                updateLayoutParams<ViewGroup.LayoutParams> {
+                    this.height = height
+                }
+            } else {
+                // Reset to wrap_content (default behavior)
+                updateLayoutParams<ViewGroup.LayoutParams> {
+                    this.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+                beVisible()
+            }
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -810,9 +830,9 @@ class MainActivity : SimpleActivity() {
                         mSearchMenuItem!!.collapseActionView()
                         isSearchOpen = false
                     }
-                    binding.mainMenu.beGone()
+                    setMainMenuHeight(0)
                 } else {
-                    binding.mainMenu.beVisible()
+                    setMainMenuHeight(null)
                 }
                 
                 refreshMenuItems()
@@ -977,9 +997,9 @@ class MainActivity : SimpleActivity() {
                     refreshFragments()
                     // Update menu visibility based on initial fragment
                     if (getCurrentFragment() is DialpadFragment) {
-                        binding.mainMenu.beGone()
+                        setMainMenuHeight(0)
                     } else {
-                        binding.mainMenu.beVisible()
+                        setMainMenuHeight(null)
                     }
                 }
             } else {

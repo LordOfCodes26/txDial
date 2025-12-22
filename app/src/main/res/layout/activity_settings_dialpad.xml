@@ -40,39 +40,33 @@
             android:orientation="vertical"
             android:layout_alignParentBottom="true">
 
-            <com.goodwy.commons.views.PurchaseThankYouItem
-                android:id="@+id/dialpadPurchaseThankYouHolder"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/medium_margin"/>
+<!--            <androidx.cardview.widget.CardView-->
+<!--                android:id="@+id/styleHolder"-->
+<!--                style="@style/SettingsSectionHolder"-->
+<!--                android:layout_marginTop="@dimen/activity_margin"-->
+<!--                app:cardCornerRadius="@dimen/activity_margin"-->
+<!--                app:cardElevation="0dp">-->
 
-            <androidx.cardview.widget.CardView
-                android:id="@+id/styleHolder"
-                style="@style/SettingsSectionHolder"
-                android:layout_marginTop="@dimen/activity_margin"
-                app:cardCornerRadius="@dimen/activity_margin"
-                app:cardElevation="0dp">
+<!--                <RelativeLayout-->
+<!--                    android:id="@+id/settings_dialpad_style_holder"-->
+<!--                    style="@style/SettingsHolderStyle">-->
 
-                <RelativeLayout
-                    android:id="@+id/settings_dialpad_style_holder"
-                    style="@style/SettingsHolderStyle">
+<!--                    <com.goodwy.commons.views.MyTextView-->
+<!--                        android:id="@+id/settings_dialpad_style_label"-->
+<!--                        style="@style/SettingsTextLabelStyle"-->
+<!--                        android:layout_centerVertical="true"-->
+<!--                        android:layout_marginEnd="68dp"-->
+<!--                        android:text="@string/theme" />-->
 
-                    <com.goodwy.commons.views.MyTextView
-                        android:id="@+id/settings_dialpad_style_label"
-                        style="@style/SettingsTextLabelStyle"
-                        android:layout_centerVertical="true"
-                        android:layout_marginEnd="68dp"
-                        android:text="@string/theme"/>
-
-                    <com.goodwy.commons.views.MyTextView
-                        android:id="@+id/settings_dialpad_style"
-                        style="@style/SettingsTextValueStyle"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:layout_marginEnd="@dimen/settings_margin"
-                        tools:text="@string/ios_g"/>
-                </RelativeLayout>
-            </androidx.cardview.widget.CardView>
+<!--                    <com.goodwy.commons.views.MyTextView-->
+<!--                        android:id="@+id/settings_dialpad_style"-->
+<!--                        style="@style/SettingsTextValueStyle"-->
+<!--                        android:layout_alignParentEnd="true"-->
+<!--                        android:layout_centerVertical="true"-->
+<!--                        android:layout_marginEnd="@dimen/settings_margin"-->
+<!--                        tools:text="@string/ios_g" />-->
+<!--                </RelativeLayout>-->
+<!--            </androidx.cardview.widget.CardView>-->
 
             <TextView
                 android:id="@+id/settingsGeneralLabel"
@@ -174,7 +168,7 @@
                         android:id="@+id/settingsShowVoicemailIconHolder"
                         style="@style/SettingsHolderSwitchStyle">
 
-                        <com.goodwy.commons.views.MyMaterialSwitch
+                        <com.goodwy.commons.views.MyLiquidSwitch
                             android:id="@+id/settingsShowVoicemailIcon"
                             style="@style/SettingsSwitchStyle"
                             android:text="@string/show_voicemail_icon"
@@ -185,7 +179,7 @@
                         android:id="@+id/settingsHideDialpadLettersHolder"
                         style="@style/SettingsHolderSwitchStyle">
 
-                        <com.goodwy.commons.views.MyMaterialSwitch
+                        <com.goodwy.commons.views.MyLiquidSwitch
                             android:id="@+id/settingsHideDialpadLetters"
                             style="@style/SettingsSwitchStyle"
                             android:text="@string/hide_dialpad_letters_g"
@@ -262,7 +256,7 @@
                         android:id="@+id/settingsClearDialpadHolder"
                         style="@style/SettingsHolderSwitchStyle">
 
-                        <com.goodwy.commons.views.MyMaterialSwitch
+                        <com.goodwy.commons.views.MyLiquidSwitch
                             android:id="@+id/settingsClearDialpad"
                             style="@style/SettingsSwitchStyle"
                             android:text="@string/clear_dialpad_when_start_call"
@@ -273,7 +267,7 @@
                         android:id="@+id/settings_dialpad_vibration_holder"
                         style="@style/SettingsHolderSwitchStyle">
 
-                        <com.goodwy.commons.views.MyMaterialSwitch
+                        <com.goodwy.commons.views.MyLiquidSwitch
                             android:id="@+id/settings_dialpad_vibration"
                             style="@style/SettingsSwitchStyle"
                             android:text="@string/dialpad_vibrations"
@@ -298,7 +292,7 @@
                             android:paddingStart="@dimen/smaller_margin"
                             android:paddingEnd="@dimen/smaller_margin">
 
-                            <com.goodwy.commons.views.MyMaterialSwitch
+                            <com.goodwy.commons.views.MyLiquidSwitch
                                 android:id="@+id/settingsDialpadBeeps"
                                 style="@style/SettingsSwitchStyle"
                                 android:text="@string/dialpad_beeps"
@@ -411,416 +405,416 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <TextView
-                android:id="@+id/settingsDialpadSizeLabel"
-                style="@style/SettingsSectionLabelStyle"
-                android:text="@string/dialpad"
-                tools:textColor="@color/primary"/>
+<!--            <TextView-->
+<!--                android:id="@+id/settingsDialpadSizeLabel"-->
+<!--                style="@style/SettingsSectionLabelStyle"-->
+<!--                android:text="@string/dialpad"-->
+<!--                tools:textColor="@color/primary"/>-->
 
-            <androidx.cardview.widget.CardView
-                android:id="@+id/dialpadSizeCardHolder"
-                style="@style/SettingsSectionHolder"
-                android:layout_marginBottom="@dimen/secondary_fab_bottom_margin"
-                app:cardCornerRadius="@dimen/activity_margin"
-                app:cardElevation="0dp">
+<!--            <androidx.cardview.widget.CardView-->
+<!--                android:id="@+id/dialpadSizeCardHolder"-->
+<!--                style="@style/SettingsSectionHolder"-->
+<!--                android:layout_marginBottom="@dimen/secondary_fab_bottom_margin"-->
+<!--                app:cardCornerRadius="@dimen/activity_margin"-->
+<!--                app:cardElevation="0dp">-->
 
-                <LinearLayout
-                    android:id="@+id/dialpadSizeWrapper"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingBottom="@dimen/medium_margin"
-                    android:orientation="vertical">
+<!--                <LinearLayout-->
+<!--                    android:id="@+id/dialpadSizeWrapper"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:paddingBottom="@dimen/medium_margin"-->
+<!--                    android:orientation="vertical">-->
 
-                    <RelativeLayout
-                        android:id="@+id/dialpadSizeHolder"
-                        style="@style/SettingsHolderStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/zero"
-                        android:paddingBottom="@dimen/zero">
+<!--                    <RelativeLayout-->
+<!--                        android:id="@+id/dialpadSizeHolder"-->
+<!--                        style="@style/SettingsHolderStyle"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:paddingTop="@dimen/zero"-->
+<!--                        android:paddingBottom="@dimen/zero">-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/dialpadSizeLabel"
-                            style="@style/SettingsTextLabelStyle"
-                            android:layout_alignTop="@+id/dialpadSizeButtons"
-                            android:layout_alignBottom="@+id/dialpadSizeButtons"
-                            android:layout_alignParentStart="true"
-                            android:layout_centerVertical="false"
-                            android:layout_toStartOf="@+id/dialpadSizeValue"
-                            android:layout_marginEnd="@dimen/normal_margin"
-                            android:layout_marginTop="-6dp"
-                            android:layout_marginBottom="-6dp"
-                            android:text="@string/size"
-                            android:maxLines="2"
-                            android:ellipsize="end"
-                            android:gravity="center_vertical"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/dialpadSizeLabel"-->
+<!--                            style="@style/SettingsTextLabelStyle"-->
+<!--                            android:layout_alignTop="@+id/dialpadSizeButtons"-->
+<!--                            android:layout_alignBottom="@+id/dialpadSizeButtons"-->
+<!--                            android:layout_alignParentStart="true"-->
+<!--                            android:layout_centerVertical="false"-->
+<!--                            android:layout_toStartOf="@+id/dialpadSizeValue"-->
+<!--                            android:layout_marginEnd="@dimen/normal_margin"-->
+<!--                            android:layout_marginTop="-6dp"-->
+<!--                            android:layout_marginBottom="-6dp"-->
+<!--                            android:text="@string/size"-->
+<!--                            android:maxLines="2"-->
+<!--                            android:ellipsize="end"-->
+<!--                            android:gravity="center_vertical"/>-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/dialpadSizeValue"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignTop="@+id/dialpadSizeButtons"
-                            android:layout_alignBottom="@+id/dialpadSizeButtons"
-                            android:layout_toStartOf="@+id/dialpadSizeButtons"
-                            android:layout_marginHorizontal="@dimen/small_margin"
-                            android:textSize="@dimen/bigger_text_size"
-                            android:alpha="0.6"
-                            android:paddingHorizontal="@dimen/medium_margin"
-                            android:gravity="center"
-                            android:background="@drawable/ripple_all_corners_8dp"
-                            tools:text="100%"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/dialpadSizeValue"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignTop="@+id/dialpadSizeButtons"-->
+<!--                            android:layout_alignBottom="@+id/dialpadSizeButtons"-->
+<!--                            android:layout_toStartOf="@+id/dialpadSizeButtons"-->
+<!--                            android:layout_marginHorizontal="@dimen/small_margin"-->
+<!--                            android:textSize="@dimen/bigger_text_size"-->
+<!--                            android:alpha="0.6"-->
+<!--                            android:paddingHorizontal="@dimen/medium_margin"-->
+<!--                            android:gravity="center"-->
+<!--                            android:background="@drawable/ripple_all_corners_8dp"-->
+<!--                            tools:text="100%"/>-->
 
-                        <LinearLayout
-                            android:id="@+id/dialpadSizeButtons"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignParentEnd="true"
-                            android:layout_marginEnd="@dimen/settings_margin"
-                            android:layout_marginTop="@dimen/normal_margin"
-                            android:layout_marginBottom="@dimen/medium_margin"
-                            android:background="@drawable/button_rounded_8dp"
-                            android:orientation="horizontal">
+<!--                        <LinearLayout-->
+<!--                            android:id="@+id/dialpadSizeButtons"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignParentEnd="true"-->
+<!--                            android:layout_marginEnd="@dimen/settings_margin"-->
+<!--                            android:layout_marginTop="@dimen/normal_margin"-->
+<!--                            android:layout_marginBottom="@dimen/medium_margin"-->
+<!--                            android:background="@drawable/button_rounded_8dp"-->
+<!--                            android:orientation="horizontal">-->
 
-                            <ImageView
-                                android:id="@+id/dialpadSizeMinus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/minus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_left_corners_8dp"
-                                app:srcCompat="@drawable/ic_minus_vector"/>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/dialpadSizeMinus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/minus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_left_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_minus_vector"/>-->
 
-                            <ImageView
-                                android:id="@+id/dialpadSizeDivider"
-                                android:layout_width="1px"
-                                android:layout_height="match_parent"
-                                android:alpha="0.4"
-                                android:layout_marginVertical="@dimen/smaller_margin"
-                                android:background="@color/white"
-                                android:contentDescription="@null" />
+<!--                            <ImageView-->
+<!--                                android:id="@+id/dialpadSizeDivider"-->
+<!--                                android:layout_width="1px"-->
+<!--                                android:layout_height="match_parent"-->
+<!--                                android:alpha="0.4"-->
+<!--                                android:layout_marginVertical="@dimen/smaller_margin"-->
+<!--                                android:background="@color/white"-->
+<!--                                android:contentDescription="@null" />-->
 
-                            <ImageView
-                                android:id="@+id/dialpadSizePlus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/plus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_right_corners_8dp"
-                                app:srcCompat="@drawable/ic_plus_vector"/>
-                        </LinearLayout>
-                    </RelativeLayout>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/dialpadSizePlus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/plus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_right_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_plus_vector"/>-->
+<!--                        </LinearLayout>-->
+<!--                    </RelativeLayout>-->
 
-                    <com.goodwy.commons.views.MySeekBar
-                        android:id="@+id/dialpadSize"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:max="150"
-                        android:layout_marginHorizontal="@dimen/normal_margin"
-                        android:paddingTop="@dimen/small_margin"
-                        android:paddingBottom="@dimen/smaller_margin"
-                        android:paddingStart="@dimen/ten_dpi"
-                        android:paddingEnd="@dimen/ten_dpi"
-                        android:progress="75"/>
+<!--                    <com.goodwy.commons.views.MySeekBar-->
+<!--                        android:id="@+id/dialpadSize"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:clickable="true"-->
+<!--                        android:focusable="true"-->
+<!--                        android:max="150"-->
+<!--                        android:layout_marginHorizontal="@dimen/normal_margin"-->
+<!--                        android:paddingTop="@dimen/small_margin"-->
+<!--                        android:paddingBottom="@dimen/smaller_margin"-->
+<!--                        android:paddingStart="@dimen/ten_dpi"-->
+<!--                        android:paddingEnd="@dimen/ten_dpi"-->
+<!--                        android:progress="75"/>-->
 
-                    <RelativeLayout
-                        android:id="@+id/buttonSizeHolder"
-                        style="@style/SettingsHolderStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/zero"
-                        android:paddingBottom="@dimen/zero">
+<!--                    <RelativeLayout-->
+<!--                        android:id="@+id/buttonSizeHolder"-->
+<!--                        style="@style/SettingsHolderStyle"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:paddingTop="@dimen/zero"-->
+<!--                        android:paddingBottom="@dimen/zero">-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/buttonSizeLabel"
-                            style="@style/SettingsTextLabelStyle"
-                            android:layout_alignTop="@+id/buttonSizeButtons"
-                            android:layout_alignBottom="@+id/buttonSizeButtons"
-                            android:layout_alignParentStart="true"
-                            android:layout_centerVertical="false"
-                            android:layout_toStartOf="@+id/buttonSizeValue"
-                            android:layout_marginEnd="@dimen/normal_margin"
-                            android:layout_marginTop="-6dp"
-                            android:layout_marginBottom="-6dp"
-                            android:text="@string/button_primary"
-                            android:maxLines="2"
-                            android:ellipsize="end"
-                            android:gravity="center_vertical"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/buttonSizeLabel"-->
+<!--                            style="@style/SettingsTextLabelStyle"-->
+<!--                            android:layout_alignTop="@+id/buttonSizeButtons"-->
+<!--                            android:layout_alignBottom="@+id/buttonSizeButtons"-->
+<!--                            android:layout_alignParentStart="true"-->
+<!--                            android:layout_centerVertical="false"-->
+<!--                            android:layout_toStartOf="@+id/buttonSizeValue"-->
+<!--                            android:layout_marginEnd="@dimen/normal_margin"-->
+<!--                            android:layout_marginTop="-6dp"-->
+<!--                            android:layout_marginBottom="-6dp"-->
+<!--                            android:text="@string/button_primary"-->
+<!--                            android:maxLines="2"-->
+<!--                            android:ellipsize="end"-->
+<!--                            android:gravity="center_vertical"/>-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/buttonSizeValue"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignTop="@+id/buttonSizeButtons"
-                            android:layout_alignBottom="@+id/buttonSizeButtons"
-                            android:layout_toStartOf="@+id/buttonSizeButtons"
-                            android:layout_marginHorizontal="@dimen/small_margin"
-                            android:textSize="@dimen/bigger_text_size"
-                            android:alpha="0.6"
-                            android:paddingHorizontal="@dimen/medium_margin"
-                            android:gravity="center"
-                            android:background="@drawable/ripple_all_corners_8dp"
-                            tools:text="100%"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/buttonSizeValue"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignTop="@+id/buttonSizeButtons"-->
+<!--                            android:layout_alignBottom="@+id/buttonSizeButtons"-->
+<!--                            android:layout_toStartOf="@+id/buttonSizeButtons"-->
+<!--                            android:layout_marginHorizontal="@dimen/small_margin"-->
+<!--                            android:textSize="@dimen/bigger_text_size"-->
+<!--                            android:alpha="0.6"-->
+<!--                            android:paddingHorizontal="@dimen/medium_margin"-->
+<!--                            android:gravity="center"-->
+<!--                            android:background="@drawable/ripple_all_corners_8dp"-->
+<!--                            tools:text="100%"/>-->
 
-                        <LinearLayout
-                            android:id="@+id/buttonSizeButtons"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignParentEnd="true"
-                            android:layout_marginEnd="@dimen/settings_margin"
-                            android:layout_marginTop="@dimen/normal_margin"
-                            android:layout_marginBottom="@dimen/medium_margin"
-                            android:background="@drawable/button_rounded_8dp"
-                            android:orientation="horizontal">
+<!--                        <LinearLayout-->
+<!--                            android:id="@+id/buttonSizeButtons"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignParentEnd="true"-->
+<!--                            android:layout_marginEnd="@dimen/settings_margin"-->
+<!--                            android:layout_marginTop="@dimen/normal_margin"-->
+<!--                            android:layout_marginBottom="@dimen/medium_margin"-->
+<!--                            android:background="@drawable/button_rounded_8dp"-->
+<!--                            android:orientation="horizontal">-->
 
-                            <ImageView
-                                android:id="@+id/buttonSizeMinus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/minus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_left_corners_8dp"
-                                app:srcCompat="@drawable/ic_minus_vector"/>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/buttonSizeMinus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/minus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_left_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_minus_vector"/>-->
 
-                            <ImageView
-                                android:id="@+id/buttonSizeDivider"
-                                android:layout_width="1px"
-                                android:layout_height="match_parent"
-                                android:alpha="0.4"
-                                android:layout_marginVertical="@dimen/smaller_margin"
-                                android:background="@color/white"
-                                android:contentDescription="@null" />
+<!--                            <ImageView-->
+<!--                                android:id="@+id/buttonSizeDivider"-->
+<!--                                android:layout_width="1px"-->
+<!--                                android:layout_height="match_parent"-->
+<!--                                android:alpha="0.4"-->
+<!--                                android:layout_marginVertical="@dimen/smaller_margin"-->
+<!--                                android:background="@color/white"-->
+<!--                                android:contentDescription="@null" />-->
 
-                            <ImageView
-                                android:id="@+id/buttonSizePlus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/plus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_right_corners_8dp"
-                                app:srcCompat="@drawable/ic_plus_vector"/>
-                        </LinearLayout>
-                    </RelativeLayout>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/buttonSizePlus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/plus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_right_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_plus_vector"/>-->
+<!--                        </LinearLayout>-->
+<!--                    </RelativeLayout>-->
 
-                    <com.goodwy.commons.views.MySeekBar
-                        android:id="@+id/buttonSize"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:max="150"
-                        android:layout_marginHorizontal="@dimen/normal_margin"
-                        android:paddingTop="@dimen/small_margin"
-                        android:paddingBottom="@dimen/smaller_margin"
-                        android:paddingStart="@dimen/ten_dpi"
-                        android:paddingEnd="@dimen/ten_dpi"
-                        android:progress="100"/>
+<!--                    <com.goodwy.commons.views.MySeekBar-->
+<!--                        android:id="@+id/buttonSize"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:clickable="true"-->
+<!--                        android:focusable="true"-->
+<!--                        android:max="150"-->
+<!--                        android:layout_marginHorizontal="@dimen/normal_margin"-->
+<!--                        android:paddingTop="@dimen/small_margin"-->
+<!--                        android:paddingBottom="@dimen/smaller_margin"-->
+<!--                        android:paddingStart="@dimen/ten_dpi"-->
+<!--                        android:paddingEnd="@dimen/ten_dpi"-->
+<!--                        android:progress="100"/>-->
 
-                    <RelativeLayout
-                        android:id="@+id/buttonSecondSizeHolder"
-                        style="@style/SettingsHolderStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/zero"
-                        android:paddingBottom="@dimen/zero">
+<!--                    <RelativeLayout-->
+<!--                        android:id="@+id/buttonSecondSizeHolder"-->
+<!--                        style="@style/SettingsHolderStyle"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:paddingTop="@dimen/zero"-->
+<!--                        android:paddingBottom="@dimen/zero">-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/buttonSecondSizeLabel"
-                            style="@style/SettingsTextLabelStyle"
-                            android:layout_alignTop="@+id/buttonSecondSizeButtons"
-                            android:layout_alignBottom="@+id/buttonSecondSizeButtons"
-                            android:layout_alignParentStart="true"
-                            android:layout_centerVertical="false"
-                            android:layout_toStartOf="@+id/buttonSecondSizeValue"
-                            android:layout_marginEnd="@dimen/normal_margin"
-                            android:layout_marginTop="-6dp"
-                            android:layout_marginBottom="-6dp"
-                            android:text="@string/button_secondary"
-                            android:maxLines="2"
-                            android:ellipsize="end"
-                            android:gravity="center_vertical"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/buttonSecondSizeLabel"-->
+<!--                            style="@style/SettingsTextLabelStyle"-->
+<!--                            android:layout_alignTop="@+id/buttonSecondSizeButtons"-->
+<!--                            android:layout_alignBottom="@+id/buttonSecondSizeButtons"-->
+<!--                            android:layout_alignParentStart="true"-->
+<!--                            android:layout_centerVertical="false"-->
+<!--                            android:layout_toStartOf="@+id/buttonSecondSizeValue"-->
+<!--                            android:layout_marginEnd="@dimen/normal_margin"-->
+<!--                            android:layout_marginTop="-6dp"-->
+<!--                            android:layout_marginBottom="-6dp"-->
+<!--                            android:text="@string/button_secondary"-->
+<!--                            android:maxLines="2"-->
+<!--                            android:ellipsize="end"-->
+<!--                            android:gravity="center_vertical"/>-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/buttonSecondSizeValue"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignTop="@+id/buttonSecondSizeButtons"
-                            android:layout_alignBottom="@+id/buttonSecondSizeButtons"
-                            android:layout_toStartOf="@+id/buttonSecondSizeButtons"
-                            android:layout_marginHorizontal="@dimen/small_margin"
-                            android:textSize="@dimen/bigger_text_size"
-                            android:alpha="0.6"
-                            android:paddingHorizontal="@dimen/medium_margin"
-                            android:gravity="center"
-                            android:background="@drawable/ripple_all_corners_8dp"
-                            tools:text="100%"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/buttonSecondSizeValue"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignTop="@+id/buttonSecondSizeButtons"-->
+<!--                            android:layout_alignBottom="@+id/buttonSecondSizeButtons"-->
+<!--                            android:layout_toStartOf="@+id/buttonSecondSizeButtons"-->
+<!--                            android:layout_marginHorizontal="@dimen/small_margin"-->
+<!--                            android:textSize="@dimen/bigger_text_size"-->
+<!--                            android:alpha="0.6"-->
+<!--                            android:paddingHorizontal="@dimen/medium_margin"-->
+<!--                            android:gravity="center"-->
+<!--                            android:background="@drawable/ripple_all_corners_8dp"-->
+<!--                            tools:text="100%"/>-->
 
-                        <LinearLayout
-                            android:id="@+id/buttonSecondSizeButtons"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignParentEnd="true"
-                            android:layout_marginEnd="@dimen/settings_margin"
-                            android:layout_marginTop="@dimen/normal_margin"
-                            android:layout_marginBottom="@dimen/medium_margin"
-                            android:background="@drawable/button_rounded_8dp"
-                            android:orientation="horizontal">
+<!--                        <LinearLayout-->
+<!--                            android:id="@+id/buttonSecondSizeButtons"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignParentEnd="true"-->
+<!--                            android:layout_marginEnd="@dimen/settings_margin"-->
+<!--                            android:layout_marginTop="@dimen/normal_margin"-->
+<!--                            android:layout_marginBottom="@dimen/medium_margin"-->
+<!--                            android:background="@drawable/button_rounded_8dp"-->
+<!--                            android:orientation="horizontal">-->
 
-                            <ImageView
-                                android:id="@+id/buttonSecondSizeMinus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/minus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_left_corners_8dp"
-                                app:srcCompat="@drawable/ic_minus_vector"/>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/buttonSecondSizeMinus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/minus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_left_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_minus_vector"/>-->
 
-                            <ImageView
-                                android:id="@+id/buttonSecondSizeDivider"
-                                android:layout_width="1px"
-                                android:layout_height="match_parent"
-                                android:alpha="0.4"
-                                android:layout_marginVertical="@dimen/smaller_margin"
-                                android:background="@color/white"
-                                android:contentDescription="@null" />
+<!--                            <ImageView-->
+<!--                                android:id="@+id/buttonSecondSizeDivider"-->
+<!--                                android:layout_width="1px"-->
+<!--                                android:layout_height="match_parent"-->
+<!--                                android:alpha="0.4"-->
+<!--                                android:layout_marginVertical="@dimen/smaller_margin"-->
+<!--                                android:background="@color/white"-->
+<!--                                android:contentDescription="@null" />-->
 
-                            <ImageView
-                                android:id="@+id/buttonSecondSizePlus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/plus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_right_corners_8dp"
-                                app:srcCompat="@drawable/ic_plus_vector"/>
-                        </LinearLayout>
-                    </RelativeLayout>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/buttonSecondSizePlus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/plus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_right_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_plus_vector"/>-->
+<!--                        </LinearLayout>-->
+<!--                    </RelativeLayout>-->
 
-                    <com.goodwy.commons.views.MySeekBar
-                        android:id="@+id/buttonSecondSize"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:max="150"
-                        android:layout_marginHorizontal="@dimen/normal_margin"
-                        android:paddingTop="@dimen/small_margin"
-                        android:paddingBottom="@dimen/smaller_margin"
-                        android:paddingStart="@dimen/ten_dpi"
-                        android:paddingEnd="@dimen/ten_dpi"
-                        android:progress="75"/>
+<!--                    <com.goodwy.commons.views.MySeekBar-->
+<!--                        android:id="@+id/buttonSecondSize"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:clickable="true"-->
+<!--                        android:focusable="true"-->
+<!--                        android:max="150"-->
+<!--                        android:layout_marginHorizontal="@dimen/normal_margin"-->
+<!--                        android:paddingTop="@dimen/small_margin"-->
+<!--                        android:paddingBottom="@dimen/smaller_margin"-->
+<!--                        android:paddingStart="@dimen/ten_dpi"-->
+<!--                        android:paddingEnd="@dimen/ten_dpi"-->
+<!--                        android:progress="75"/>-->
 
-                    <RelativeLayout
-                        android:id="@+id/dialpadBottomMarginHolder"
-                        style="@style/SettingsHolderStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/zero"
-                        android:paddingBottom="@dimen/zero">
+<!--                    <RelativeLayout-->
+<!--                        android:id="@+id/dialpadBottomMarginHolder"-->
+<!--                        style="@style/SettingsHolderStyle"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:paddingTop="@dimen/zero"-->
+<!--                        android:paddingBottom="@dimen/zero">-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/dialpadBottomMarginLabel"
-                            style="@style/SettingsTextLabelStyle"
-                            android:layout_alignTop="@+id/dialpadBottomMarginButtons"
-                            android:layout_alignBottom="@+id/dialpadBottomMarginButtons"
-                            android:layout_alignParentStart="true"
-                            android:layout_centerVertical="false"
-                            android:layout_toStartOf="@+id/dialpadBottomMarginValue"
-                            android:layout_marginEnd="@dimen/normal_margin"
-                            android:layout_marginTop="-6dp"
-                            android:layout_marginBottom="-6dp"
-                            android:text="@string/bottom_indent"
-                            android:maxLines="2"
-                            android:ellipsize="end"
-                            android:gravity="center_vertical"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/dialpadBottomMarginLabel"-->
+<!--                            style="@style/SettingsTextLabelStyle"-->
+<!--                            android:layout_alignTop="@+id/dialpadBottomMarginButtons"-->
+<!--                            android:layout_alignBottom="@+id/dialpadBottomMarginButtons"-->
+<!--                            android:layout_alignParentStart="true"-->
+<!--                            android:layout_centerVertical="false"-->
+<!--                            android:layout_toStartOf="@+id/dialpadBottomMarginValue"-->
+<!--                            android:layout_marginEnd="@dimen/normal_margin"-->
+<!--                            android:layout_marginTop="-6dp"-->
+<!--                            android:layout_marginBottom="-6dp"-->
+<!--                            android:text="@string/bottom_indent"-->
+<!--                            android:maxLines="2"-->
+<!--                            android:ellipsize="end"-->
+<!--                            android:gravity="center_vertical"/>-->
 
-                        <com.goodwy.commons.views.MyTextView
-                            android:id="@+id/dialpadBottomMarginValue"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignTop="@+id/dialpadBottomMarginButtons"
-                            android:layout_alignBottom="@+id/dialpadBottomMarginButtons"
-                            android:layout_toStartOf="@+id/dialpadBottomMarginButtons"
-                            android:layout_marginHorizontal="@dimen/small_margin"
-                            android:textSize="@dimen/bigger_text_size"
-                            android:alpha="0.6"
-                            android:paddingHorizontal="@dimen/medium_margin"
-                            android:gravity="center"
-                            android:background="@drawable/ripple_all_corners_8dp"
-                            tools:text="100%"/>
+<!--                        <com.goodwy.commons.views.MyTextView-->
+<!--                            android:id="@+id/dialpadBottomMarginValue"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignTop="@+id/dialpadBottomMarginButtons"-->
+<!--                            android:layout_alignBottom="@+id/dialpadBottomMarginButtons"-->
+<!--                            android:layout_toStartOf="@+id/dialpadBottomMarginButtons"-->
+<!--                            android:layout_marginHorizontal="@dimen/small_margin"-->
+<!--                            android:textSize="@dimen/bigger_text_size"-->
+<!--                            android:alpha="0.6"-->
+<!--                            android:paddingHorizontal="@dimen/medium_margin"-->
+<!--                            android:gravity="center"-->
+<!--                            android:background="@drawable/ripple_all_corners_8dp"-->
+<!--                            tools:text="100%"/>-->
 
-                        <LinearLayout
-                            android:id="@+id/dialpadBottomMarginButtons"
-                            android:layout_width="wrap_content"
-                            android:layout_height="32dp"
-                            android:layout_alignParentEnd="true"
-                            android:layout_marginEnd="@dimen/settings_margin"
-                            android:layout_marginTop="@dimen/normal_margin"
-                            android:layout_marginBottom="@dimen/medium_margin"
-                            android:background="@drawable/button_rounded_8dp"
-                            android:orientation="horizontal">
+<!--                        <LinearLayout-->
+<!--                            android:id="@+id/dialpadBottomMarginButtons"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="32dp"-->
+<!--                            android:layout_alignParentEnd="true"-->
+<!--                            android:layout_marginEnd="@dimen/settings_margin"-->
+<!--                            android:layout_marginTop="@dimen/normal_margin"-->
+<!--                            android:layout_marginBottom="@dimen/medium_margin"-->
+<!--                            android:background="@drawable/button_rounded_8dp"-->
+<!--                            android:orientation="horizontal">-->
 
-                            <ImageView
-                                android:id="@+id/dialpadBottomMarginMinus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/minus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_left_corners_8dp"
-                                app:srcCompat="@drawable/ic_minus_vector"/>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/dialpadBottomMarginMinus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/minus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_left_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_minus_vector"/>-->
 
-                            <ImageView
-                                android:id="@+id/dialpadBottomMarginDivider"
-                                android:layout_width="1px"
-                                android:layout_height="match_parent"
-                                android:alpha="0.4"
-                                android:layout_marginVertical="@dimen/smaller_margin"
-                                android:background="@color/white"
-                                android:contentDescription="@null" />
+<!--                            <ImageView-->
+<!--                                android:id="@+id/dialpadBottomMarginDivider"-->
+<!--                                android:layout_width="1px"-->
+<!--                                android:layout_height="match_parent"-->
+<!--                                android:alpha="0.4"-->
+<!--                                android:layout_marginVertical="@dimen/smaller_margin"-->
+<!--                                android:background="@color/white"-->
+<!--                                android:contentDescription="@null" />-->
 
-                            <ImageView
-                                android:id="@+id/dialpadBottomMarginPlus"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:alpha="0.9"
-                                android:contentDescription="@string/plus"
-                                android:paddingVertical="@dimen/medium_margin"
-                                android:paddingHorizontal="@dimen/ten_dpi"
-                                android:background="@drawable/ripple_right_corners_8dp"
-                                app:srcCompat="@drawable/ic_plus_vector"/>
-                        </LinearLayout>
-                    </RelativeLayout>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/dialpadBottomMarginPlus"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:alpha="0.9"-->
+<!--                                android:contentDescription="@string/plus"-->
+<!--                                android:paddingVertical="@dimen/medium_margin"-->
+<!--                                android:paddingHorizontal="@dimen/ten_dpi"-->
+<!--                                android:background="@drawable/ripple_right_corners_8dp"-->
+<!--                                app:srcCompat="@drawable/ic_plus_vector"/>-->
+<!--                        </LinearLayout>-->
+<!--                    </RelativeLayout>-->
 
-                    <com.goodwy.commons.views.MySeekBar
-                        android:id="@+id/dialpadBottomMarginPref"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:max="200"
-                        android:layout_marginHorizontal="@dimen/normal_margin"
-                        android:layout_marginBottom="@dimen/small_margin"
-                        android:paddingTop="@dimen/small_margin"
-                        android:paddingBottom="@dimen/smaller_margin"
-                        android:paddingStart="@dimen/ten_dpi"
-                        android:paddingEnd="@dimen/ten_dpi"
-                        android:progress="75"/>
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+<!--                    <com.goodwy.commons.views.MySeekBar-->
+<!--                        android:id="@+id/dialpadBottomMarginPref"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:clickable="true"-->
+<!--                        android:focusable="true"-->
+<!--                        android:max="200"-->
+<!--                        android:layout_marginHorizontal="@dimen/normal_margin"-->
+<!--                        android:layout_marginBottom="@dimen/small_margin"-->
+<!--                        android:paddingTop="@dimen/small_margin"-->
+<!--                        android:paddingBottom="@dimen/smaller_margin"-->
+<!--                        android:paddingStart="@dimen/ten_dpi"-->
+<!--                        android:paddingEnd="@dimen/ten_dpi"-->
+<!--                        android:progress="75"/>-->
+<!--                </LinearLayout>-->
+<!--            </androidx.cardview.widget.CardView>-->
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

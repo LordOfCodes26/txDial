@@ -138,12 +138,12 @@
                 android:id="@+id/dialpad_divider"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                app:layout_constraintBottom_toTopOf="@+id/dialpad_grid_include" />
+                app:layout_constraintBottom_toTopOf="@+id/dialpadClearWrapper" />
 
             <ImageView
                 android:id="@+id/dialpad_round_wrapper_up"
-                android:layout_width="@dimen/dialpad_phone_button_size"
-                android:layout_height="@dimen/dialpad_phone_button_size"
+                android:layout_width="@dimen/call_button_size"
+                android:layout_height="@dimen/call_button_size"
                 android:layout_marginBottom="@dimen/about_margin"
                 android:background="@drawable/circle_background_accent"
                 android:contentDescription="@string/show_dialpad"
@@ -166,7 +166,7 @@
                 app:layout_constraintStart_toStartOf="parent" />
 
             <include
-                android:id="@+id/dialpad_grid_include"
+                android:id="@+id/dialpadClearWrapper"
                 layout="@layout/dialpad_grid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
