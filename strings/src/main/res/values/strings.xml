@@ -153,6 +153,11 @@
     <string name="contact_photo">Contact photo</string>
     <string name="blurry_contact_photo">Blurry contact photo</string>
     <string name="blurry_wallpaper">Blurry wallpaper</string>
+    <string name="custom_image">Custom image</string>
+    <string name="custom_video">Custom video</string>
+    <string name="call_background_updated">Call background updated</string>
+    <string name="custom_background_alpha_label">Opacity: %1$d</string>
+    <string name="custom_background_blur_label">Blur radius: %1$d</string>
     <string name="text_cursor_color">Text cursor color</string>
     <string name="top_app_bar_colored">Colored top app bar</string>
     <string name="top_app_bar_color_icon">Colored icons of the app top bar</string>

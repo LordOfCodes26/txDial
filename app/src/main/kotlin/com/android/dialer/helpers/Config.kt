@@ -170,6 +170,22 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getInt(BACKGROUND_CALL_SCREEN, BLUR_AVATAR)
         set(backgroundCallScreen) = prefs.edit { putInt(BACKGROUND_CALL_SCREEN, backgroundCallScreen) }
 
+    var backgroundCallCustomImage: String
+        get() = prefs.getString(BACKGROUND_CALL_CUSTOM_IMAGE, "") ?: ""
+        set(backgroundCallCustomImage) = prefs.edit { putString(BACKGROUND_CALL_CUSTOM_IMAGE, backgroundCallCustomImage) }
+
+    var backgroundCallCustomAlpha: Int
+        get() = prefs.getInt(BACKGROUND_CALL_CUSTOM_ALPHA, 80)
+        set(backgroundCallCustomAlpha) = prefs.edit { putInt(BACKGROUND_CALL_CUSTOM_ALPHA, backgroundCallCustomAlpha) }
+
+    var backgroundCallCustomBlurRadius: Float
+        get() = prefs.getFloat(BACKGROUND_CALL_CUSTOM_BLUR_RADIUS, 20f)
+        set(backgroundCallCustomBlurRadius) = prefs.edit { putFloat(BACKGROUND_CALL_CUSTOM_BLUR_RADIUS, backgroundCallCustomBlurRadius) }
+
+    var backgroundCallCustomVideo: String
+        get() = prefs.getString(BACKGROUND_CALL_CUSTOM_VIDEO, "") ?: ""
+        set(backgroundCallCustomVideo) = prefs.edit { putString(BACKGROUND_CALL_CUSTOM_VIDEO, backgroundCallCustomVideo) }
+
     var dialpadStyle: Int
         get() = prefs.getInt(DIALPAD_STYLE, DIALPAD_IOS)
         set(dialpadStyle) = prefs.edit { putInt(DIALPAD_STYLE, dialpadStyle) }

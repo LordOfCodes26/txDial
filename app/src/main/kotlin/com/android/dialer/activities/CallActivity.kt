@@ -56,6 +56,10 @@ import com.android.dialer.helpers.CallManager.Companion.isSpeakerOn
 
 class CallActivity : SimpleActivity() {
     companion object {
+        private const val CUSTOM_BACKGROUND_ALPHA_DEFAULT = 80  // 0-255, lower = more transparent
+        private const val CUSTOM_BACKGROUND_BLUR_SCALE = 0.3f
+        private const val CUSTOM_BACKGROUND_BLUR_RADIUS_DEFAULT = 20f
+
         fun getStartIntent(context: Context, needSelectSIM: Boolean = false): Intent {
             val openAppIntent = Intent(context, CallActivity::class.java)
             openAppIntent.putExtra(NEED_SELECT_SIM, needSelectSIM)
@@ -81,6 +85,7 @@ class CallActivity : SimpleActivity() {
     private var dialpadHeight = 0f
     private var needSelectSIM = false //true - if the call is called from a third-party application not via ACTION_CALL, for example, this is how MIUI applications do it.
     private var audioRoutePopupMenu: PopupMenu? = null
+    private var videoBackgroundView: android.widget.VideoView? = null
     
     // Shake to answer
     private var sensorManager: SensorManager? = null
@@ -119,34 +124,32 @@ class CallActivity : SimpleActivity() {
         CallManager.addListener(callCallback)
         updateTextColors(binding.callHolder)
 
-        if (config.backgroundCallScreen == TRANSPARENT_BACKGROUND) checkPermission()
-
         val configBackgroundCallScreen = config.backgroundCallScreen
         if (configBackgroundCallScreen != THEME_BACKGROUND ) {
             window.setSystemBarsAppearance(Color.BLACK)
 
             if (configBackgroundCallScreen == BLACK_BACKGROUND) {
                 binding.callHolder.setBackgroundColor(Color.BLACK)
+            } else if (configBackgroundCallScreen == CUSTOM_BACKGROUND) {
+                applyCustomBackground()
+            } else if (configBackgroundCallScreen == VIDEO_BACKGROUND) {
+                applyVideoBackground()
             } else if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND) {
-                if (!isTiramisuPlus()) {
-                    if (hasPermission(PERMISSION_READ_STORAGE)) {
-                        try {
-                            val wallpaperManager = WallpaperManager.getInstance(this)
-                            @SuppressLint("MissingPermission")
-                            val wallpaperBlur = BlurFactory.fileToBlurBitmap(wallpaperManager.drawable!!, this, 0.2f, 25f)
-                            if (wallpaperBlur != null) {
-                                val drawable: Drawable = wallpaperBlur.toDrawable(resources)
-                                binding.callHolder.background = drawable
-                                binding.callHolder.background.alpha = 60
-                                if (isQPlus()) {
-                                    binding.callHolder.background.colorFilter = BlendModeColorFilter(Color.DKGRAY, BlendMode.SOFT_LIGHT)
-                                } else {
-                                    binding.callHolder.background.setColorFilter(Color.DKGRAY, PorterDuff.Mode.DARKEN)
-                                }
-                            }
-                        } catch (_: Exception) {
+                try {
+                    val wallpaperManager = WallpaperManager.getInstance(this)
+                    @SuppressLint("MissingPermission")
+                    val wallpaperBlur = BlurFactory.fileToBlurBitmap(wallpaperManager.drawable!!, this, 0.2f, 25f)
+                    if (wallpaperBlur != null) {
+                        val drawable: Drawable = wallpaperBlur.toDrawable(resources)
+                        binding.callHolder.background = drawable
+                        binding.callHolder.background.alpha = 60
+                        if (isQPlus()) {
+                            binding.callHolder.background.colorFilter = BlendModeColorFilter(Color.DKGRAY, BlendMode.SOFT_LIGHT)
+                        } else {
+                            binding.callHolder.background.setColorFilter(Color.DKGRAY, PorterDuff.Mode.DARKEN)
                         }
                     }
+                } catch (_: Exception) {
                 }
             }
 
@@ -336,6 +339,7 @@ class CallActivity : SimpleActivity() {
         CallManager.removeListener(callCallback)
         disableProximitySensor()
         disableShakeDetection()
+        videoBackgroundView?.stopPlayback()
 
         if (isOreoMr1Plus()) {
             setShowWhenLocked(false)
@@ -1994,6 +1998,97 @@ class CallActivity : SimpleActivity() {
             view.applyColorFilter(colorIcon)
         }
         view.background.alpha = if (enabled) 255 else 60
+    }
+
+    private fun applyCustomBackground() {
+        val imagePath = config.backgroundCallCustomImage
+        if (imagePath.isEmpty()) return
+
+        try {
+            val bitmap = decodeCustomBackground(imagePath) ?: run {
+                binding.callHolder.setBackgroundColor(Color.BLACK)
+                return
+            }
+            val alpha = config.backgroundCallCustomAlpha.coerceIn(0, 255)
+            val blurRadius = config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f).let {
+                if (it == 0f) CUSTOM_BACKGROUND_BLUR_RADIUS_DEFAULT else it
+            }
+
+            val blurred = BlurFactory.fileToBlurBitmap(
+                bitmap,
+                this,
+                CUSTOM_BACKGROUND_BLUR_SCALE,
+                blurRadius
+            ) ?: bitmap
+            val drawable: Drawable = blurred.toDrawable(resources)
+            binding.callHolder.background = drawable
+            binding.callHolder.background.alpha = alpha
+            if (isQPlus()) {
+                binding.callHolder.background.colorFilter = BlendModeColorFilter(Color.DKGRAY, BlendMode.SOFT_LIGHT)
+            } else {
+                binding.callHolder.background.setColorFilter(Color.DKGRAY, PorterDuff.Mode.DARKEN)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun applyVideoBackground() {
+        val videoUriString = config.backgroundCallCustomVideo
+        if (videoUriString.isEmpty()) return
+
+        try {
+            if (videoBackgroundView == null) {
+                videoBackgroundView = android.widget.VideoView(this).apply {
+                    layoutParams = ConstraintLayout.LayoutParams(
+                        ConstraintLayout.LayoutParams.MATCH_PARENT,
+                        ConstraintLayout.LayoutParams.MATCH_PARENT
+                    )
+                    setZOrderMediaOverlay(false)
+                }
+                binding.callHolder.addView(videoBackgroundView, 0)
+            }
+
+            val videoView = videoBackgroundView ?: return
+            videoView.setOnPreparedListener { mediaPlayer ->
+                mediaPlayer.isLooping = true
+                try {
+                    mediaPlayer.setVolume(0f, 0f)
+                } catch (_: Exception) {
+                }
+                videoView.start()
+            }
+            videoView.setVideoURI(Uri.parse(videoUriString))
+            videoView.start()
+        } catch (_: Exception) {
+            // Fallback to black if anything fails
+            videoBackgroundView?.stopPlayback()
+            binding.callHolder.setBackgroundColor(Color.BLACK)
+        }
+    }
+
+    private fun decodeCustomBackground(path: String): Bitmap? {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, options)
+        if (options.outWidth <= 0 || options.outHeight <= 0) return null
+
+        val metrics = resources.displayMetrics
+        options.inSampleSize = calculateInSampleSize(options, metrics.widthPixels, metrics.heightPixels)
+        options.inJustDecodeBounds = false
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888
+        return BitmapFactory.decodeFile(path, options)
+    }
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height, width) = options.run { outHeight to outWidth }
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 
     private fun checkPermission() {

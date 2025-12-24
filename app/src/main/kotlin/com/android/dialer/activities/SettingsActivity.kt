@@ -12,12 +12,14 @@ import com.behaviorule.arturdumchev.library.pixels
 import com.goodwy.commons.activities.ManageBlockedNumbersActivity
 import com.goodwy.commons.dialogs.*
 import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.RadioItem
 import com.android.dialer.BuildConfig
 import com.android.dialer.R
 import com.android.dialer.databinding.ActivitySettingsBinding
+import com.android.dialer.databinding.DialogCustomBackgroundTuningBinding
 import com.android.dialer.dialogs.ChangeTextDialog
 import com.android.dialer.dialogs.ExportCallHistoryDialog
 import com.android.dialer.dialogs.ManageVisibleTabsDialog
@@ -25,6 +27,7 @@ import com.android.dialer.extensions.*
 import com.android.dialer.helpers.RecentsHelper
 import com.android.dialer.models.RecentCall
 import com.android.dialer.helpers.*
+import com.goodwy.commons.views.LiquidSliderView
 import com.google.gson.Gson
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.shake
@@ -32,7 +35,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.util.Calendar
 import java.util.Locale
+import java.io.File
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.system.exitProcess
 
 class SettingsActivity : SimpleActivity() {
@@ -64,6 +69,20 @@ class SettingsActivity : SimpleActivity() {
             }
         }
     }
+
+    private val pickCallBackgroundImage =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                saveCustomCallBackground(uri)
+            }
+        }
+
+    private val pickCallBackgroundVideo =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                saveCustomCallBackgroundVideo(uri)
+            }
+        }
 
     private val productIdX1 = BuildConfig.PRODUCT_ID_X1
     private val productIdX2 = BuildConfig.PRODUCT_ID_X2
@@ -677,11 +696,15 @@ class SettingsActivity : SimpleActivity() {
         val black = if (pro) getString(R.string.black) else getString(R.string.black_locked)
         binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
         binding.settingsBackgroundCallScreenHolder.setOnClickListener {
+            val customImageItem = RadioItem(CUSTOM_BACKGROUND, getString(R.string.custom_image), icon = R.drawable.ic_photo_custom)
+            val customVideoItem = RadioItem(VIDEO_BACKGROUND, getString(R.string.custom_video), icon = R.drawable.ic_wallpaper)
             val items = if (isTiramisuPlus()) {
                 arrayListOf(
                     RadioItem(THEME_BACKGROUND, getString(R.string.theme), icon = R.drawable.ic_theme),
                     RadioItem(BLUR_AVATAR, getString(R.string.blurry_contact_photo), icon = R.drawable.ic_contact_blur),
                     RadioItem(AVATAR, getString(R.string.contact_photo), icon = R.drawable.ic_contact_photo),
+                    customImageItem,
+                    customVideoItem,
                     RadioItem(BLACK_BACKGROUND, black, icon = R.drawable.ic_theme_black)
                 )
             } else {
@@ -690,6 +713,8 @@ class SettingsActivity : SimpleActivity() {
                     RadioItem(BLUR_AVATAR, getString(R.string.blurry_contact_photo), icon = R.drawable.ic_contact_blur),
                     RadioItem(AVATAR, getString(R.string.contact_photo), icon = R.drawable.ic_contact_photo),
                     RadioItem(TRANSPARENT_BACKGROUND, getString(R.string.blurry_wallpaper), icon = R.drawable.ic_wallpaper),
+                    customImageItem,
+                    customVideoItem,
                     RadioItem(BLACK_BACKGROUND, black, icon = R.drawable.ic_theme_black)
                 )
             }
@@ -703,38 +728,156 @@ class SettingsActivity : SimpleActivity() {
                 R.string.call_screen_background,
                 defaultItemId = BLUR_AVATAR,
                 blurTarget = blurTarget
-            ) {
-                if (it as Int == TRANSPARENT_BACKGROUND) {
-                    if (hasPermission(PERMISSION_READ_STORAGE)) {
-                        config.backgroundCallScreen = it
+            ) { selected ->
+                when (selected as Int) {
+                    TRANSPARENT_BACKGROUND -> {
+                        config.backgroundCallScreen = selected
                         binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
-                    } else {
-                        handlePermission(PERMISSION_READ_STORAGE) { permission ->
-                            if (permission) {
-                                config.backgroundCallScreen = it
-                                binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
-                            } else {
-                                toast(R.string.no_storage_permissions)
-                            }
+                    }
+                    CUSTOM_BACKGROUND -> {
+                        launchCustomBackgroundPicker()
+                    }
+                    VIDEO_BACKGROUND -> {
+                        launchCustomVideoPicker()
+                    }
+                    BLACK_BACKGROUND -> {
+                        if (pro) {
+                            config.backgroundCallScreen = selected
+                            binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
+                        } else {
+                            RxAnimation.from(binding.settingsBackgroundCallScreenHolder)
+                                .shake(shakeTranslation = 2f)
+                                .subscribe()
+
+                            showSnackbar(binding.root)
                         }
                     }
-                } else if (it == BLACK_BACKGROUND) {
-                    if (pro) {
-                        config.backgroundCallScreen = it
+                    else -> {
+                        config.backgroundCallScreen = selected
                         binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
-                    } else {
-                        RxAnimation.from(binding.settingsBackgroundCallScreenHolder)
-                            .shake(shakeTranslation = 2f)
-                            .subscribe()
-
-                        showSnackbar(binding.root)
                     }
-                } else {
-                    config.backgroundCallScreen = it
-                    binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
                 }
             }
         }
+    }
+
+    private fun launchCustomBackgroundPicker() {
+        pickCallBackgroundImage.launch("image/*")
+    }
+
+    private fun launchCustomVideoPicker() {
+        pickCallBackgroundVideo.launch("video/*")
+    }
+
+    private fun saveCustomCallBackground(uri: Uri) {
+        try {
+            val targetFile = File(filesDir, "call_background_image")
+            contentResolver.openInputStream(uri)?.use { input ->
+                targetFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            } ?: return
+
+            config.backgroundCallCustomImage = targetFile.absolutePath
+            config.backgroundCallScreen = CUSTOM_BACKGROUND
+            binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
+            toast(R.string.call_background_updated)
+            promptCustomBackgroundTuning()
+        } catch (e: Exception) {
+            showErrorToast(e)
+        }
+    }
+
+    private fun saveCustomCallBackgroundVideo(uri: Uri) {
+        try {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (_: Exception) {
+        }
+
+        config.backgroundCallCustomVideo = uri.toString()
+        config.backgroundCallScreen = VIDEO_BACKGROUND
+        binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
+        toast(R.string.call_background_updated)
+    }
+
+    private fun promptCustomBackgroundTuning() {
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget) ?: return
+        val bindingDialog = DialogCustomBackgroundTuningBinding.inflate(layoutInflater)
+        val view = bindingDialog.root
+
+        val blurView = view.findViewById<BlurView>(R.id.blurView)
+        val decorView = window.decorView
+        val windowBackground = decorView.background
+
+        blurView?.setOverlayColor(0xa3ffffff.toInt())
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(8f)
+            ?.setBlurAutoUpdate(true)
+
+        val primaryColor = getProperPrimaryColor()
+
+        bindingDialog.dialogTitle.apply {
+            beVisible()
+            text = getString(R.string.custom_image)
+        }
+
+        val alphaInitial = config.backgroundCallCustomAlpha.coerceIn(0, 255)
+        val blurInitial = config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f)
+
+        var alphaValue = alphaInitial
+        var blurValue = blurInitial
+
+        bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, alphaValue)
+        bindingDialog.alphaSeek.configure(
+            rangeStart = 0f,
+            rangeEnd = 255f,
+            initial = alphaInitial.toFloat()
+        ) { value ->
+            val intVal = value.roundToInt().coerceIn(0, 255)
+            alphaValue = intVal
+            bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, intVal)
+        }
+
+        bindingDialog.blurLabel.text = getString(R.string.custom_background_blur_label, blurInitial.roundToInt())
+        bindingDialog.blurSeek.configure(
+            rangeStart = 0f,
+            rangeEnd = 25f,
+            initial = blurInitial
+        ) { value ->
+            val intVal = value.roundToInt().coerceIn(0, 25)
+            blurValue = intVal.toFloat()
+            bindingDialog.blurLabel.text = getString(R.string.custom_background_blur_label, intVal)
+        }
+
+        getAlertDialogBuilder()
+            .apply {
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                setupDialogStuff(view, this, titleText = "") { alertDialog ->
+                    val positiveButton = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+                    val negativeButton = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+                    val buttonsContainer = view.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+
+                    buttonsContainer?.visibility = android.view.View.VISIBLE
+
+                    positiveButton?.apply {
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            config.backgroundCallCustomAlpha = alphaValue
+                            config.backgroundCallCustomBlurRadius = blurValue.coerceIn(0f, 25f)
+                            alertDialog.dismiss()
+                        }
+                    }
+
+                    negativeButton?.apply {
+                        beVisible()
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            alertDialog.dismiss()
+                        }
+                    }
+                }
+            }
     }
 
     private fun getBackgroundCallScreenText() = getString(
@@ -743,6 +886,8 @@ class SettingsActivity : SimpleActivity() {
             AVATAR -> R.string.contact_photo
             TRANSPARENT_BACKGROUND -> R.string.blurry_wallpaper
             BLACK_BACKGROUND -> R.string.black
+            CUSTOM_BACKGROUND -> R.string.custom_image
+            VIDEO_BACKGROUND -> R.string.custom_video
             else -> R.string.theme
         }
     )
