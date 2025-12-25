@@ -72,11 +72,39 @@ class FilterContactSourcesDialog(val activity: SimpleActivity, private val blurT
                     ?.setBlurRadius(8f)
                     ?.setBlurAutoUpdate(true)
                 
+                // Setup title inside BlurView
+                val titleTextView = binding.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+                titleTextView?.apply {
+                    beVisible()
+                    text = activity.resources.getString(R.string.filter)
+                }
+                
+                // Setup custom buttons inside BlurView
+                val primaryColor = activity.getProperPrimaryColor()
+                val positiveButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+                val negativeButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+                val buttonsContainer = binding.root.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+                
+                buttonsContainer?.beVisible()
+                
+                positiveButton?.apply {
+                    beVisible()
+                    text = activity.resources.getString(R.string.ok)
+                    setTextColor(primaryColor)
+                    setOnClickListener { confirmContactSources() }
+                }
+                
+                negativeButton?.apply {
+                    beVisible()
+                    text = activity.resources.getString(R.string.cancel)
+                    setTextColor(primaryColor)
+                    setOnClickListener { dialog?.dismiss() }
+                }
+                
                 activity.getAlertDialogBuilder()
-                    .setPositiveButton(R.string.ok) { _, _ -> confirmContactSources() }
-                    .setNegativeButton(R.string.cancel, null)
                     .apply {
-                        activity.setupDialogStuff(binding.root, this, R.string.filter) { alertDialog ->
+                        // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                        activity.setupDialogStuff(binding.root, this, titleText = "") { alertDialog ->
                             dialog = alertDialog
                         }
                     }
