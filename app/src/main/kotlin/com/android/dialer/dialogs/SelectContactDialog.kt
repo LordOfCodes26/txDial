@@ -28,7 +28,7 @@ class SelectContactDialog(val activity: SimpleActivity, val contacts: List<Conta
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
         
-        blurView?.setOverlayColor(0xa3ffffff.toInt())
+        blurView?.setOverlayColor(activity.getProperBlurOverlayColor())
         blurView?.setupWith(blurTarget)
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)

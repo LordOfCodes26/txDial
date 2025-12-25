@@ -108,6 +108,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private var cachedLanguage: String? = null
     private var cachedCollator: Collator? = null
     private var searchDebounceJob: kotlinx.coroutines.Job? = null
+    
+    // Cache config and colors to avoid repeated lookups
+    private val config get() = context.config
+    private var cachedIsDynamicTheme: Boolean? = null
+    private var cachedIsSystemInDarkMode: Boolean? = null
+    private var cachedProperBackgroundColor: Int? = null
+    private var cachedSurfaceColor: Int? = null
+    private var cachedAppbarBackgroundColor: Int? = null
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -130,8 +138,10 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             moveTopSystem = listOf(binding.dialpadInput),
             moveBottomSystem = listOf(binding.dialpadRoundWrapperUp),
         )
-        val useSurfaceColor = context.isDynamicTheme() && !context.isSystemInDarkMode()
-        val backgroundColor = if (useSurfaceColor) context.getSurfaceColor() else context.getProperBackgroundColor()
+        
+        // Cache theme and color values
+        updateCachedThemeValues()
+        val backgroundColor = getCachedBackgroundColor()
         setBackgroundColor(backgroundColor)
 
         // Initialize T9 if needed
@@ -140,7 +150,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             DialpadT9.readFromJson(reader.readText())
         }
 
-        speedDialValues = context.config.getSpeedDialValues()
+        speedDialValues = config.getSpeedDialValues()
 
         toneGeneratorHelper = ToneGeneratorHelper(context, DIALPAD_TONE_LENGTH_MS)
         isTalkBackOn = context.isTalkBackOn()
@@ -148,7 +158,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         binding.dialpadInput.apply {
             // Disable keyboard first to prevent IME from showing on focus
             disableKeyboard()
-            if (context.config.formatPhoneNumbers) {
+            if (config.formatPhoneNumbers) {
                 @Suppress("DEPRECATION")
                 phoneNumberFormattingWatcher = PhoneNumberFormattingTextWatcher(Locale.getDefault().country)
                 addTextChangedListener(phoneNumberFormattingWatcher)
@@ -173,32 +183,33 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         if (storedDialpadStyle == 0) {
             storedDialpadStyle = -1 // Force style change detection on first setup
         }
-        storedToneVolume = context.config.toneVolume
-        storedBackgroundColor = context.getProperBackgroundColor()
-        storedDialpadSize = context.config.dialpadSize
-        storedCallButtonPrimarySize = context.config.callButtonPrimarySize
-        storedCallButtonSecondarySize = context.config.callButtonSecondarySize
-        storedDialpadBottomMargin = context.config.dialpadBottomMargin
-        storedHideDialpadNumbers = context.config.hideDialpadNumbers
-        storedHideDialpadLetters = context.config.hideDialpadLetters
-        storedDialpadSecondaryLanguage = context.config.dialpadSecondaryLanguage
-        storedShowVoicemailIcon = context.config.showVoicemailIcon
-        storedFormatPhoneNumbers = context.config.formatPhoneNumbers
+        storedToneVolume = config.toneVolume
+        storedBackgroundColor = cachedProperBackgroundColor ?: context.getProperBackgroundColor()
+        storedDialpadSize = config.dialpadSize
+        storedCallButtonPrimarySize = config.callButtonPrimarySize
+        storedCallButtonSecondarySize = config.callButtonSecondarySize
+        storedDialpadBottomMargin = config.dialpadBottomMargin
+        storedHideDialpadNumbers = config.hideDialpadNumbers
+        storedHideDialpadLetters = config.hideDialpadLetters
+        storedDialpadSecondaryLanguage = config.dialpadSecondaryLanguage
+        storedShowVoicemailIcon = config.showVoicemailIcon
+        storedFormatPhoneNumbers = config.formatPhoneNumbers
 
         // Handle hideDialpadNumbers
-        if (context.config.hideDialpadNumbers) {
+        if (config.hideDialpadNumbers) {
             handleHideDialpadNumbers()
         }
 
         // Initialize dialpad style
         initStyle()
-        storedDialpadStyle = context.config.dialpadStyle // Update stored style after initialization
+        storedDialpadStyle = config.dialpadStyle // Update stored style after initialization
 
         // Update dialpad size
         updateDialpadSize()
 
         // Update call button size if needed
-        if (context.config.dialpadStyle == DIALPAD_GRID || context.config.dialpadStyle == DIALPAD_ORIGINAL) {
+        val dialpadStyle = config.dialpadStyle
+        if (dialpadStyle == DIALPAD_GRID || dialpadStyle == DIALPAD_ORIGINAL) {
             updateCallButtonSize()
         }
 
@@ -212,7 +223,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         binding.dialpadRecentsPlaceholder.beGone()
 
         // Load recent calls if enabled
-        if (context.config.showRecentCallsOnDialpad) {
+        if (config.showRecentCallsOnDialpad) {
             refreshItems()
         }
 
@@ -221,16 +232,18 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         setupAddNumberButton()
         setupScrollListeners()
 
-        // Setup toolbar and appbar - use same color calculation as MainActivity
-        val properBackgroundColor = if (useSurfaceColor) context.getSurfaceColor() else context.getProperBackgroundColor()
+        // Setup toolbar and appbar - use cached appbar background color
+        val appbarBackgroundColor = getCachedAppbarBackgroundColor()
         activity?.let { act ->
             act.setupTopAppBar(
                 topAppBar = binding.dialpadAppbar,
                 navigationIcon = NavigationIcon.None,
-                topBarColor = properBackgroundColor,
+                topBarColor = appbarBackgroundColor,
                 navigationClick = false
             )
         }
+        // Explicitly set toolbar background color to match appbar
+        binding.dialpadToolbar.setBackgroundColor(appbarBackgroundColor)
         setupOptionsMenu()
 
 
@@ -381,14 +394,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     private fun startDialpadTone(char: Char) {
-        if (context.config.dialpadBeeps) {
+        if (config.dialpadBeeps) {
             pressedKeys.add(char)
             toneGeneratorHelper?.startTone(char)
         }
     }
 
     private fun stopDialpadTone(char: Char) {
-        if (context.config.dialpadBeeps) {
+        if (config.dialpadBeeps) {
             if (!pressedKeys.remove(char)) return
             if (pressedKeys.isEmpty()) {
                 toneGeneratorHelper?.stopTone()
@@ -399,7 +412,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     private fun maybePerformDialpadHapticFeedback(view: View?) {
-        if (context.config.dialpadVibration) {
+        if (config.dialpadVibration) {
             view?.performHapticFeedback()
         }
     }
@@ -413,7 +426,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             dialpadPressed(',', view)
         } else if (char == '#') {
             clearChar(view)
-            when (context.config.dialpadHashtagLongClick) {
+            when (config.dialpadHashtagLongClick) {
                 DIALPAD_LONG_CLICK_WAIT -> dialpadPressed(';', view)
                 DIALPAD_LONG_CLICK_SETTINGS_DIALPAD -> {
                     activity?.startActivity(Intent(activity?.applicationContext, com.android.dialer.activities.SettingsDialpadActivity::class.java))
@@ -487,7 +500,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         (binding.dialpadList.adapter as? ContactsAdapter)?.finishActMode()
         (binding.dialpadRecentsList.adapter as? RecentCallsAdapter)?.finishActMode()
 
-        val text = if (context.config.formatPhoneNumbers) textFormat.removeNumberFormatting() else textFormat
+        val text = if (config.formatPhoneNumbers) textFormat.removeNumberFormatting() else textFormat
 
         // Cancel previous debounce job
         searchDebounceJob?.cancel()
@@ -506,13 +519,12 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         }
         val collator = cachedCollator!!
         
-        val langPref = context.config.dialpadSecondaryLanguage ?: ""
+        val langPref = config.dialpadSecondaryLanguage ?: ""
         val langLocale = Locale.getDefault().language
         val isAutoLang = DialpadT9.getSupportedSecondaryLanguages().contains(langLocale) && langPref == LANGUAGE_SYSTEM
         val lang = if (isAutoLang) langLocale else langPref
         
         // Only recalculate language-dependent conversions if language changed
-        val needsRecalculation = cachedLanguage != lang
         cachedLanguage = lang
         
         // Optimize: Early exit if text is empty
@@ -521,38 +533,37 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             return
         }
         
+        // Pre-compute textLower once
         val textLower = text.lowercase()
+        val textLowerNoSpaces = textLower.filterNot { it.isWhitespace() }
+        
         val filtered = allContacts.filter { contact ->
             // Check phone number first (fastest check)
             if (contact.doesContainPhoneNumber(text, convertLetters = true, search = true)) {
                 return@filter true
             }
             
-            // Do string conversions (cached if language hasn't changed)
-            val convertedName = DialpadT9.convertLettersToNumbers(
-                contact.name.normalizeString().uppercase(), lang
-            )
-            if (convertedName.contains(textLower, ignoreCase = true)) return@filter true
+            // Do string conversions - optimize by reusing normalized strings
+            val nameNormalized = contact.name.normalizeString().uppercase()
+            val convertedName = DialpadT9.convertLettersToNumbers(nameNormalized, lang)
+            if (convertedName.contains(textLower, ignoreCase = true) || 
+                convertedName.filterNot { it.isWhitespace() }.contains(textLowerNoSpaces, ignoreCase = true)) {
+                return@filter true
+            }
             
-            val convertedNameWithoutSpaces = convertedName.filterNot { it.isWhitespace() }
-            if (convertedNameWithoutSpaces.contains(textLower, ignoreCase = true)) return@filter true
+            val nameToDisplayNormalized = contact.getNameToDisplay().normalizeString().uppercase()
+            val convertedNameToDisplay = DialpadT9.convertLettersToNumbers(nameToDisplayNormalized, lang)
+            if (convertedNameToDisplay.contains(textLower, ignoreCase = true) ||
+                convertedNameToDisplay.filterNot { it.isWhitespace() }.contains(textLowerNoSpaces, ignoreCase = true)) {
+                return@filter true
+            }
             
-            val convertedNameToDisplay = DialpadT9.convertLettersToNumbers(
-                contact.getNameToDisplay().normalizeString().uppercase(), lang
-            )
-            if (convertedNameToDisplay.contains(textLower, ignoreCase = true)) return@filter true
-            
-            val convertedNameToDisplayWithoutSpaces = convertedNameToDisplay.filterNot { it.isWhitespace() }
-            if (convertedNameToDisplayWithoutSpaces.contains(textLower, ignoreCase = true)) return@filter true
-            
-            val convertedNickname = DialpadT9.convertLettersToNumbers(
-                contact.nickname.normalizeString().uppercase(), lang
-            )
+            val nicknameNormalized = contact.nickname.normalizeString().uppercase()
+            val convertedNickname = DialpadT9.convertLettersToNumbers(nicknameNormalized, lang)
             if (convertedNickname.contains(textLower, ignoreCase = true)) return@filter true
             
-            val convertedCompany = DialpadT9.convertLettersToNumbers(
-                contact.organization.company.normalizeString().uppercase(), lang
-            )
+            val companyNormalized = contact.organization.company.normalizeString().uppercase()
+            val convertedCompany = DialpadT9.convertLettersToNumbers(companyNormalized, lang)
             convertedCompany.contains(textLower, ignoreCase = true)
         }.sortedWith(compareBy(collator) {
             it.getNameToDisplay()
@@ -587,7 +598,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             allowLongClick = false,
             itemClick = {
                 activity?.startCallWithConfirmationCheck(it as Contact)
-                if (context.config.showCallConfirmation) clearInputWithDelay()
+                if (config.showCallConfirmation) clearInputWithDelay()
             },
             profileIconClick = {
                 activity?.startContactDetailsIntent(it as Contact)
@@ -608,7 +619,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val hasRecents = filteredRecents.isNotEmpty()
         val hasAllRecents = allRecentCalls.isNotEmpty()
         val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
-        val dialpadStyle = context.config.dialpadStyle
+        val dialpadStyle = config.dialpadStyle
 
         binding.dialpadAddNumber.beVisibleIf(hasInput)
         binding.dialpadAddNumber.setTextColor(context.getProperPrimaryColor())
@@ -649,26 +660,26 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private fun refreshItems(invalidate: Boolean = false, needUpdate: Boolean = false) {
         if (invalidate) {
             allRecentCalls = emptyList()
-            context.config.recentCallsCache = ""
+            config.recentCallsCache = ""
         }
 
         if (binding.dialpadInput.value.isNotEmpty()) {
             // If there's input, refresh the filtered results
             dialpadValueChanged(binding.dialpadInput.value)
             // Also refresh the underlying data if needed
-            if (needUpdate || context.config.needUpdateRecents) {
+            if (needUpdate || config.needUpdateRecents) {
                 refreshCallLog(loadAll = true)
             }
-        } else if (needUpdate || context.config.needUpdateRecents) {
+        } else if (needUpdate || config.needUpdateRecents) {
             // When needUpdate is true (e.g., call ended), refresh immediately without waiting for animations
             refreshCallLog(loadAll = true)
         } else {
             var recents = emptyList<RecentCall>()
             if (!invalidate) {
                 try {
-                    recents = context.config.parseRecentCallsCache()
+                    recents = config.parseRecentCallsCache()
                 } catch (_: Exception) {
-                    context.config.recentCallsCache = ""
+                    config.recentCallsCache = ""
                 }
             }
 
@@ -699,7 +710,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 callback?.invoke()
             }
 
-            context.config.recentCallsCache = sharedGson.toJson(recents.take(RECENT_CALL_CACHE_SIZE))
+            config.recentCallsCache = sharedGson.toJson(recents.take(RECENT_CALL_CACHE_SIZE))
 
             // Deleting notes if a call has already been deleted
             callerNotesHelper.removeCallerNotes(
@@ -709,14 +720,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
 
         if (loadAll) {
             with(recentsHelper) {
-                val queryCount = context.config.queryLimitRecent
+                val queryCount = config.queryLimitRecent
                 getRecentCalls(queryLimit = queryCount, updateCallsCache = false) { calls ->
                     ensureBackgroundThread {
                         val recentOutgoingNumbers = calls
                             .mapNotNull { if (it.type == Calls.OUTGOING_TYPE) it.phoneNumber else null }
                             .toMutableSet()
 
-                        context.config.recentOutgoingNumbers = recentOutgoingNumbers
+                        config.recentOutgoingNumbers = recentOutgoingNumbers
                     }
                 }
             }
@@ -729,17 +740,17 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     private fun getRecentCalls(loadAll: Boolean, callback: (List<RecentCall>) -> Unit) {
-        val queryCount = if (loadAll) context.config.queryLimitRecent else RecentsHelper.QUERY_LIMIT
+        val queryCount = if (loadAll) config.queryLimitRecent else RecentsHelper.QUERY_LIMIT
         val existingRecentCalls = allRecentCalls
 
         with(recentsHelper) {
-            if (context.config.groupSubsequentCalls) {
+            if (config.groupSubsequentCalls) {
                 getGroupedRecentCalls(existingRecentCalls, queryCount, true) {
                     prepareCallLog(it, callback)
                 }
             } else {
                 getRecentCalls(existingRecentCalls, queryCount, isDialpad = true, updateCallsCache = true) { calls ->
-                    val filteredCalls = if (context.config.groupAllCalls) calls.distinctBy { it.phoneNumber } else calls
+                    val filteredCalls = if (config.groupAllCalls) calls.distinctBy { it.phoneNumber } else calls
                     prepareCallLog(filteredCalls, callback)
                 }
             }
@@ -796,14 +807,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 recyclerView = binding.dialpadRecentsList,
                 refreshItemsListener = null,
                 showOverflowMenu = true,
-                showCallIcon = context.config.onRecentClick == SWIPE_ACTION_OPEN,
+                showCallIcon = config.onRecentClick == SWIPE_ACTION_OPEN,
                 hideTimeAtOtherDays = true,
                 isDialpad = true,
                 itemDelete = { deleted ->
                     allRecentCalls = allRecentCalls.filter { it !in deleted }
                 },
                 itemClick = {
-                    itemClickAction(context.config.onRecentClick, it as RecentCall)
+                    itemClickAction(config.onRecentClick, it as RecentCall)
                 },
                 profileInfoClick = { recentCall ->
                     actionOpen(recentCall)
@@ -829,8 +840,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         // Update visibility when recents are loaded, especially when input is empty
         val inputValue = binding.dialpadInput.value
         val hasInput = inputValue.isNotEmpty()
-        val searchEnabled = context.config.searchContactsInDialpad
-        val recentsEnabled = context.config.showRecentCallsOnDialpad
+        val searchEnabled = config.searchContactsInDialpad
+        val recentsEnabled = config.showRecentCallsOnDialpad
         val hasRecents = recents.isNotEmpty()
         
         if (recents.isEmpty()) {
@@ -899,7 +910,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     private fun actionCall(call: RecentCall) {
-        if (context.config.showCallConfirmation) {
+        if (config.showCallConfirmation) {
             val currentActivity = activity
             val blurTarget = currentActivity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
             if (blurTarget != null) {
@@ -919,7 +930,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     private fun callRecentNumber(recentCall: RecentCall) {
-        if (context.config.callUsingSameSim && recentCall.simID > 0) {
+        if (config.callUsingSameSim && recentCall.simID > 0) {
             val sim = recentCall.simID == 1
             activity?.callContactWithSim(recentCall.phoneNumber, sim)
         } else {
@@ -942,25 +953,30 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     override fun setupColors(textColor: Int, primaryColor: Int, accentColor: Int) {
+        // Update cached theme values
+        updateCachedThemeValues()
+        
         // Check for style/color changes (similar to onResume in DialpadActivity)
-        val styleChanged = storedDialpadStyle != context.config.dialpadStyle
-        val backgroundColorChanged = storedBackgroundColor != context.getProperBackgroundColor()
+        val dialpadStyle = config.dialpadStyle
+        val styleChanged = storedDialpadStyle != dialpadStyle
+        val currentBackgroundColor = cachedProperBackgroundColor ?: context.getProperBackgroundColor()
+        val backgroundColorChanged = storedBackgroundColor != currentBackgroundColor
 
         // Check for other dialpad settings changes
-        val dialpadSizeChanged = storedDialpadSize != context.config.dialpadSize
-        val callButtonPrimarySizeChanged = storedCallButtonPrimarySize != context.config.callButtonPrimarySize
-        val callButtonSecondarySizeChanged = storedCallButtonSecondarySize != context.config.callButtonSecondarySize
-        val dialpadBottomMarginChanged = storedDialpadBottomMargin != context.config.dialpadBottomMargin
-        val hideDialpadNumbersChanged = storedHideDialpadNumbers != context.config.hideDialpadNumbers
-        val hideDialpadLettersChanged = storedHideDialpadLetters != context.config.hideDialpadLetters
-        val dialpadSecondaryLanguageChanged = storedDialpadSecondaryLanguage != context.config.dialpadSecondaryLanguage
-        val showVoicemailIconChanged = storedShowVoicemailIcon != context.config.showVoicemailIcon
-        val formatPhoneNumbersChanged = storedFormatPhoneNumbers != context.config.formatPhoneNumbers
+        val dialpadSizeChanged = storedDialpadSize != config.dialpadSize
+        val callButtonPrimarySizeChanged = storedCallButtonPrimarySize != config.callButtonPrimarySize
+        val callButtonSecondarySizeChanged = storedCallButtonSecondarySize != config.callButtonSecondarySize
+        val dialpadBottomMarginChanged = storedDialpadBottomMargin != config.dialpadBottomMargin
+        val hideDialpadNumbersChanged = storedHideDialpadNumbers != config.hideDialpadNumbers
+        val hideDialpadLettersChanged = storedHideDialpadLetters != config.hideDialpadLetters
+        val dialpadSecondaryLanguageChanged = storedDialpadSecondaryLanguage != config.dialpadSecondaryLanguage
+        val showVoicemailIconChanged = storedShowVoicemailIcon != config.showVoicemailIcon
+        val formatPhoneNumbersChanged = storedFormatPhoneNumbers != config.formatPhoneNumbers
 
         if (styleChanged || backgroundColorChanged) {
             // Style or background color changed, reinitialize
-            storedDialpadStyle = context.config.dialpadStyle
-            storedBackgroundColor = context.getProperBackgroundColor()
+            storedDialpadStyle = dialpadStyle
+            storedBackgroundColor = currentBackgroundColor
             
             // Invalidate cached dialpad view
             cachedDialpadView = null
@@ -972,26 +988,26 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
 
         // Always update dialpad size (like DialpadActivity.onResume())
         updateDialpadSize()
-        storedDialpadSize = context.config.dialpadSize
-        storedDialpadBottomMargin = context.config.dialpadBottomMargin
+        storedDialpadSize = config.dialpadSize
+        storedDialpadBottomMargin = config.dialpadBottomMargin
 
         // Update call button size if needed
-        if (context.config.dialpadStyle == DIALPAD_GRID || context.config.dialpadStyle == DIALPAD_ORIGINAL) {
+        if (dialpadStyle == DIALPAD_GRID || dialpadStyle == DIALPAD_ORIGINAL) {
             updateCallButtonSize()
-            storedCallButtonPrimarySize = context.config.callButtonPrimarySize
-            storedCallButtonSecondarySize = context.config.callButtonSecondarySize
+            storedCallButtonPrimarySize = config.callButtonPrimarySize
+            storedCallButtonSecondarySize = config.callButtonSecondarySize
         }
 
         // Handle hideDialpadNumbers change
         if (hideDialpadNumbersChanged) {
-            storedHideDialpadNumbers = context.config.hideDialpadNumbers
+            storedHideDialpadNumbers = config.hideDialpadNumbers
             handleHideDialpadNumbers()
         }
 
         // Handle hideDialpadLetters change - requires reinitializing letters
         if (hideDialpadLettersChanged || dialpadSecondaryLanguageChanged || styleChanged) {
-            storedHideDialpadLetters = context.config.hideDialpadLetters
-            storedDialpadSecondaryLanguage = context.config.dialpadSecondaryLanguage
+            storedHideDialpadLetters = config.hideDialpadLetters
+            storedDialpadSecondaryLanguage = config.dialpadSecondaryLanguage
             // Reinitialize style to update letters
             if (!styleChanged) {
                 initStyle()
@@ -1000,7 +1016,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
 
         // Handle showVoicemailIcon change
         if (showVoicemailIconChanged || styleChanged) {
-            storedShowVoicemailIcon = context.config.showVoicemailIcon
+            storedShowVoicemailIcon = config.showVoicemailIcon
             // Voicemail icon visibility is handled in initStyle()
             if (!styleChanged) {
                 initStyle()
@@ -1009,14 +1025,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
 
         // Handle formatPhoneNumbers change
         if (formatPhoneNumbersChanged) {
-            storedFormatPhoneNumbers = context.config.formatPhoneNumbers
+            storedFormatPhoneNumbers = config.formatPhoneNumbers
             binding.dialpadInput.apply {
                 // Remove existing PhoneNumberFormattingTextWatcher if present
                 phoneNumberFormattingWatcher?.let { removeTextChangedListener(it) }
                 phoneNumberFormattingWatcher = null
 
                 // Add PhoneNumberFormattingTextWatcher if enabled
-                if (context.config.formatPhoneNumbers) {
+                if (config.formatPhoneNumbers) {
                     @Suppress("DEPRECATION")
                     phoneNumberFormattingWatcher = PhoneNumberFormattingTextWatcher(Locale.getDefault().country)
                     addTextChangedListener(phoneNumberFormattingWatcher)
@@ -1035,7 +1051,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                     visibility = View.VISIBLE
                     translationY = 0f
                     // Force a layout pass for iOS dialpad
-                    if (context.config.dialpadStyle == DIALPAD_IOS) {
+                    if (dialpadStyle == DIALPAD_IOS) {
                         requestLayout()
                         invalidate()
                     }
@@ -1046,15 +1062,15 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         // Update TalkBack state
         isTalkBackOn = context.isTalkBackOn()
 
-        if (storedToneVolume != context.config.toneVolume) {
+        if (storedToneVolume != config.toneVolume) {
             // Tone volume changed, recreate tone generator
-            storedToneVolume = context.config.toneVolume
+            storedToneVolume = config.toneVolume
             toneGeneratorHelper?.stopTone()
             toneGeneratorHelper = ToneGeneratorHelper(context, DIALPAD_TONE_LENGTH_MS)
         }
 
-        val useSurfaceColor = context.isDynamicTheme() && !context.isSystemInDarkMode()
-        val properBackgroundColor = if (useSurfaceColor) context.getSurfaceColor() else context.getProperBackgroundColor()
+        // Use cached colors
+        val properBackgroundColor = getCachedBackgroundColor()
         val properTextColor = context.getProperTextColor()
         val properPrimaryColor = context.getProperPrimaryColor()
 
@@ -1066,16 +1082,18 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         // Update placeholder text color
         binding.dialpadRecentsPlaceholder.setTextColor(properTextColor)
 
-        // Update appbar style - use same approach as MainActivity for consistency
-        // setupTopAppBar will handle toolbar background and colors via updateTopBarColors
+        // Update appbar style - use cached appbar background color
+        val appbarBackgroundColor = getCachedAppbarBackgroundColor()
         activity?.let { act ->
             act.setupTopAppBar(
                 topAppBar = binding.dialpadAppbar,
                 navigationIcon = NavigationIcon.None,
-                topBarColor = properBackgroundColor,
+                topBarColor = appbarBackgroundColor,
                 navigationClick = false
             )
         }
+        // Explicitly set toolbar background color to match appbar
+        binding.dialpadToolbar.setBackgroundColor(appbarBackgroundColor)
 
         // Update input colors
         binding.dialpadInput.setTextColor(properTextColor)
@@ -1117,7 +1135,32 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         }
 
         // Update speed dial values
-        speedDialValues = context.config.getSpeedDialValues()
+        speedDialValues = config.getSpeedDialValues()
+    }
+    
+    // Helper methods for caching theme and color values
+    private fun updateCachedThemeValues() {
+        cachedIsDynamicTheme = context.isDynamicTheme()
+        cachedIsSystemInDarkMode = context.isSystemInDarkMode()
+        cachedProperBackgroundColor = context.getProperBackgroundColor()
+        cachedSurfaceColor = context.getSurfaceColor()
+        // Appbar should match main background color - use surface color only in light mode with dynamic theme
+        val useSurfaceColor = cachedIsDynamicTheme == true && cachedIsSystemInDarkMode == false
+        cachedAppbarBackgroundColor = if (useSurfaceColor) cachedSurfaceColor else cachedProperBackgroundColor
+    }
+    
+    private fun getCachedBackgroundColor(): Int {
+        if (cachedProperBackgroundColor == null || cachedSurfaceColor == null) {
+            updateCachedThemeValues()
+        }
+        val useSurfaceColor = cachedIsDynamicTheme == true && cachedIsSystemInDarkMode == false
+        return if (useSurfaceColor) (cachedSurfaceColor ?: context.getSurfaceColor()) 
+               else (cachedProperBackgroundColor ?: context.getProperBackgroundColor())
+    }
+    
+    private fun getCachedAppbarBackgroundColor(): Int {
+        // Appbar should always match the main background color
+        return getCachedBackgroundColor()
     }
 
     override fun onSearchClosed() {
@@ -1420,16 +1463,15 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val dialpadRoundWrapper = binding.dialpadRoundWrapper
         val dialpadRectWrapper = binding.dialpadRectWrapper
         val dialpadGridWrapper = dialpadGridBinding?.root
+        val properBackgroundColor = getCachedBackgroundColor()
 
-        when (context.config.dialpadStyle) {
+        when (config.dialpadStyle) {
             DIALPAD_IOS -> {
-                val properBackgroundColor =
-                    if (context.isDynamicTheme() && !context.isSystemInDarkMode()) context.getSurfaceColor() else context.getProperBackgroundColor()
 
                 dialpadGridWrapper?.beGone()
                 dialpadRectWrapper.root.beGone()
                 dialpadRoundWrapper.apply {
-                    dialpadVoicemail.beVisibleIf(context.config.showVoicemailIcon)
+                    dialpadVoicemail.beVisibleIf(config.showVoicemailIcon)
                     dialpadIosHolder.beVisible()
                     dialpadIosHolder.setBackgroundColor(properBackgroundColor)
 
@@ -1459,6 +1501,15 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 dialpadRoundWrapper.root.beGone()
                 dialpadGridWrapper?.beGone()
                 dialpadRectWrapper.root.beVisible()
+                dialpadRectWrapper.apply {
+                    dialpadVoicemail.beVisibleIf(config.showVoicemailIcon)
+                    dialpadGridWrapper?.setBackgroundColor(properBackgroundColor)
+
+                    dialpadBottomMargin.apply {
+                        setBackgroundColor(properBackgroundColor)
+                        setHeight(100)
+                    }
+                }
                 initLettersConcept()
             }
 
@@ -1484,7 +1535,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val properTextColor = context.getProperTextColor()
 
         dialpadGridBinding?.apply {
-            if (context.config.hideDialpadLetters) {
+            if (config.hideDialpadLetters) {
                 arrayOf(
                     dialpad1Letters, dialpad2Letters, dialpad3Letters, dialpad4Letters, dialpad5Letters,
                     dialpad6Letters, dialpad7Letters, dialpad8Letters, dialpad9Letters
@@ -1763,7 +1814,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
         val baseColor = context.baseConfig.backgroundColor
         val buttonsColor = when {
-            context.isDynamicTheme() -> context.resources.getColor(R.color.you_status_bar_color, context.theme)
+            context.isDynamicTheme() && !context.isSystemInDarkMode() -> context.resources.getColor(R.color.you_status_bar_color, context.theme)
+            context.isDynamicTheme() && context.isSystemInDarkMode() -> context.getSurfaceColor()
             baseColor == Color.WHITE -> context.resources.getColor(R.color.dark_grey, context.theme)
             baseColor == Color.BLACK -> context.resources.getColor(R.color.bottom_tabs_black_background, context.theme)
             else -> context.baseConfig.backgroundColor.lightenColor(4)

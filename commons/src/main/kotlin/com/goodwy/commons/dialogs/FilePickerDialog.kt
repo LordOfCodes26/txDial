@@ -30,6 +30,7 @@ import com.goodwy.commons.extensions.getIsPathDirectory
 import com.goodwy.commons.extensions.getOTGItems
 import com.goodwy.commons.extensions.getParentPath
 import com.goodwy.commons.extensions.getProperAccentColor
+import com.goodwy.commons.extensions.getProperBlurOverlayColor
 import com.goodwy.commons.extensions.getProperPrimaryColor
 import com.goodwy.commons.extensions.getProperTextColor
 import com.goodwy.commons.extensions.getSomeAndroidSAFDocument
@@ -130,7 +131,7 @@ class FilePickerDialog(
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
         
-        blurView.setOverlayColor(0xa3ffffff.toInt())
+        blurView.setOverlayColor(activity.getProperBlurOverlayColor())
         blurView.setupWith(blurTarget)
             .setFrameClearDrawable(windowBackground)
             .setBlurRadius(8f)

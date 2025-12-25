@@ -102,7 +102,7 @@ class SettingsActivity : SimpleActivity() {
 
         binding.apply {
 //            setupEdgeToEdge(padBottomSystem = listOf(settingsNestedScrollview))
-            setupMaterialScrollListener(binding.settingsNestedScrollview, binding.settingsAppbar)
+//            setupMaterialScrollListener(binding.settingsNestedScrollview, binding.settingsAppbar)
         }
 
         val iapList: ArrayList<String> = arrayListOf(productIdX1, productIdX2, productIdX3)
@@ -122,7 +122,8 @@ class SettingsActivity : SimpleActivity() {
     @SuppressLint("MissingSuperCall")
     override fun onResume() {
         super.onResume()
-        setupTopAppBar(binding.settingsAppbar, NavigationIcon.Arrow)
+        val properBackgroundColor = if (isDynamicTheme() && !isSystemInDarkMode()) getSurfaceColor() else getProperBackgroundColor()
+        setupTopAppBar(binding.settingsAppbar, NavigationIcon.Arrow, topBarColor = properBackgroundColor)
 
 //        setupPurchaseThankYou()
 
@@ -820,7 +821,7 @@ class SettingsActivity : SimpleActivity() {
         val decorView = window.decorView
         val windowBackground = decorView.background
 
-        blurView?.setOverlayColor(0xa3ffffff.toInt())
+        blurView?.setOverlayColor(getProperBlurOverlayColor())
         blurView?.setupWith(blurTarget)
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)

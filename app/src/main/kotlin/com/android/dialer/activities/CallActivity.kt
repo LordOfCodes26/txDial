@@ -2187,7 +2187,7 @@ class CallActivity : SimpleActivity() {
         val decorView = window.decorView
         val windowBackground = decorView.background
 
-        blurView?.setOverlayColor(0xa3ffffff.toInt())
+        blurView?.setOverlayColor(getProperBlurOverlayColor())
         blurView?.setupWith(blurTarget)
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)

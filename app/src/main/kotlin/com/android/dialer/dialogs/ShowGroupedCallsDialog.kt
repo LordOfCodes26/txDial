@@ -12,6 +12,7 @@ import com.android.dialer.models.RecentCall
 import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 import com.android.dialer.R
+import com.goodwy.commons.extensions.getProperBlurOverlayColor
 
 class ShowGroupedCallsDialog(val activity: BaseSimpleActivity, recentCalls: List<RecentCall>, blurTarget: BlurTarget) {
     private var dialog: AlertDialog? = null
@@ -23,7 +24,7 @@ class ShowGroupedCallsDialog(val activity: BaseSimpleActivity, recentCalls: List
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
         
-        blurView?.setOverlayColor(0xa3ffffff.toInt())
+        blurView?.setOverlayColor(activity.getProperBlurOverlayColor())
         blurView?.setupWith(blurTarget)
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)

@@ -13,6 +13,7 @@ import com.android.dialer.R
 import com.android.dialer.databinding.DialogManageVisibleTabsBinding
 import com.android.dialer.extensions.config
 import com.android.dialer.helpers.ALL_TABS_MASK
+import com.goodwy.commons.extensions.getProperBlurOverlayColor
 import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 
@@ -27,7 +28,7 @@ class ManageVisibleTabsDialog(val activity: BaseSimpleActivity, blurTarget: Blur
         val decorView = activity.window.decorView
         val windowBackground = decorView.background
         
-        blurView?.setOverlayColor(0xa3ffffff.toInt())
+        blurView?.setOverlayColor(activity.getProperBlurOverlayColor())
         blurView?.setupWith(blurTarget)
             ?.setFrameClearDrawable(windowBackground)
             ?.setBlurRadius(8f)
