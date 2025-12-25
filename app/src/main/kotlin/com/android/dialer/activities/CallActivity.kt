@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.*
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.RippleDrawable
@@ -52,6 +53,10 @@ import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.get
 import androidx.core.view.size
 import com.android.dialer.helpers.CallManager.Companion.isSpeakerOn
+import com.android.dialer.databinding.DialogCustomBackgroundTuningBinding
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
+import kotlin.math.roundToInt
 
 
 class CallActivity : SimpleActivity() {
@@ -86,11 +91,42 @@ class CallActivity : SimpleActivity() {
     private var needSelectSIM = false //true - if the call is called from a third-party application not via ACTION_CALL, for example, this is how MIUI applications do it.
     private var audioRoutePopupMenu: PopupMenu? = null
     private var videoBackgroundView: android.widget.VideoView? = null
+    private var cachedCustomBackgroundBitmap: Bitmap? = null
+    private var cachedWallpaperDrawable: Drawable? = null
     
     // Shake to answer
     private var sensorManager: SensorManager? = null
     private var accelerometer: Sensor? = null
     private var shakeDetector: ShakeDetector? = null
+    
+    // Cached arrays for performance
+    private val whiteTextViews by lazy {
+        binding.run {
+            arrayOf(
+                callerNameLabel, callerDescription, callerNumber, callerNotes, callStatusLabel, callDeclineLabel, callAcceptLabel,
+                dialpadInclude.dialpad1, dialpadInclude.dialpad2, dialpadInclude.dialpad3, dialpadInclude.dialpad4,
+                dialpadInclude.dialpad5, dialpadInclude.dialpad6, dialpadInclude.dialpad7, dialpadInclude.dialpad8,
+                dialpadInclude.dialpad9, dialpadInclude.dialpad0, dialpadInclude.dialpadPlus, dialpadInput,
+                dialpadInclude.dialpad2Letters, dialpadInclude.dialpad3Letters, dialpadInclude.dialpad4Letters,
+                dialpadInclude.dialpad5Letters, dialpadInclude.dialpad6Letters, dialpadInclude.dialpad7Letters,
+                dialpadInclude.dialpad8Letters, dialpadInclude.dialpad9Letters,
+                onHoldCallerName, onHoldLabel, callMessageLabel, callRemindLabel,
+                callToggleMicrophoneLabel, callDialpadLabel, callToggleSpeakerLabel, callAddLabel,
+                callSwapLabel, callMergeLabel, callToggleLabel, callAddContactLabel,
+                dialpadClose, callEndLabel, callAcceptAndDecline
+            )
+        }
+    }
+    
+    private val whiteImageViews by lazy {
+        binding.run {
+            arrayOf(
+                callToggleMicrophone, callToggleSpeaker, callDialpad, callSimImage, callDetails,
+                callToggleHold, callAddContact, callAdd, callSwap, callMerge, callInfo, addCallerNote, imageView,
+                dialpadInclude.dialpadAsterisk, dialpadInclude.dialpadHashtag, callRedial
+            ).filterNotNull()
+        }
+    }
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,52 +168,30 @@ class CallActivity : SimpleActivity() {
                 binding.callHolder.setBackgroundColor(Color.BLACK)
             } else if (configBackgroundCallScreen == CUSTOM_BACKGROUND) {
                 applyCustomBackground()
+            } else if (configBackgroundCallScreen == BLUR_AVATAR || configBackgroundCallScreen == AVATAR) {
+                // These are handled in updateCallContactInfo
             } else if (configBackgroundCallScreen == VIDEO_BACKGROUND) {
                 applyVideoBackground()
             } else if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND) {
-                try {
-                    val wallpaperManager = WallpaperManager.getInstance(this)
-                    @SuppressLint("MissingPermission")
-                    val wallpaperBlur = BlurFactory.fileToBlurBitmap(wallpaperManager.drawable!!, this, 0.2f, 25f)
-                    if (wallpaperBlur != null) {
-                        val drawable: Drawable = wallpaperBlur.toDrawable(resources)
-                        binding.callHolder.background = drawable
-                        binding.callHolder.background.alpha = 60
-                        if (isQPlus()) {
-                            binding.callHolder.background.colorFilter = BlendModeColorFilter(Color.DKGRAY, BlendMode.SOFT_LIGHT)
-                        } else {
-                            binding.callHolder.background.setColorFilter(Color.DKGRAY, PorterDuff.Mode.DARKEN)
-                        }
+                applyTransparentBackground()
+            }
+            
+            // Add long-press on background to open tuning dialog for all background types except video
+            if (configBackgroundCallScreen != VIDEO_BACKGROUND && configBackgroundCallScreen != THEME_BACKGROUND) {
+                binding.callHolder.setOnLongClickListener {
+                    if (config.backgroundCallScreen != VIDEO_BACKGROUND && config.backgroundCallScreen != THEME_BACKGROUND) {
+                        promptCustomBackgroundTuning()
+                        true
+                    } else {
+                        false
                     }
-                } catch (_: Exception) {
                 }
             }
 
             binding.apply {
-                arrayOf(
-                    callerNameLabel, callerDescription, callerNumber, callerNotes, callStatusLabel, callDeclineLabel, callAcceptLabel,
-                    dialpadInclude.dialpad1, dialpadInclude.dialpad2, dialpadInclude.dialpad3, dialpadInclude.dialpad4,
-                    dialpadInclude.dialpad5, dialpadInclude.dialpad6, dialpadInclude.dialpad7, dialpadInclude.dialpad8,
-                    dialpadInclude.dialpad9, dialpadInclude.dialpad0, dialpadInclude.dialpadPlus, dialpadInput,
-                    dialpadInclude.dialpad2Letters, dialpadInclude.dialpad3Letters, dialpadInclude.dialpad4Letters,
-                    dialpadInclude.dialpad5Letters, dialpadInclude.dialpad6Letters, dialpadInclude.dialpad7Letters,
-                    dialpadInclude.dialpad8Letters, dialpadInclude.dialpad9Letters,
-                    onHoldCallerName, onHoldLabel, callMessageLabel, callRemindLabel,
-                    callToggleMicrophoneLabel, callDialpadLabel, callToggleSpeakerLabel, callAddLabel,
-                    callSwapLabel, callMergeLabel, callToggleLabel, callAddContactLabel,
-                    dialpadClose, callEndLabel, callAcceptAndDecline
-                ).forEach {
-                    it.setTextColor(Color.WHITE)
-                }
-
-                arrayOf(
-                    callToggleMicrophone, callToggleSpeaker, callDialpad, /*dialpadClose,*/ callSimImage, callDetails,
-                    callToggleHold, callAddContact, callAdd, callSwap, callMerge, callInfo, addCallerNote, imageView,
-                    dialpadInclude.dialpadAsterisk, dialpadInclude.dialpadHashtag, callRedial
-                ).filterNotNull().forEach {
-                    it.applyColorFilter(Color.WHITE)
-                }
-
+                // Use cached arrays for better performance
+                whiteTextViews.forEach { it.setTextColor(Color.WHITE) }
+                whiteImageViews.forEach { it.applyColorFilter(Color.WHITE) }
                 callSimId.setTextColor(Color.WHITE.getContrastColor())
             }
         } else {
@@ -340,6 +354,11 @@ class CallActivity : SimpleActivity() {
         disableProximitySensor()
         disableShakeDetection()
         videoBackgroundView?.stopPlayback()
+        
+        // Clear cached bitmaps and drawables to free memory
+        cachedCustomBackgroundBitmap?.recycle()
+        cachedCustomBackgroundBitmap = null
+        cachedWallpaperDrawable = null
 
         if (isOreoMr1Plus()) {
             setShowWhenLocked(false)
@@ -510,7 +529,7 @@ class CallActivity : SimpleActivity() {
                         CallManager.reject()
                         
                         // Wait for the call to disconnect before redialing
-                        val handler = Handler(Looper.getMainLooper())
+                        // Reuse existing handler instead of creating a new one
                         var retryCount = 0
                         val maxRetries = 20 // Wait up to 2 seconds (20 * 100ms)
                         
@@ -525,14 +544,14 @@ class CallActivity : SimpleActivity() {
                                 } else if (retryCount < maxRetries) {
                                     // Still disconnecting, check again
                                     retryCount++
-                                    handler.postDelayed(this, 100)
+                                    callDurationHandler.postDelayed(this, 100)
                                 } else {
                                     // Timeout, try redialing anyway
                                     CallManager.redial(this@CallActivity)
                                 }
                             }
                         }
-                        handler.postDelayed(checkDisconnected, 300)
+                        callDurationHandler.postDelayed(checkDisconnected, 300)
                     } else {
                         // No active call, just redial immediately
                         CallManager.redial(this@CallActivity)
@@ -1201,6 +1220,16 @@ class CallActivity : SimpleActivity() {
             }
 
             callerAvatar.apply {
+                // Add long-press on avatar to open tuning dialog for all background types except video
+                setOnLongClickListener {
+                    if (config.backgroundCallScreen != VIDEO_BACKGROUND && config.backgroundCallScreen != THEME_BACKGROUND) {
+                        promptCustomBackgroundTuning()
+                        true
+                    } else {
+                        false
+                    }
+                }
+                
                 try {
                     if (number == name || ((isABusinessCall || isVoiceMail) && avatarUri == "") || isDestroyed || isFinishing) {
                         val drawable = when {
@@ -2000,17 +2029,73 @@ class CallActivity : SimpleActivity() {
         view.background.alpha = if (enabled) 255 else 60
     }
 
-    private fun applyCustomBackground() {
+    /**
+     * Loads and caches the blurred wallpaper drawable.
+     * Uses cached version if available to avoid repeated expensive operations.
+     * @param blurRadiusOverride Optional blur radius override. If null, uses config value.
+     */
+    private fun getBlurredWallpaperDrawable(blurRadiusOverride: Float? = null): Drawable? {
+        val blurRadius = blurRadiusOverride ?: config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f)
+        
+        // Only use cache if blur radius matches (or if no override and using default)
+        if (cachedWallpaperDrawable != null && blurRadiusOverride == null) {
+            return cachedWallpaperDrawable
+        }
+        
+        return try {
+            val wallpaperManager = WallpaperManager.getInstance(this)
+            @SuppressLint("MissingPermission")
+            val wallpaperDrawable = wallpaperManager.drawable ?: return null
+            
+            // If blur radius is 0, use wallpaper directly without blur
+            val drawable = if (blurRadius <= 0f) {
+                wallpaperDrawable
+            } else {
+                // Apply blur effect
+                val wallpaperBlur = BlurFactory.fileToBlurBitmap(wallpaperDrawable, this, 0.2f, blurRadius)
+                wallpaperBlur?.toDrawable(resources) ?: wallpaperDrawable
+            }
+            
+            drawable.alpha = 255
+            drawable.colorFilter = null
+            // Only cache if using config value (no override)
+            if (blurRadiusOverride == null) {
+                cachedWallpaperDrawable = drawable
+            }
+            drawable
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun applyCustomBackground(alphaOverride: Int? = null, blurRadiusOverride: Float? = null) {
         val imagePath = config.backgroundCallCustomImage
-        if (imagePath.isEmpty()) return
+        if (imagePath.isEmpty()) {
+            // Clear cache if custom background is no longer set
+            cachedCustomBackgroundBitmap?.recycle()
+            cachedCustomBackgroundBitmap = null
+            return
+        }
 
         try {
-            val bitmap = decodeCustomBackground(imagePath) ?: run {
-                binding.callHolder.setBackgroundColor(Color.BLACK)
+            val alpha = (alphaOverride ?: config.backgroundCallCustomAlpha).coerceIn(0, 255)
+            
+            // Always show wallpaper as base layer with blur effect (uses cached version if available)
+            val wallpaperDrawable = getBlurredWallpaperDrawable()
+            
+            // Use cached bitmap if available, otherwise decode
+            val bitmap = cachedCustomBackgroundBitmap ?: decodeCustomBackground(imagePath) ?: run {
+                // If no custom image, just show wallpaper or black
+                binding.callHolder.background = wallpaperDrawable ?: ColorDrawable(Color.BLACK)
                 return
             }
-            val alpha = config.backgroundCallCustomAlpha.coerceIn(0, 255)
-            val blurRadius = config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f).let {
+            
+            // Cache the bitmap for future use (real-time preview)
+            if (cachedCustomBackgroundBitmap == null) {
+                cachedCustomBackgroundBitmap = bitmap
+            }
+            
+            val blurRadius = (blurRadiusOverride ?: config.backgroundCallCustomBlurRadius).coerceIn(0f, 25f).let {
                 if (it == 0f) CUSTOM_BACKGROUND_BLUR_RADIUS_DEFAULT else it
             }
 
@@ -2020,15 +2105,38 @@ class CallActivity : SimpleActivity() {
                 CUSTOM_BACKGROUND_BLUR_SCALE,
                 blurRadius
             ) ?: bitmap
-            val drawable: Drawable = blurred.toDrawable(resources)
-            binding.callHolder.background = drawable
-            binding.callHolder.background.alpha = alpha
-            if (isQPlus()) {
-                binding.callHolder.background.colorFilter = BlendModeColorFilter(Color.DKGRAY, BlendMode.SOFT_LIGHT)
+            val customDrawable: Drawable = blurred.toDrawable(resources)
+            customDrawable.alpha = alpha
+            // Remove dark overlay for custom background - user controls opacity via alpha slider
+            customDrawable.colorFilter = null
+            
+            // Layer the backgrounds: wallpaper as base, custom image on top
+            if (wallpaperDrawable != null) {
+                val layers = arrayOf(wallpaperDrawable, customDrawable)
+                val layerDrawable = LayerDrawable(layers)
+                binding.callHolder.background = layerDrawable
             } else {
-                binding.callHolder.background.setColorFilter(Color.DKGRAY, PorterDuff.Mode.DARKEN)
+                // Fallback to just custom background if wallpaper unavailable
+                binding.callHolder.background = customDrawable
             }
         } catch (_: Exception) {
+        }
+    }
+
+    private fun applyTransparentBackground(blurRadiusOverride: Float? = null) {
+        try {
+            // Use cached wallpaper drawable if available, with optional blur override
+            val drawable = getBlurredWallpaperDrawable(blurRadiusOverride)
+            if (drawable != null) {
+                binding.callHolder.background = drawable
+                binding.callHolder.background.alpha = 255  // Full opacity
+                // Remove dark overlay - show wallpaper with blur but no overlay
+                binding.callHolder.background.colorFilter = null
+            } else {
+                binding.callHolder.setBackgroundColor(Color.BLACK)
+            }
+        } catch (_: Exception) {
+            binding.callHolder.setBackgroundColor(Color.BLACK)
         }
     }
 
@@ -2063,6 +2171,168 @@ class CallActivity : SimpleActivity() {
             // Fallback to black if anything fails
             videoBackgroundView?.stopPlayback()
             binding.callHolder.setBackgroundColor(Color.BLACK)
+        }
+    }
+
+    private fun promptCustomBackgroundTuning() {
+        // Don't show dialog for video background or theme background
+        val backgroundType = config.backgroundCallScreen
+        if (backgroundType == VIDEO_BACKGROUND || backgroundType == THEME_BACKGROUND) return
+        
+        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget) ?: return
+        val bindingDialog = DialogCustomBackgroundTuningBinding.inflate(layoutInflater)
+        val view = bindingDialog.root
+
+        val blurView = view.findViewById<BlurView>(R.id.blurView)
+        val decorView = window.decorView
+        val windowBackground = decorView.background
+
+        blurView?.setOverlayColor(0xa3ffffff.toInt())
+        blurView?.setupWith(blurTarget)
+            ?.setFrameClearDrawable(windowBackground)
+            ?.setBlurRadius(8f)
+            ?.setBlurAutoUpdate(true)
+
+        val primaryColor = getProperPrimaryColor()
+
+        // Set dialog title based on background type
+        val titleText = when (backgroundType) {
+            CUSTOM_BACKGROUND -> getString(R.string.custom_image)
+            TRANSPARENT_BACKGROUND -> getString(R.string.blurry_wallpaper)
+            BLUR_AVATAR -> getString(R.string.blurry_contact_photo)
+            AVATAR -> getString(R.string.contact_photo)
+            BLACK_BACKGROUND -> getString(R.string.black)
+            else -> getString(R.string.custom_image) // Fallback (should never be reached)
+        }
+        
+        bindingDialog.dialogTitle.apply {
+            beVisible()
+            text = titleText
+        }
+
+        // Initialize values based on background type
+        val alphaInitial = when (backgroundType) {
+            CUSTOM_BACKGROUND -> config.backgroundCallCustomAlpha.coerceIn(0, 255)
+            TRANSPARENT_BACKGROUND -> 255  // Wallpaper alpha (not tunable)
+            BLUR_AVATAR, AVATAR -> 60  // Avatar background alpha
+            else -> 255
+        }
+        
+        val blurInitial = when (backgroundType) {
+            CUSTOM_BACKGROUND -> config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f)
+            TRANSPARENT_BACKGROUND -> config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f)  // Use saved blur value
+            BLUR_AVATAR -> 5f  // Avatar blur
+            else -> 0f
+        }
+
+        var alphaValue = alphaInitial
+        var blurValue = blurInitial
+
+        // Configure alpha slider (hide for TRANSPARENT_BACKGROUND)
+        if (backgroundType == TRANSPARENT_BACKGROUND) {
+            bindingDialog.alphaLabel.beGone()
+            bindingDialog.alphaSeek.beGone()
+        } else {
+            bindingDialog.alphaLabel.beVisible()
+            bindingDialog.alphaSeek.beVisible()
+            bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, alphaValue)
+            bindingDialog.alphaSeek.configure(
+                rangeStart = 0f,
+                rangeEnd = 255f,
+                initial = alphaInitial.toFloat()
+            ) { value ->
+                val intVal = value.roundToInt().coerceIn(0, 255)
+                alphaValue = intVal
+                bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, intVal)
+                // Real-time preview: update background immediately
+                updateBackgroundPreview(backgroundType, intVal, blurValue)
+            }
+        }
+
+        // Configure blur slider
+        bindingDialog.blurLabel.text = getString(R.string.custom_background_blur_label, blurInitial.roundToInt())
+        bindingDialog.blurSeek.configure(
+            rangeStart = 0f,
+            rangeEnd = 25f,
+            initial = blurInitial
+        ) { value ->
+            val floatVal = value.coerceIn(0f, 25f)
+            blurValue = floatVal
+            bindingDialog.blurLabel.text = getString(R.string.custom_background_blur_label, floatVal.roundToInt())
+            // Real-time preview: update background immediately
+            // For TRANSPARENT_BACKGROUND, only use blur (alpha is fixed at 255)
+            val previewAlpha = if (backgroundType == TRANSPARENT_BACKGROUND) 255 else alphaValue
+            updateBackgroundPreview(backgroundType, previewAlpha, floatVal)
+        }
+
+        getAlertDialogBuilder()
+            .apply {
+                // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+                setupDialogStuff(view, this, titleText = "") { alertDialog ->
+                    val positiveButton = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+                    val negativeButton = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+                    val buttonsContainer = view.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+
+                    buttonsContainer?.visibility = android.view.View.VISIBLE
+
+                    positiveButton?.apply {
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            // Save the values to config based on background type
+                            when (backgroundType) {
+                                CUSTOM_BACKGROUND -> {
+                                    config.backgroundCallCustomAlpha = alphaValue
+                                    config.backgroundCallCustomBlurRadius = blurValue.coerceIn(0f, 25f)
+                                    applyCustomBackground()
+                                }
+                                TRANSPARENT_BACKGROUND -> {
+                                    // Save blur value for transparent background
+                                    config.backgroundCallCustomBlurRadius = blurValue.coerceIn(0f, 25f)
+                                    // Clear cached wallpaper so it regenerates with new blur
+                                    cachedWallpaperDrawable = null
+                                    applyTransparentBackground()
+                                }
+                                BLUR_AVATAR, AVATAR -> {
+                                    // For avatar backgrounds, update the background
+                                    updateCallContactInfo(CallManager.getPrimaryCall())
+                                }
+                            }
+                            alertDialog.dismiss()
+                        }
+                    }
+
+                    negativeButton?.apply {
+                        beVisible()
+                        setTextColor(primaryColor)
+                        setOnClickListener {
+                            // Restore original values on cancel
+                            when (backgroundType) {
+                                CUSTOM_BACKGROUND -> applyCustomBackground()
+                                TRANSPARENT_BACKGROUND -> applyTransparentBackground()
+                                BLUR_AVATAR, AVATAR -> updateCallContactInfo(CallManager.getPrimaryCall())
+                            }
+                            alertDialog.dismiss()
+                        }
+                    }
+                }
+            }
+    }
+    
+    private fun updateBackgroundPreview(backgroundType: Int, alpha: Int, blur: Float) {
+        when (backgroundType) {
+            CUSTOM_BACKGROUND -> {
+                applyCustomBackground(alphaOverride = alpha, blurRadiusOverride = blur)
+            }
+            TRANSPARENT_BACKGROUND -> {
+                // Update transparent background with new blur (alpha is always 255)
+                applyTransparentBackground(blurRadiusOverride = blur)
+            }
+            BLUR_AVATAR, AVATAR -> {
+                // Update avatar background alpha
+                if (binding.callHolder.background != null) {
+                    binding.callHolder.background.alpha = alpha
+                }
+            }
         }
     }
 

@@ -733,6 +733,7 @@ class SettingsActivity : SimpleActivity() {
                     TRANSPARENT_BACKGROUND -> {
                         config.backgroundCallScreen = selected
                         binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
+                        promptCustomBackgroundTuning()
                     }
                     CUSTOM_BACKGROUND -> {
                         launchCustomBackgroundPicker()
@@ -744,6 +745,7 @@ class SettingsActivity : SimpleActivity() {
                         if (pro) {
                             config.backgroundCallScreen = selected
                             binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
+                            promptCustomBackgroundTuning()
                         } else {
                             RxAnimation.from(binding.settingsBackgroundCallScreenHolder)
                                 .shake(shakeTranslation = 2f)
@@ -751,6 +753,11 @@ class SettingsActivity : SimpleActivity() {
 
                             showSnackbar(binding.root)
                         }
+                    }
+                    BLUR_AVATAR, AVATAR -> {
+                        config.backgroundCallScreen = selected
+                        binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
+                        promptCustomBackgroundTuning()
                     }
                     else -> {
                         config.backgroundCallScreen = selected
@@ -801,6 +808,10 @@ class SettingsActivity : SimpleActivity() {
     }
 
     private fun promptCustomBackgroundTuning() {
+        // Don't show dialog for video background or theme background
+        val backgroundType = config.backgroundCallScreen
+        if (backgroundType == VIDEO_BACKGROUND || backgroundType == THEME_BACKGROUND) return
+        
         val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget) ?: return
         val bindingDialog = DialogCustomBackgroundTuningBinding.inflate(layoutInflater)
         val view = bindingDialog.root
@@ -817,37 +828,68 @@ class SettingsActivity : SimpleActivity() {
 
         val primaryColor = getProperPrimaryColor()
 
+        // Set dialog title based on background type
+        val titleText = when (backgroundType) {
+            CUSTOM_BACKGROUND -> getString(R.string.custom_image)
+            TRANSPARENT_BACKGROUND -> getString(R.string.blurry_wallpaper)
+            BLUR_AVATAR -> getString(R.string.blurry_contact_photo)
+            AVATAR -> getString(R.string.contact_photo)
+            BLACK_BACKGROUND -> getString(R.string.black)
+            else -> getString(R.string.custom_image) // Fallback (should never be reached)
+        }
+        
         bindingDialog.dialogTitle.apply {
             beVisible()
-            text = getString(R.string.custom_image)
+            text = titleText
         }
 
-        val alphaInitial = config.backgroundCallCustomAlpha.coerceIn(0, 255)
-        val blurInitial = config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f)
+        // Initialize values based on background type
+        val alphaInitial = when (backgroundType) {
+            CUSTOM_BACKGROUND -> config.backgroundCallCustomAlpha.coerceIn(0, 255)
+            TRANSPARENT_BACKGROUND -> 255  // Wallpaper alpha (not tunable)
+            BLUR_AVATAR, AVATAR -> 60  // Avatar background alpha
+            else -> 255
+        }
+        
+        val blurInitial = when (backgroundType) {
+            CUSTOM_BACKGROUND -> config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f)
+            TRANSPARENT_BACKGROUND -> config.backgroundCallCustomBlurRadius.coerceIn(0f, 25f)  // Use saved blur value
+            BLUR_AVATAR -> 5f  // Avatar blur
+            else -> 0f
+        }
 
         var alphaValue = alphaInitial
         var blurValue = blurInitial
 
-        bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, alphaValue)
-        bindingDialog.alphaSeek.configure(
-            rangeStart = 0f,
-            rangeEnd = 255f,
-            initial = alphaInitial.toFloat()
-        ) { value ->
-            val intVal = value.roundToInt().coerceIn(0, 255)
-            alphaValue = intVal
-            bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, intVal)
+        // Configure alpha slider (hide for TRANSPARENT_BACKGROUND)
+        if (backgroundType == TRANSPARENT_BACKGROUND) {
+            bindingDialog.alphaLabel.beGone()
+            bindingDialog.alphaSeek.beGone()
+        } else {
+            bindingDialog.alphaLabel.beVisible()
+            bindingDialog.alphaSeek.beVisible()
+            bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, alphaValue)
+            bindingDialog.alphaSeek.configure(
+                rangeStart = 0f,
+                rangeEnd = 255f,
+                initial = alphaInitial.toFloat()
+            ) { value ->
+                val intVal = value.roundToInt().coerceIn(0, 255)
+                alphaValue = intVal
+                bindingDialog.alphaLabel.text = getString(R.string.custom_background_alpha_label, intVal)
+            }
         }
 
+        // Configure blur slider
         bindingDialog.blurLabel.text = getString(R.string.custom_background_blur_label, blurInitial.roundToInt())
         bindingDialog.blurSeek.configure(
             rangeStart = 0f,
             rangeEnd = 25f,
             initial = blurInitial
         ) { value ->
-            val intVal = value.roundToInt().coerceIn(0, 25)
-            blurValue = intVal.toFloat()
-            bindingDialog.blurLabel.text = getString(R.string.custom_background_blur_label, intVal)
+            val floatVal = value.coerceIn(0f, 25f)
+            blurValue = floatVal
+            bindingDialog.blurLabel.text = getString(R.string.custom_background_blur_label, floatVal.roundToInt())
         }
 
         getAlertDialogBuilder()
@@ -863,8 +905,21 @@ class SettingsActivity : SimpleActivity() {
                     positiveButton?.apply {
                         setTextColor(primaryColor)
                         setOnClickListener {
-                            config.backgroundCallCustomAlpha = alphaValue
-                            config.backgroundCallCustomBlurRadius = blurValue.coerceIn(0f, 25f)
+                            // Save the values to config based on background type
+                            when (backgroundType) {
+                                CUSTOM_BACKGROUND -> {
+                                    config.backgroundCallCustomAlpha = alphaValue
+                                    config.backgroundCallCustomBlurRadius = blurValue.coerceIn(0f, 25f)
+                                }
+                                TRANSPARENT_BACKGROUND -> {
+                                    // Save blur value for transparent background
+                                    config.backgroundCallCustomBlurRadius = blurValue.coerceIn(0f, 25f)
+                                }
+                                BLUR_AVATAR, AVATAR -> {
+                                    // For avatar backgrounds, values are handled in CallActivity
+                                    // but we can save them here for consistency
+                                }
+                            }
                             alertDialog.dismiss()
                         }
                     }
