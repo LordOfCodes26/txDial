@@ -38,6 +38,7 @@
                 android:id="@+id/dialpadToolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
+                android:layout_marginEnd="@dimen/small_margin"
                 android:background="@color/default_background_color"
                 app:menu="@menu/menu_dialpad"
                 app:titleTextAppearance="@style/AppTheme.ActionBar.TitleTextStyle"
