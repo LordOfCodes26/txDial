@@ -21,12 +21,14 @@ import com.android.dialer.helpers.RECORDING_RULE_UNKNOWN_NUMBERS
 import com.android.dialer.recording.CallRecorder
 import com.android.dialer.recording.RecordingFileManager
 import com.goodwy.commons.dialogs.ConfirmationDialog
+import com.goodwy.commons.dialogs.FilePickerDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
 import com.goodwy.commons.models.RadioItem
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.NavigationIcon
 import com.goodwy.commons.helpers.PERMISSION_WRITE_STORAGE
 import com.goodwy.commons.helpers.ensureBackgroundThread
+import androidx.core.net.toUri
 
 class RecordingSettingsActivity : SimpleActivity() {
     
@@ -101,16 +103,6 @@ class RecordingSettingsActivity : SimpleActivity() {
             }
         }
         
-        // File Name Template
-        binding.settingsRecordingFileTemplateHolder.setOnClickListener {
-            showTemplateEditor()
-        }
-        
-        // Preview
-        binding.settingsRecordingPreviewHolder.setOnClickListener {
-            showPreview()
-        }
-        
         // Open Recordings Folder
         binding.settingsRecordingOpenFolderHolder.setOnClickListener {
             openRecordingsFolder()
@@ -162,13 +154,6 @@ class RecordingSettingsActivity : SimpleActivity() {
             binding.settingsRecordingCustomPath.text = path
         }
         
-        // File Template
-        binding.settingsRecordingFileTemplate.text = config.recordingFileNameTemplate
-        
-        // Preview
-        val example = fileManager.getExampleFileName(getCurrentFormat())
-        binding.settingsRecordingPreview.text = example
-        
         // Current location path
         val directory = fileManager.getSaveDirectory()
         binding.settingsRecordingCurrentPath.text = directory.absolutePath
@@ -200,18 +185,6 @@ class RecordingSettingsActivity : SimpleActivity() {
             alpha = if (enabled) enabledAlpha else disabledAlpha
             isClickable = enabled && config.recordingSaveLocation == RecordingFileManager.LOCATION_CUSTOM
             isEnabled = enabled && config.recordingSaveLocation == RecordingFileManager.LOCATION_CUSTOM
-        }
-        
-        binding.settingsRecordingFileTemplateHolder.apply {
-            alpha = if (enabled) enabledAlpha else disabledAlpha
-            isClickable = enabled
-            isEnabled = enabled
-        }
-        
-        binding.settingsRecordingPreviewHolder.apply {
-            alpha = if (enabled) enabledAlpha else disabledAlpha
-            isClickable = enabled
-            isEnabled = enabled
         }
         
         binding.settingsRecordingOpenFolderHolder.apply {
@@ -335,94 +308,25 @@ class RecordingSettingsActivity : SimpleActivity() {
     }
     
     private fun showCustomPathPicker() {
-        val input = EditText(this).apply {
-            setText(config.recordingCustomPath)
-            hint = "/storage/emulated/0/MyRecordings"
-            setSingleLine()
+        val currentPath = if (config.recordingCustomPath.isNotEmpty()) {
+            config.recordingCustomPath
+        } else {
+            internalStoragePath
         }
         
-        getAlertDialogBuilder()
-            .setTitle(R.string.custom_path)
-            .setMessage(R.string.custom_path_description)
-            .setView(input)
-            .setPositiveButton(R.string.ok) { _, _ ->
-                val path = input.text.toString().trim()
-                if (path.isNotEmpty()) {
-                    config.recordingCustomPath = path
-                    updateUI()
-                } else {
-                    toast(R.string.path_cannot_be_empty)
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .apply { setupDialogStuff(input, this, R.string.custom_path) }
-    }
-    
-    private fun showTemplateEditor() {
-        if (!config.callRecordingEnabled) {
-            toast(R.string.enable_recording_first)
-            return
-        }
-        
-        val variables = fileManager.getTemplateVariables()
-        val variablesText = variables.joinToString("\n") {
-            "${it.variable} → ${it.example}"
-        }
-        
-        val input = EditText(this).apply {
-            setText(config.recordingFileNameTemplate)
-            hint = RecordingFileManager.DEFAULT_TEMPLATE
-            setSingleLine()
-        }
-        
-        getAlertDialogBuilder()
-            .setPositiveButton(R.string.ok) { _, _ ->
-                val template = input.text.toString().trim()
-                if (template.isNotEmpty()) {
-                    if (fileManager.isValidTemplate(template)) {
-                        config.recordingFileNameTemplate = template
-                        updateUI()
-                        showPreview()
-                    } else {
-                        toast(R.string.invalid_template)
-                    }
-                } else {
-                    toast(R.string.template_cannot_be_empty)
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .setNeutralButton(R.string.reset_to_default) { _, _ ->
-                config.recordingFileNameTemplate = RecordingFileManager.DEFAULT_TEMPLATE
-                updateUI()
-            }
-            .apply { 
-                val message = getString(R.string.available_variables) + "\n\n" + variablesText
-                setupDialogStuff(input, this, R.string.file_name_template, message) 
-            }
-    }
-    
-    private fun showPreview() {
-        if (!config.callRecordingEnabled) {
-            toast(R.string.enable_recording_first)
-            return
-        }
-        
-        val example = fileManager.getExampleFileName(getCurrentFormat())
-        val directory = fileManager.getSaveDirectory()
-        
-        val message = getString(R.string.preview_file_name) + "\n\n" +
-                getString(R.string.file_name_label) + " $example\n\n" +
-                getString(R.string.save_location_label) + " ${directory.absolutePath}"
-
         val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
-        ConfirmationDialog(
-            this,
-            message = message,
-            positive = R.string.ok,
-            negative = 0,
-            cancelOnTouchOutside = false,
+        FilePickerDialog(
+            activity = this,
+            currPath = currentPath,
+            pickFile = false, // false = pick folder, true = pick file
+            showFAB = true,
+            titleText = R.string.custom_path,
+            useAccentColor = true,
             blurTarget = blurTarget
-        ) {}
+        ) { pickedPath ->
+            config.recordingCustomPath = pickedPath
+            updateUI()
+        }
     }
     
     private fun openRecordingsFolder() {
@@ -431,73 +335,154 @@ class RecordingSettingsActivity : SimpleActivity() {
             return
         }
         
-        ensureBackgroundThread {
-            try {
-                val directory = fileManager.getSaveDirectory()
-                
-                // Try multiple methods to open the folder
-                val intents = mutableListOf<Intent>()
-                
-                // Method 1: Standard file manager intent (works on most devices)
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-                    // Android 6 and below: direct file URI
-                    intents.add(Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(Uri.parse("file://${directory.absolutePath}"), "resource/folder")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    })
-                }
-                
-                // Method 2: Generic file manager picker
-                intents.add(Intent(Intent.ACTION_GET_CONTENT).apply {
-                    type = "*/*"
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                })
-                
-                // Method 3: Try to open with DocumentsUI (Android 5.0+)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    intents.add(Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A${directory.name}"), "*/*")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    })
-                }
-                
-                var opened = false
-                for (intent in intents) {
-                    try {
-                        if (intent.resolveActivity(packageManager) != null) {
-                            runOnUiThread {
-                                startActivity(intent)
-                            }
-                            opened = true
-                            break
-                        }
-                    } catch (e: Exception) {
-                        // Try next method
-                        continue
-                    }
-                }
-                
-                if (!opened) {
-                    runOnUiThread {
-                        // Show directory path as fallback
-                        val message = getString(R.string.cannot_open_folder) + "\n\n" + 
-                                getString(R.string.save_location_label) + " " + directory.absolutePath
-                        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
-                        ConfirmationDialog(
-                            this,
-                            message = message,
-                            positive = R.string.ok,
-                            negative = 0,
-                            cancelOnTouchOutside = true,
-                            blurTarget = blurTarget
-                        ) {}
-                    }
-                }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    toast(R.string.cannot_open_folder)
+        // Check if we need storage permissions for non-app storage locations
+        val location = config.recordingSaveLocation
+        if (location != RecordingFileManager.LOCATION_APP_FILES && !hasStoragePermission()) {
+            requestStoragePermission { granted ->
+                if (granted) {
+                    openRecordingsFolderInternal()
+                } else {
+                    toast(R.string.storage_permission_denied)
                 }
             }
+            return
+        }
+        
+        openRecordingsFolderInternal()
+    }
+    
+    private fun openRecordingsFolderInternal() {
+        try {
+            val directory = fileManager.getSaveDirectory()
+            
+            // Ensure directory exists
+            if (!directory.exists()) {
+                val created = directory.mkdirs()
+                if (!created) {
+                    toast(R.string.cannot_open_folder)
+                    return
+                }
+            }
+            
+            val path = directory.absolutePath
+            val location = config.recordingSaveLocation
+            
+            // Try multiple methods to open the folder
+            val methods = listOf(
+                // Method 1: Try SAF-only root handling
+                {
+                    if (isSAFOnlyRoot(path)) {
+                        try {
+                            createAndroidDataOrObbUri(path)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else null
+                },
+                // Method 2: Try OTG paths
+                {
+                    if (isPathOnOTG(path)) {
+                        try {
+                            val uriString: String = path.getPublicUri(this@RecordingSettingsActivity) as String
+                            if (uriString.isNotEmpty()) {
+                                Uri.parse(uriString)
+                            } else null
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else null
+                },
+                // Method 3: Try SAF SDK 30+ paths (for paths that need SAF)
+                {
+                    if (isAccessibleWithSAFSdk30(path)) {
+                        try {
+                            createDocumentUriUsingFirstParentTreeUri(path)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else null
+                },
+                // Method 4: For custom paths, try createDocumentUriFromRootTree first
+                {
+                    if (location == RecordingFileManager.LOCATION_CUSTOM) {
+                        try {
+                            createDocumentUriFromRootTree(path)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else null
+                },
+                // Method 5: Try ensurePublicUri (works for most standard paths)
+                {
+                    try {
+                        ensurePublicUri(path, packageName)
+                    } catch (e: Exception) {
+                        null
+                    }
+                },
+                // Method 6: Try createDocumentUriFromRootTree as fallback (for all paths)
+                {
+                    try {
+                        createDocumentUriFromRootTree(path)
+                    } catch (e: Exception) {
+                        null
+                    }
+                },
+                // Method 7: For custom paths, try getPublicUri extension (for SD card/OTG)
+                {
+                    if (location == RecordingFileManager.LOCATION_CUSTOM) {
+                        try {
+                            val uriString: String = path.getPublicUri(this@RecordingSettingsActivity) as String
+                            if (uriString.isNotEmpty() && uriString.startsWith("content://")) {
+                                val uri = uriString.toUri()
+                                // Validate URI doesn't point to wrong location
+                                val uriStr = uri.toString()
+                                if (uriStr.contains("download", ignoreCase = true) && 
+                                    !path.contains("download", ignoreCase = true)) {
+                                    null
+                                } else {
+                                    uri
+                                }
+                            } else {
+                                null
+                            }
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else null
+                }
+            )
+            
+            // Try each method until one succeeds
+            for (method in methods) {
+                val uri = method()
+                if (uri != null) {
+                    try {
+                        // Try to launch with this URI
+                        launchSystemFileManager(uri)
+                        return // Success, exit early
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        // Continue to next method
+                    }
+                }
+            }
+            
+            // All methods failed - show directory path
+            val message = getString(R.string.cannot_open_folder) + "\n\n" + 
+                    getString(R.string.save_location_label) + " " + path
+            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ConfirmationDialog(
+                this,
+                message = message,
+                positive = R.string.ok,
+                negative = 0,
+                cancelOnTouchOutside = true,
+                blurTarget = blurTarget
+            ) {}
+        } catch (e: Exception) {
+            e.printStackTrace()
+            toast(R.string.cannot_open_folder)
         }
     }
     

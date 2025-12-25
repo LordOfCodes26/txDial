@@ -204,69 +204,6 @@
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
-                <!-- File Naming -->
-                <TextView
-                    android:id="@+id/settingsFileNamingLabel"
-                    style="@style/SettingsSectionLabelStyle"
-                    android:text="@string/file_naming"
-                    tools:textColor="@color/primary" />
-
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/settingsFileNamingHolder"
-                    style="@style/SettingsSectionHolder"
-                    app:cardCornerRadius="@dimen/activity_margin"
-                    app:cardElevation="0dp">
-
-                    <LinearLayout
-                        android:id="@+id/settingsFileNamingWrapper"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <!-- File Name Template -->
-                        <LinearLayout
-                            android:id="@+id/settingsRecordingFileTemplateHolder"
-                            style="@style/SettingsHolderStyle"
-                            android:orientation="vertical">
-
-                            <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settingsRecordingFileTemplateLabel"
-                                style="@style/SettingsTextLabelStyle"
-                                android:text="@string/file_name_template" />
-
-                            <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settingsRecordingFileTemplate"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/tiny_margin"
-                                android:alpha="0.7"
-                                android:textSize="@dimen/smaller_text_size"
-                                tools:text="{timestamp}_{direction}_{phone_number}" />
-                        </LinearLayout>
-
-                        <!-- Preview -->
-                        <LinearLayout
-                            android:id="@+id/settingsRecordingPreviewHolder"
-                            style="@style/SettingsHolderStyle"
-                            android:orientation="vertical">
-
-                            <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settingsRecordingPreviewLabel"
-                                style="@style/SettingsTextLabelStyle"
-                                android:text="@string/preview_example" />
-
-                            <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settingsRecordingPreview"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/tiny_margin"
-                                android:alpha="0.7"
-                                android:textSize="@dimen/smaller_text_size"
-                                tools:text="20231221_143025.123+0000_out_1234567890.wav" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
                 <!-- Actions -->
                 <TextView
                     android:id="@+id/settingsActionsLabel"
