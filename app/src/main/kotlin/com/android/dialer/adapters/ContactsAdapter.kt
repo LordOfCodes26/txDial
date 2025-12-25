@@ -109,15 +109,15 @@ class ContactsAdapter(
         val selectedNumber = getSelectedPhoneNumber().orEmpty().replace("+","%2B")
 
         menu.apply {
-            findItem(R.id.cab_call).isVisible = !hasMultipleSIMs && isOneItemSelected
-            findItem(R.id.cab_call_sim_1).isVisible = hasMultipleSIMs && isOneItemSelected
-            findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs && isOneItemSelected
-            findItem(R.id.cab_remove_default_sim).isVisible = isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""
+            findItem(R.id.cab_call).isVisible = /*!hasMultipleSIMs && isOneItemSelected*/ false
+            findItem(R.id.cab_call_sim_1).isVisible = /*hasMultipleSIMs && isOneItemSelected*/ false
+            findItem(R.id.cab_call_sim_2).isVisible = /*hasMultipleSIMs && isOneItemSelected*/ false
+            findItem(R.id.cab_remove_default_sim).isVisible = /*isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""*/ false
 
             findItem(R.id.cab_delete).isVisible = showDeleteButton
             findItem(R.id.cab_create_shortcut).title = activity.getString(R.string.create_shortcut)//activity.addLockedLabelIfNeeded(R.string.create_shortcut)
-            findItem(R.id.cab_create_shortcut).isVisible = isOneItemSelected
-            findItem(R.id.cab_view_details).isVisible = isOneItemSelected
+            findItem(R.id.cab_create_shortcut).isVisible = /*isOneItemSelected*/ false
+            findItem(R.id.cab_view_details).isVisible = /*isOneItemSelected*/ false
             findItem(R.id.cab_block_unblock_contact).isVisible = isOneItemSelected
             getCabBlockContactTitle { title ->
                 findItem(R.id.cab_block_unblock_contact).title = title
@@ -126,6 +126,12 @@ class ContactsAdapter(
     }
 
     override fun actionItemPressed(id: Int) {
+        // Allow select_all to work even when no items are selected
+        if (id == R.id.cab_select_all) {
+            selectAll()
+            return
+        }
+
         if (selectedKeys.isEmpty()) {
             return
         }
@@ -140,7 +146,6 @@ class ContactsAdapter(
             R.id.cab_send_sms -> sendSMS()
             R.id.cab_view_details -> viewContactDetails()
             R.id.cab_create_shortcut -> createShortcut()
-            R.id.cab_select_all -> selectAll()
         }
     }
 
@@ -151,6 +156,15 @@ class ContactsAdapter(
     override fun getItemSelectionKey(position: Int) = contacts.getOrNull(position)?.rawId
 
     override fun getItemKeyPosition(key: Int) = contacts.indexOfFirst { it.rawId == key }
+
+    // Override selectAll to ensure all contacts are selected
+    override fun selectAll() {
+        // Iterate through all items - toggleItemSelection will skip non-selectable ones
+        for (i in 0 until itemCount) {
+            toggleItemSelection(true, i, false)
+        }
+        updateTitle()
+    }
 
     @SuppressLint("NotifyDataSetChanged")
     override fun onActionModeCreated() {

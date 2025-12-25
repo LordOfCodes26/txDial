@@ -56,7 +56,8 @@
         app:showAsAction="never" />
     <item
         android:id="@+id/cab_select_all"
-        android:showAsAction="never"
+        android:icon="@drawable/ic_select_all_vector"
+        android:showAsAction="ifRoom"
         android:title="@string/select_all"
-        app:showAsAction="never" />
+        app:showAsAction="ifRoom" />
 </menu>

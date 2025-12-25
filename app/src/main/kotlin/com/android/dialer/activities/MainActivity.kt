@@ -251,6 +251,7 @@ class MainActivity : SimpleActivity() {
         binding.mainDialpadButton.setIcon(R.drawable.ic_dialpad_vector)
         binding.mainDialpadButton.setIconTint(iconTintColor)
         binding.mainDialpadButton.setBackgroundColor(properBackgroundColor)
+        binding.mainDialpadButton.beGone() // Always hide the dialpad button
 
         binding.mainCallButton.setIcon(R.drawable.ic_phone_vector)
         binding.mainCallButton.setIconTint(iconTintColor)
@@ -621,11 +622,11 @@ class MainActivity : SimpleActivity() {
                         .withEndAction {
                             searchView.translationX = 0f
                             searchView.alpha = 1f
-                            binding.mainDialpadButton.beVisible()
+                            binding.mainDialpadButton.beGone() // Always hide the dialpad button
                         }
                         .start()
                 } ?: run {
-                    binding.mainDialpadButton.beVisible()
+                    binding.mainDialpadButton.beGone() // Always hide the dialpad button
                 }
                 
                 return true

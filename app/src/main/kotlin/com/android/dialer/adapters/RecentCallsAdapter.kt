@@ -112,20 +112,20 @@ class RecentCallsAdapter(
         val isAllUnblockedNumbers = isAllUnblockedNumbers()
 
         menu.apply {
-            findItem(R.id.cab_call_sim_1).isVisible = hasMultipleSIMs && isOneItemSelected
-            findItem(R.id.cab_call_sim_2).isVisible = hasMultipleSIMs && isOneItemSelected
-            findItem(R.id.cab_remove_default_sim).isVisible = isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""
+            findItem(R.id.cab_call_sim_1).isVisible = /*hasMultipleSIMs && isOneItemSelected*/ false
+            findItem(R.id.cab_call_sim_2).isVisible = /*hasMultipleSIMs && isOneItemSelected*/ false
+            findItem(R.id.cab_remove_default_sim).isVisible = /*isOneItemSelected && (activity.config.getCustomSIM(selectedNumber) ?: "") != ""*/ false
 
             findItem(R.id.cab_block_number).title = if (isOneItemSelected) activity.getString(R.string.block_number) else activity.getString(R.string.block_numbers)
             findItem(R.id.cab_block_number).isVisible = isAllUnblockedNumbers && !isAllBlockedNumbers
             findItem(R.id.cab_unblock_number).title = if (isOneItemSelected) activity.getString(R.string.unblock_number) else activity.getString(R.string.unblock_numbers)
             findItem(R.id.cab_unblock_number).isVisible = isAllBlockedNumbers && !isAllUnblockedNumbers
             findItem(R.id.cab_add_number).isVisible = isOneItemSelected
-            findItem(R.id.cab_show_call_details).isVisible = isOneItemSelected
-            findItem(R.id.cab_copy_number).isVisible = isOneItemSelected
-            findItem(R.id.web_search).isVisible = isOneItemSelected
+            findItem(R.id.cab_show_call_details).isVisible = /*isOneItemSelected*/ false
+            findItem(R.id.cab_copy_number).isVisible = /*isOneItemSelected*/ false
+            findItem(R.id.web_search).isVisible = /*isOneItemSelected*/ false
             // Note: Menu visibility check - we'll show the option, actual check happens on click
-            findItem(R.id.cab_view_details)?.isVisible = isOneItemSelected
+            findItem(R.id.cab_view_details)?.isVisible = /*isOneItemSelected*/ false
         }
     }
 
@@ -144,6 +144,12 @@ class RecentCallsAdapter(
     }
 
     override fun actionItemPressed(id: Int) {
+        // Allow select_all to work even when no items are selected
+        if (id == R.id.cab_select_all) {
+            selectAll()
+            return
+        }
+
         if (selectedKeys.isEmpty()) {
             return
         }
@@ -160,7 +166,6 @@ class RecentCallsAdapter(
             R.id.cab_copy_number -> copyNumber()
             R.id.web_search -> webSearch()
             R.id.cab_remove -> askConfirmRemove()
-            R.id.cab_select_all -> selectAll()
             R.id.cab_view_details -> {
                 val selectItems = getSelectedItems().firstOrNull() ?: return
                 findContactByCall(selectItems) { contact ->
@@ -183,6 +188,15 @@ class RecentCallsAdapter(
     override fun getItemKeyPosition(key: Int) = currentList.indexOfFirst { it.getItemId() == key }
 
     override fun onActionModeCreated() {}
+
+    // Override selectAll to ensure all selectable items are selected (skip date headers)
+    override fun selectAll() {
+        // Iterate through all items - toggleItemSelection will skip non-selectable ones
+        for (i in 0 until itemCount) {
+            toggleItemSelection(true, i, false)
+        }
+        updateTitle()
+    }
 
     override fun onActionModeDestroyed() {}
 
@@ -581,7 +595,7 @@ class RecentCallsAdapter(
                 findItem(R.id.cab_view_details).isVisible = contact != null && !call.isUnknownNumber
                 findItem(R.id.cab_add_number).isVisible = !call.isUnknownNumber
                 findItem(R.id.cab_copy_number).isVisible = !call.isUnknownNumber
-                findItem(R.id.web_search).isVisible = !call.isUnknownNumber
+                findItem(R.id.web_search).isVisible = /*!call.isUnknownNumber*/ false
                 findItem(R.id.cab_show_call_details).isVisible = !call.isUnknownNumber
                 findItem(R.id.cab_block_number).isVisible = !call.isUnknownNumber && !activity.isNumberBlocked(call.phoneNumber, getBlockedNumbers)
                 findItem(R.id.cab_unblock_number).isVisible = !call.isUnknownNumber && activity.isNumberBlocked(call.phoneNumber, getBlockedNumbers)
@@ -596,41 +610,41 @@ class RecentCallsAdapter(
                         }
                     }
 
-                    R.id.cab_call_anonymously -> {
-                        if (activity.config.showWarningAnonymousCall) {
-                            var phoneNumber = ""
-                            executeItemMenuOperation(callId) {
-                                phoneNumber = getSelectedPhoneNumber() ?: "+1 234 567 8910"
-                            }
-                            val text = String.format(activity.getString(R.string.call_anonymously_warning), phoneNumber)
-                            val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
-                                ?: throw IllegalStateException("mainBlurTarget not found")
-                            ConfirmationAdvancedDialog(
-                                activity,
-                                text,
-                                R.string.call_anonymously_warning,
-                                com.goodwy.commons.R.string.ok,
-                                com.goodwy.commons.R.string.do_not_show_again,
-                                blurTarget = blurTarget,
-                                fromHtml = true
-                            ) {
-                                if (it) {
-                                    executeItemMenuOperation(callId) {
-                                        callContact("#31#")
-                                    }
-                                } else {
-                                    activity.config.showWarningAnonymousCall = false
-                                    executeItemMenuOperation(callId) {
-                                        callContact("#31#")
-                                    }
-                                }
-                            }
-                        } else {
-                            executeItemMenuOperation(callId) {
-                                callContact("#31#")
-                            }
-                        }
-                    }
+//                    R.id.cab_call_anonymously -> {
+//                        if (activity.config.showWarningAnonymousCall) {
+//                            var phoneNumber = ""
+//                            executeItemMenuOperation(callId) {
+//                                phoneNumber = getSelectedPhoneNumber() ?: "+1 234 567 8910"
+//                            }
+//                            val text = String.format(activity.getString(R.string.call_anonymously_warning), phoneNumber)
+//                            val blurTarget = activity.findViewById<BlurTarget>(R.id.mainBlurTarget)
+//                                ?: throw IllegalStateException("mainBlurTarget not found")
+//                            ConfirmationAdvancedDialog(
+//                                activity,
+//                                text,
+//                                R.string.call_anonymously_warning,
+//                                com.goodwy.commons.R.string.ok,
+//                                com.goodwy.commons.R.string.do_not_show_again,
+//                                blurTarget = blurTarget,
+//                                fromHtml = true
+//                            ) {
+//                                if (it) {
+//                                    executeItemMenuOperation(callId) {
+//                                        callContact("#31#")
+//                                    }
+//                                } else {
+//                                    activity.config.showWarningAnonymousCall = false
+//                                    executeItemMenuOperation(callId) {
+//                                        callContact("#31#")
+//                                    }
+//                                }
+//                            }
+//                        } else {
+//                            executeItemMenuOperation(callId) {
+//                                callContact("#31#")
+//                            }
+//                        }
+//                    }
 
                     R.id.cab_call_sim_1 -> {
                         executeItemMenuOperation(callId) {
