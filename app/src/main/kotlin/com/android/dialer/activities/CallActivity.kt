@@ -75,6 +75,12 @@ class CallActivity : SimpleActivity() {
     }
 
     private val binding by viewBinding(ActivityCallBinding::inflate)
+    
+    // Cache blur target to avoid repeated findViewById calls
+    private val blurTarget: BlurTarget by lazy {
+        findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+    }
 
     private var isMicrophoneOff = false
     private var isMicrophoneInitialized = false
@@ -1373,8 +1379,6 @@ class CallActivity : SimpleActivity() {
 
     private fun changeNoteDialog(number: String) {
         val callerNote = callerNotesHelper.getCallerNotes(number)
-        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
-            ?: throw IllegalStateException("mainBlurTarget not found")
         ChangeTextDialog(
             activity = this@CallActivity,
             title = number.normalizeString(),
@@ -2178,8 +2182,6 @@ class CallActivity : SimpleActivity() {
         // Don't show dialog for video background or theme background
         val backgroundType = config.backgroundCallScreen
         if (backgroundType == VIDEO_BACKGROUND || backgroundType == THEME_BACKGROUND) return
-        
-        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget) ?: return
         val bindingDialog = DialogCustomBackgroundTuningBinding.inflate(layoutInflater)
         val view = bindingDialog.root
 

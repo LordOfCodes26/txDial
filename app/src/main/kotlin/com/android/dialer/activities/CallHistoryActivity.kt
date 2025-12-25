@@ -44,6 +44,12 @@ import androidx.core.graphics.drawable.toDrawable
 
 class CallHistoryActivity : SimpleActivity() {
     private val binding by viewBinding(ActivityCallHistoryBinding::inflate)
+    
+    // Cache blur target to avoid repeated findViewById calls
+    private val blurTarget: BlurTarget by lazy {
+        findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+    }
 
     private var allRecentCall = listOf<RecentCall>()
     private var contact: Contact? = null
@@ -278,8 +284,6 @@ class CallHistoryActivity : SimpleActivity() {
 
     private fun changeNoteDialog(number: String) {
         val callerNote = callerNotesHelper.getCallerNotes(number)
-        val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
-            ?: throw IllegalStateException("mainBlurTarget not found")
         ChangeTextDialog(
             activity = this@CallHistoryActivity,
             title = getString(R.string.add_notes) + " ($number)",
@@ -676,8 +680,6 @@ class CallHistoryActivity : SimpleActivity() {
         ensureBackgroundThread {
             runOnUiThread {
                 if (!isDestroyed && !isFinishing) {
-                    val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
-                        ?: throw IllegalStateException("mainBlurTarget not found")
                     ChooseSocialDialog(this@CallHistoryActivity, actions, blurTarget) { action ->
                         Intent(Intent.ACTION_VIEW).apply {
                             val uri = ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI, action.dataId)
@@ -1306,8 +1308,6 @@ class CallHistoryActivity : SimpleActivity() {
     private fun makeCall(call: RecentCall, prefix: String = "") {
         val phoneNumber = call.phoneNumber
         if (config.showCallConfirmation) {
-            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
-                ?: throw IllegalStateException("mainBlurTarget not found")
             CallConfirmationDialog(this as SimpleActivity, call.name, blurTarget = blurTarget) {
                 launchCallIntent("$prefix$phoneNumber", key = BuildConfig.RIGHT_APP_KEY)
             }
@@ -1328,8 +1328,6 @@ class CallHistoryActivity : SimpleActivity() {
             } else { R.string.block_confirmation }
             val question = String.format(resources.getString(baseString), currentRecentCall!!.phoneNumber)
 
-            val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
-                ?: throw IllegalStateException("mainBlurTarget not found")
             ConfirmationDialog(this, question, blurTarget = blurTarget) {
                 blockNumbers()
             }

@@ -33,9 +33,11 @@ import com.android.dialer.extensions.*
 import com.android.dialer.helpers.*
 import com.android.dialer.models.RecentCall
 import com.android.dialer.models.SpeedDial
+import com.android.dialer.models.Events
 import com.android.dialer.helpers.sharedGson
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.shake
+import org.greenrobot.eventbus.EventBus
 import java.io.InputStreamReader
 import java.util.*
 import kotlin.math.abs
@@ -43,7 +45,13 @@ import kotlin.math.abs
 class SettingsDialpadActivity : SimpleActivity() {
 
     private val binding by viewBinding(ActivitySettingsDialpadBinding::inflate)
-
+    
+    // Cache blur target to avoid repeated findViewById calls
+    private val blurTarget: BlurTarget by lazy {
+        findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+    }
+    
     private val productIdX1 = BuildConfig.PRODUCT_ID_X1
     private val productIdX2 = BuildConfig.PRODUCT_ID_X2
     private val productIdX3 = BuildConfig.PRODUCT_ID_X3
@@ -57,6 +65,7 @@ class SettingsDialpadActivity : SimpleActivity() {
     private var speedDialValues = mutableListOf<SpeedDial>()
     private var toneGeneratorHelper: ToneGeneratorHelper? = null
     private val hideDialpadHandler = Handler(Looper.getMainLooper())
+    private val mainHandler = Handler(Looper.getMainLooper())
 
 
     @SuppressLint("MissingSuperCall", "SetTextI18n")
@@ -1085,8 +1094,6 @@ class SettingsDialpadActivity : SimpleActivity() {
 
             if (pro) {
                 settingsSimCardColor1Holder.setOnClickListener {
-                    val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
-                        ?: throw IllegalStateException("mainBlurTarget not found")
                     ColorPickerDialog(
                         this@SettingsDialpadActivity,
                         config.simIconsColors[1],
@@ -1101,13 +1108,12 @@ class SettingsDialpadActivity : SimpleActivity() {
                                 initSimCardColor()
                                 initStyle()
                                 showDialpad()
+                                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
                             }
                         }
                     }
                 }
                 settingsSimCardColor2Holder.setOnClickListener {
-                    val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
-                        ?: throw IllegalStateException("mainBlurTarget not found")
                     ColorPickerDialog(
                         this@SettingsDialpadActivity,
                         config.simIconsColors[2],
@@ -1122,6 +1128,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                                 initSimCardColor()
                                 initStyle()
                                 showDialpad()
+                                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
                             }
                         }
                     }
@@ -1206,6 +1213,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                     binding.settingsPrimarySimCard.text = if (config.currentSIMCardIndex == 0) simList[0].label else simList[1].label
                     initStyle()
                     showDialpad()
+                    mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
                 }
             }
         } else binding.settingsPrimarySimCardHolder.beGone()
@@ -1219,6 +1227,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                 config.showVoicemailIcon = settingsShowVoicemailIcon.isChecked
                 initStyle()
                 showDialpad()
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1233,6 +1242,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                 binding.settingsDialpadSecondaryTypefaceHolder.beGoneIf(config.hideDialpadLetters)
                 initStyle()
                 showDialpad()
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1287,6 +1297,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                 initStyle()
                 showDialpad()
                 config.needRestart = true
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1325,6 +1336,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                 binding.settingsDialpadSecondaryTypeface.text = getTypefaceName(config.dialpadSecondaryTypeface)
                 initStyle()
                 showDialpad()
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1358,6 +1370,7 @@ class SettingsDialpadActivity : SimpleActivity() {
             ) {
                 config.dialpadHashtagLongClick = it as Int
                 binding.settingsDialpadHashtagLongClick.text = getHashtagLongClickName(config.dialpadHashtagLongClick)
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1368,6 +1381,7 @@ class SettingsDialpadActivity : SimpleActivity() {
             settingsClearDialpadHolder.setOnClickListener {
                 settingsClearDialpad.toggle()
                 config.dialpadClearWhenStartCall = settingsClearDialpad.isChecked
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1378,6 +1392,7 @@ class SettingsDialpadActivity : SimpleActivity() {
             settingsDialpadVibrationHolder.setOnClickListener {
                 settingsDialpadVibration.toggle()
                 config.dialpadVibration = settingsDialpadVibration.isChecked
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1391,6 +1406,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                 config.dialpadBeeps = settingsDialpadBeeps.isChecked
                 toneVolumeWrapper.beVisibleIf(config.dialpadBeeps)
                 updateWrapperToneVolume()
+                mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
             }
         }
     }
@@ -1439,6 +1455,8 @@ class SettingsDialpadActivity : SimpleActivity() {
                     val textPercent = "$progress %"
                     binding.toneVolumeValue.text = textPercent
                     config.toneVolume = progress
+                    // Post event on next frame to ensure config is saved
+                    mainHandler.post { EventBus.getDefault().post(Events.RefreshDialpadSettings) }
                 }
             })
         }

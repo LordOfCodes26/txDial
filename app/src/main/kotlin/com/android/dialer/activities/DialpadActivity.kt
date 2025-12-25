@@ -58,6 +58,12 @@ import org.greenrobot.eventbus.ThreadMode
 
 class DialpadActivity : SimpleActivity() {
     private val binding by viewBinding(ActivityDialpadBinding::inflate)
+    
+    // Cache blur target to avoid repeated findViewById calls
+    private val blurTarget: BlurTarget by lazy {
+        findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+    }
 
     var allContacts = mutableListOf<Contact>()
     private var speedDialValues = mutableListOf<SpeedDial>()
@@ -1265,8 +1271,6 @@ class DialpadActivity : SimpleActivity() {
                 initCall(speedDial.number, -1, speedDial.getName(this))
                 return true
             } else {
-                val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
-                    ?: throw IllegalStateException("mainBlurTarget not found")
                 ConfirmationDialog(this, getString(R.string.open_speed_dial_manage), blurTarget = blurTarget) {
                     startActivity(Intent(applicationContext, ManageSpeedDialActivity::class.java))
                 }

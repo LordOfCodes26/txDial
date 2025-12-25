@@ -33,6 +33,13 @@ import androidx.core.net.toUri
 class RecordingSettingsActivity : SimpleActivity() {
     
     private val binding by viewBinding(ActivityRecordingSettingsBinding::inflate)
+    
+    // Cache blur target to avoid repeated findViewById calls
+    private val blurTarget: BlurTarget by lazy {
+        findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+    }
+    
     private lateinit var fileManager: RecordingFileManager
     
     override fun onCreate(savedInstanceState: Bundle?) {

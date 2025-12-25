@@ -2064,8 +2064,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private fun updateDialpadSize() {
         val size = context.config.dialpadSize
         val view = when (context.config.dialpadStyle) {
-            DIALPAD_IOS -> binding.dialpadRoundWrapper?.root?.findViewById<View>(R.id.dialpad_ios_wrapper)
-            DIALPAD_CONCEPT -> binding.dialpadRectWrapper?.root?.findViewById<View>(R.id.dialpad_grid_wrapper)
+            DIALPAD_IOS -> binding.dialpadRoundWrapper.root.findViewById<View>(R.id.dialpad_ios_wrapper)
+            DIALPAD_CONCEPT -> binding.dialpadRectWrapper.root.findViewById<View>(R.id.dialpad_grid_wrapper)
             else -> dialpadGridBinding?.dialpadGridWrapper
         }
 

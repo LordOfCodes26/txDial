@@ -7,7 +7,6 @@ import android.content.pm.ShortcutInfo
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.graphics.drawable.LayerDrawable
 import android.net.Uri
@@ -56,6 +55,7 @@ import com.android.dialer.fragments.MyViewPagerFragment
 import com.android.dialer.fragments.RecentsFragment
 import com.android.dialer.activities.SettingsDialpadActivity
 import com.android.dialer.helpers.*
+import com.android.dialer.interfaces.RefreshItemsListener
 import com.android.dialer.models.AudioRoute
 import com.android.dialer.models.Events
 import com.goodwy.commons.views.TwoFingerSlideGestureDetector
@@ -66,7 +66,6 @@ import com.mikhaellopez.rxanimation.scale
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import me.grantland.widget.AutofitHelper
 import java.io.InputStreamReader
 
 class MainActivity : SimpleActivity() {
@@ -88,6 +87,12 @@ class MainActivity : SimpleActivity() {
     private var storedContactShortcuts = mutableListOf<Contact>()
     private var isSpeechToTextAvailable = false
     private var mSearchView: SearchView? = null
+    
+    // Cached fragment references to avoid repeated findViewById calls
+    private var cachedContactsFragment: ContactsFragment? = null
+    private var cachedFavoritesFragment: FavoritesFragment? = null
+    private var cachedRecentsFragment: RecentsFragment? = null
+    private var cachedDialpadFragment: DialpadFragment? = null
 
     // Two-finger swipe detection for secure box
     private lateinit var twoFingerSlideGestureDetector: TwoFingerSlideGestureDetector
@@ -144,7 +149,6 @@ class MainActivity : SimpleActivity() {
             setDefaultCallerIdApp()
         }
 
-        val useBottomNavigationBar = config.bottomNavigationBar
         binding.mainMenu.apply {
             updateTitle(getAppLauncherName())
             searchBeVisibleIf(false) //hide top search bar
@@ -243,54 +247,81 @@ class MainActivity : SimpleActivity() {
             return
         }
 
+        // Cache color calculations to avoid repeated calls
         val properTextColor = getProperTextColor()
         val properPrimaryColor = getProperPrimaryColor()
         val properBackgroundColor = getProperBackgroundColor()
+        val properAccentColor = getProperAccentColor()
         val iconTintColor = properPrimaryColor.getContrastColor()
         
-        binding.mainDialpadButton.setIcon(R.drawable.ic_dialpad_vector)
-        binding.mainDialpadButton.setIconTint(iconTintColor)
-        binding.mainDialpadButton.setBackgroundColor(properBackgroundColor)
-        binding.mainDialpadButton.beGone() // Always hide the dialpad button
-
-        binding.mainCallButton.setIcon(R.drawable.ic_phone_vector)
-        binding.mainCallButton.setIconTint(iconTintColor)
-        binding.mainCallButton.setBackgroundColor(properBackgroundColor)
+        // Setup buttons
+        setupButtons(iconTintColor, properBackgroundColor)
 
         updateTextColors(binding.mainHolder)
-//        setupTabColors()
         binding.mainMenu.updateColors(
             background = getStartRequiredStatusBarColor(),
             scrollOffset = scrollingView?.computeVerticalScrollOffset() ?: 0
         )
 
-        val configStartNameWithSurname = config.startNameWithSurname
-        if (storedStartNameWithSurname != configStartNameWithSurname) {
-            getContactsFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
-            getFavoritesFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
-            storedStartNameWithSurname = config.startNameWithSurname
-        }
+        // Handle name with surname change
+        handleStartNameWithSurnameChange()
 
-        if (/*!isSearchOpen && */!binding.mainMenu.isSearchOpen) {
+        if (!binding.mainMenu.isSearchOpen) {
             refreshItems(true)
         }
 
         // Cache fragments list to avoid multiple getAllFragments() calls
         val allFragments = if (binding.viewPager.adapter != null) getAllFragments() else emptyList()
-        allFragments.forEach {
-            it?.setupColors(properTextColor, properPrimaryColor, getProperAccentColor())
-        }
-
-        val configFontSize = config.fontSize
-        if (storedFontSize != configFontSize) {
-            allFragments.forEach {
-                it?.fontSizeChanged()
+        
+        // Batch fragment operations
+        allFragments.forEach { fragment ->
+            fragment?.setupColors(properTextColor, properPrimaryColor, properAccentColor)
+            if (storedFontSize != config.fontSize) {
+                fragment?.fontSizeChanged()
             }
+        }
+        
+        if (storedFontSize != config.fontSize) {
+            storedFontSize = config.fontSize
         }
 
         invalidateOptionsMenu()
-
-        //Screen slide animation
+        setupViewPagerAnimation()
+        
+        val useSurfaceColor = isDynamicTheme() && !isSystemInDarkMode()
+        val backgroundColor = if (useSurfaceColor) getSurfaceColor() else properBackgroundColor
+        if (useSurfaceColor) binding.mainHolder.setBackgroundColor(getSurfaceColor())
+        allFragments.forEach { it?.setBackgroundColor(backgroundColor) }
+        
+        handleCurrentFragment()
+        checkShortcuts()
+    }
+    
+    private fun setupButtons(iconTintColor: Int, backgroundColor: Int) {
+        binding.mainDialpadButton.apply {
+            setIcon(R.drawable.ic_dialpad_vector)
+            setIconTint(iconTintColor)
+            setBackgroundColor(backgroundColor)
+            beGone() // Always hide the dialpad button
+        }
+        
+        binding.mainCallButton.apply {
+            setIcon(R.drawable.ic_phone_vector)
+            setIconTint(iconTintColor)
+            setBackgroundColor(backgroundColor)
+        }
+    }
+    
+    private fun handleStartNameWithSurnameChange() {
+        val configStartNameWithSurname = config.startNameWithSurname
+        if (storedStartNameWithSurname != configStartNameWithSurname) {
+            getContactsFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
+            getFavoritesFragment()?.startNameWithSurnameChanged(configStartNameWithSurname)
+            storedStartNameWithSurname = configStartNameWithSurname
+        }
+    }
+    
+    private fun setupViewPagerAnimation() {
         val animation = when (config.screenSlideAnimation) {
             1 -> ZoomOutPageTransformer()
             2 -> DepthPageTransformer()
@@ -298,21 +329,15 @@ class MainActivity : SimpleActivity() {
         }
         binding.viewPager.setPageTransformer(true, animation)
         binding.viewPager.setPagingEnabled(!config.useSwipeToAction)
-
-        val useSurfaceColor = isDynamicTheme() && !isSystemInDarkMode()
-        val backgroundColor = if (useSurfaceColor) getSurfaceColor() else getProperBackgroundColor()
-        if (useSurfaceColor) binding.mainHolder.setBackgroundColor(getSurfaceColor())
-        allFragments.forEach {
-            it?.setBackgroundColor(backgroundColor)
-        }
-        
+    }
+    
+    private fun handleCurrentFragment() {
         val currentFragment = getCurrentFragment()
         if (currentFragment is RecentsFragment) clearMissedCalls()
 
         // Hide main menu when dialpad fragment is shown
         if (currentFragment is DialpadFragment) {
             setMainMenuHeight(0)
-            // Post event to refresh dialpad settings immediately when returning from settings
             EventBus.getDefault().post(Events.RefreshDialpadSettings)
         } else {
             setMainMenuHeight(null)
@@ -321,8 +346,6 @@ class MainActivity : SimpleActivity() {
         // Call onFragmentResume on fragments to register contact observers
         getContactsFragment()?.onFragmentResume()
         getFavoritesFragment()?.onFragmentResume()
-
-        checkShortcuts()
     }
 
     override fun onPause() {
@@ -416,6 +439,7 @@ class MainActivity : SimpleActivity() {
         super.onDestroy()
         CallManager.removeListener(callCallback)
         EventBus.getDefault().unregister(this)
+        clearFragmentCache()
     }
 
     private fun refreshMenuItems() {
@@ -755,53 +779,18 @@ class MainActivity : SimpleActivity() {
 //        }
 //    }
 
-    private fun getInactiveTabIndexes(activeIndex: Int) = (0 until binding.mainTabsHolder.tabCount).filterNot { it == activeIndex }
-
-    private fun getSelectedTabDrawableIds(): List<Int> {
-        val showTabs = config.showTabs
-        val icons = mutableListOf<Int>()
-
-        if (showTabs and TAB_FAVORITES != 0) {
-            icons.add(R.drawable.ic_star_vector_scaled)
-        }
-
-        if (showTabs and TAB_CALL_HISTORY != 0) {
-            icons.add(R.drawable.ic_clock_filled_scaled)
-        }
-
-        if (showTabs and TAB_CONTACTS != 0) {
-            icons.add(R.drawable.ic_person_rounded_scaled)
-        }
-
-        if (showTabs and TAB_DIALPAD != 0) {
-            icons.add(R.drawable.ic_dialpad_vector)
-        }
-
-        return icons
-    }
-
-    private fun getDeselectedTabDrawableIds(): List<Int> {
-        val showTabs = config.showTabs
-        val icons = mutableListOf<Int>()
-
-        if (showTabs and TAB_FAVORITES != 0) {
-            icons.add(R.drawable.ic_star_vector)
-        }
-
-        if (showTabs and TAB_CALL_HISTORY != 0) {
-            icons.add(R.drawable.ic_clock_filled_vector)
-        }
-
-        if (showTabs and TAB_CONTACTS != 0) {
-            icons.add(R.drawable.ic_person_rounded)
-        }
-
-        if (showTabs and TAB_DIALPAD != 0) {
-            icons.add(R.drawable.ic_dialpad_vector)
-        }
-
-        return icons
-    }
+    // Tab configuration data class for better organization
+    private data class TabConfig(
+        val iconRes: Int,
+        val labelRes: Int
+    )
+    
+    private val tabConfigs = arrayOf(
+        TabConfig(R.drawable.ic_star_vector, R.string.favorites_tab),
+        TabConfig(R.drawable.ic_clock_filled_vector, R.string.recents),
+        TabConfig(R.drawable.ic_person_rounded, R.string.contacts_tab),
+        TabConfig(R.drawable.ic_dialpad_vector, R.string.dialpad)
+    )
 
     @Suppress("DEPRECATION")
     private fun initFragments() {
@@ -820,15 +809,12 @@ class MainActivity : SimpleActivity() {
 
                 // Cache fragments list to avoid multiple getAllFragments() calls
                 val allFragments = getAllFragments()
-                allFragments.forEach {
-                    it?.finishActMode()
-                }
-                
-                // Call onFragmentPause on all fragments first
-                allFragments.forEach {
-                    when (it) {
-                        is ContactsFragment -> it.onFragmentPause()
-                        is FavoritesFragment -> it.onFragmentPause()
+                // Batch fragment operations
+                allFragments.forEach { fragment ->
+                    fragment?.finishActMode()
+                    when (fragment) {
+                        is ContactsFragment -> fragment.onFragmentPause()
+                        is FavoritesFragment -> fragment.onFragmentPause()
                     }
                 }
                 
@@ -963,44 +949,13 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun getTabLabel(position: Int): String {
-        val stringId = when (position) {
-            0 -> R.string.favorites_tab
-            1 -> R.string.recents
-            2 -> R.string.contacts_tab
-            else -> R.string.dialpad
-        }
-
-        return resources.getString(stringId)
+        val config = tabConfigs.getOrNull(position) ?: tabConfigs.last()
+        return resources.getString(config.labelRes)
     }
 
     private fun getTabIconRes(position: Int): Int {
-        return when (position) {
-            0 -> R.drawable.ic_star_vector
-            1 -> R.drawable.ic_clock_filled_vector
-            2 -> R.drawable.ic_person_rounded
-            else -> R.drawable.ic_dialpad_vector
-        }
-    }
-
-    private fun getTabIcon(position: Int): Drawable {
-        val drawableId = when (position) {
-            0 -> R.drawable.ic_star_vector
-            1 -> R.drawable.ic_clock_filled_vector
-            2 -> R.drawable.ic_person_rounded
-            else -> R.drawable.ic_dialpad_vector
-        }
-        return resources.getColoredDrawableWithColor(this@MainActivity, drawableId, getProperTextColor())!!
-    }
-
-    private fun getTabContentDescription(position: Int): String {
-        val stringId = when (position) {
-            0 -> R.string.favorites_tab
-            1 -> R.string.call_history_tab
-            2 -> R.string.contacts_tab
-            else -> R.string.dialpad
-        }
-
-        return resources.getString(stringId)
+        val config = tabConfigs.getOrNull(position) ?: tabConfigs.last()
+        return config.iconRes
     }
 
     private fun refreshItems(openLastTab: Boolean = false) {
@@ -1010,16 +965,14 @@ class MainActivity : SimpleActivity() {
 
         binding.apply {
             if (viewPager.adapter == null) {
+                clearFragmentCache() // Clear cache when adapter is recreated
                 viewPager.adapter = ViewPagerAdapter(this@MainActivity)
                 viewPager.currentItem = if (openLastTab) config.lastUsedViewPagerPage else getDefaultTab()
                 viewPager.onGlobalLayout {
                     refreshFragments()
                     // Update menu visibility based on initial fragment
-                    if (getCurrentFragment() is DialpadFragment) {
-                        setMainMenuHeight(0)
-                    } else {
-                        setMainMenuHeight(null)
-                    }
+                    val currentFragment = getCurrentFragment()
+                    setMainMenuHeight(if (currentFragment is DialpadFragment) 0 else null)
                 }
             } else {
                 refreshFragments()
@@ -1073,13 +1026,40 @@ class MainActivity : SimpleActivity() {
 
     private fun getCurrentFragment(): MyViewPagerFragment<*>? = getAllFragments().getOrNull(binding.viewPager.currentItem)
 
-    private fun getContactsFragment(): ContactsFragment? = findViewById(R.id.contacts_fragment)
+    private fun getContactsFragment(): ContactsFragment? {
+        if (cachedContactsFragment == null) {
+            cachedContactsFragment = findViewById(R.id.contacts_fragment)
+        }
+        return cachedContactsFragment
+    }
 
-    private fun getFavoritesFragment(): FavoritesFragment? = findViewById(R.id.favorites_fragment)
+    private fun getFavoritesFragment(): FavoritesFragment? {
+        if (cachedFavoritesFragment == null) {
+            cachedFavoritesFragment = findViewById(R.id.favorites_fragment)
+        }
+        return cachedFavoritesFragment
+    }
 
-    private fun getRecentsFragment(): RecentsFragment? = findViewById(R.id.recents_fragment)
+    private fun getRecentsFragment(): RecentsFragment? {
+        if (cachedRecentsFragment == null) {
+            cachedRecentsFragment = findViewById(R.id.recents_fragment)
+        }
+        return cachedRecentsFragment
+    }
 
-    private fun getDialpadFragment(): DialpadFragment? = findViewById(R.id.dialpad_fragment)
+    private fun getDialpadFragment(): DialpadFragment? {
+        if (cachedDialpadFragment == null) {
+            cachedDialpadFragment = findViewById(R.id.dialpad_fragment)
+        }
+        return cachedDialpadFragment
+    }
+    
+    private fun clearFragmentCache() {
+        cachedContactsFragment = null
+        cachedFavoritesFragment = null
+        cachedRecentsFragment = null
+        cachedDialpadFragment = null
+    }
 
     private fun getDefaultTab(): Int {
         val showTabsMask = config.showTabs
@@ -1132,23 +1112,7 @@ class MainActivity : SimpleActivity() {
         val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
             ?: throw IllegalStateException("mainBlurTarget not found")
         ChangeSortingDialog(this, showCustomSorting, blurTarget) {
-            getFavoritesFragment()?.refreshItems {
-                if (isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(searchQuery)
-                }
-                if (binding.mainMenu.isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-                }
-            }
-
-            getContactsFragment()?.refreshItems {
-                if (isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(searchQuery)
-                }
-                if (binding.mainMenu.isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-                }
-            }
+            refreshFragmentsWithSearchQuery(getFavoritesFragment(), getContactsFragment())
         }
     }
 
@@ -1156,33 +1120,28 @@ class MainActivity : SimpleActivity() {
         val blurTarget = findViewById<eightbitlab.com.blurview.BlurTarget>(R.id.mainBlurTarget)
             ?: throw IllegalStateException("mainBlurTarget not found")
         FilterContactSourcesDialog(this, blurTarget) {
-            getFavoritesFragment()?.refreshItems {
-                if (isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(searchQuery)
-                }
-                if (binding.mainMenu.isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-                }
-            }
-
-            getContactsFragment()?.refreshItems {
-                if (isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(searchQuery)
-                }
-                if (binding.mainMenu.isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-                }
-            }
-
             config.needUpdateRecents = true
-            getRecentsFragment()?.refreshItems {
-                if (isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(searchQuery)
-                }
-                if (binding.mainMenu.isSearchOpen) {
-                    getCurrentFragment()?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
-                }
-            }
+            refreshFragmentsWithSearchQuery(
+                getFavoritesFragment(),
+                getContactsFragment(),
+                getRecentsFragment()
+            )
+        }
+    }
+    
+    private fun refreshFragmentsWithSearchQuery(vararg fragments: MyViewPagerFragment<*>?) {
+        fragments.forEach { fragment ->
+            (fragment as? RefreshItemsListener)?.refreshItems(callback = {
+                applySearchQueryToCurrentFragment()
+            })
+        }
+    }
+    
+    private fun applySearchQueryToCurrentFragment() {
+        val currentFragment = getCurrentFragment()
+        when {
+            isSearchOpen -> currentFragment?.onSearchQueryChanged(searchQuery)
+            binding.mainMenu.isSearchOpen -> currentFragment?.onSearchQueryChanged(binding.mainMenu.getCurrentQuery())
         }
     }
 
