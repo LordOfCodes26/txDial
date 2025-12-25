@@ -4,7 +4,7 @@ import android.content.Context
 import com.android.dialer.extensions.config
 import com.android.dialer.extensions.numberForNotes
 import com.android.dialer.models.CallerNote
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 import java.util.Calendar
 import java.util.Locale
 
@@ -15,21 +15,21 @@ class CallerNotesHelper(val context: Context) {
         val mCallerNotes = context.config.parseCallerNotes()
         mCallerNotes.remove(callerNote)
         mCallerNotes.add(CallerNote(number.numberForNotes(), note, date))
-        context.config.callerNotes = Gson().toJson(mCallerNotes)
+        context.config.callerNotes = sharedGson.toJson(mCallerNotes)
         callback.invoke()
     }
 
     fun deleteCallerNotes(callerNote: CallerNote?, callback: () -> Unit = {}) {
         val mCallerNotes = context.config.parseCallerNotes()
         mCallerNotes.remove(callerNote)
-        context.config.callerNotes = Gson().toJson(mCallerNotes)
+        context.config.callerNotes = sharedGson.toJson(mCallerNotes)
         callback.invoke()
     }
 
     fun removeCallerNotes(allRecentsNumber: List<String>) {
         val mCallerNotes = context.config.parseCallerNotes()
         val newList = mCallerNotes.filter { allRecentsNumber.contains(it.id.numberForNotes()) }
-        if (mCallerNotes != newList) context.config.callerNotes = Gson().toJson(newList)
+        if (mCallerNotes != newList) context.config.callerNotes = sharedGson.toJson(newList)
     }
 
     fun getCallerNotes(number: String?): CallerNote? {

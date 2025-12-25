@@ -93,6 +93,23 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/dialpad_add_number" />
 
+            <com.goodwy.commons.views.MyTextView
+                android:id="@+id/dialpad_recents_placeholder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.8"
+                android:gravity="center"
+                android:paddingStart="@dimen/activity_margin"
+                android:paddingTop="@dimen/activity_margin"
+                android:paddingEnd="@dimen/activity_margin"
+                android:text="@string/no_previous_calls"
+                android:textSize="@dimen/bigger_text_size"
+                android:textStyle="italic"
+                android:visibility="visible"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/dialpad_add_number" />
+
             <com.reddit.indicatorfastscroll.FastScrollerView
                 android:id="@+id/letter_fastscroller"
                 android:layout_width="26dp"

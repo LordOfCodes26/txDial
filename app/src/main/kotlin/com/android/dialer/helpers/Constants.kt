@@ -6,6 +6,7 @@ import com.goodwy.commons.helpers.TAB_DIALPAD
 import com.goodwy.commons.helpers.TAB_FAVORITES
 import com.goodwy.commons.models.Release
 import com.android.dialer.R
+import com.google.gson.Gson
 
 // shared prefs
 const val SPEED_DIAL = "speed_dial"
@@ -38,6 +39,9 @@ const val DIALPAD_SIZE = "dialpad_size"
 const val DIALPAD_BOTTOM_MARGIN = "dialpad_bottom_margin"
 const val CALL_BUTTON_PRIMARY_SIZE = "call_button_primary_size"
 const val CALL_BUTTON_SECONDARY_SIZE = "call_button_secondary_size"
+
+// Shared Gson instance for better performance
+val sharedGson = com.google.gson.Gson()
 const val ANSWER_STYLE = "answer_style"
 const val SHOW_CALLER_DESCRIPTION = "show_caller_description"
 const val CURRENT_RECENT_CALL = "current_recent_call"

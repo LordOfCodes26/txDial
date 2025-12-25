@@ -280,7 +280,7 @@ class ContactsAdapter(
             if (newItems.hashCode() != contacts.hashCode()) {
                 val diffCallback = ContactDiffCallback(oldItems, newItems)
                 val diffResult = DiffUtil.calculateDiff(diffCallback, false)
-                contacts = ArrayList(newItems)
+                contacts = newItems.toMutableList()
                 diffResult.dispatchUpdatesTo(this)
                 finishActMode()
             } else {

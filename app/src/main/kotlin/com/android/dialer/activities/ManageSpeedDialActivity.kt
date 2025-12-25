@@ -2,7 +2,7 @@ package com.android.dialer.activities
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.dialogs.RadioGroupDialog
 import eightbitlab.com.blurview.BlurTarget
@@ -70,7 +70,7 @@ class ManageSpeedDialActivity : SimpleActivity(), RemoveSpeedDialListener {
 
     override fun onStop() {
         super.onStop()
-        config.speedDial = Gson().toJson(speedDialValues)
+        config.speedDial = sharedGson.toJson(speedDialValues)
     }
 
     @SuppressLint("MissingPermission")

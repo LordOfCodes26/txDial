@@ -47,12 +47,12 @@ class CallHistoryActivity : SimpleActivity() {
 
     private var allRecentCall = listOf<RecentCall>()
     private var contact: Contact? = null
-    private var duplicateContacts = ArrayList<Contact>()
-    private var contactSources = ArrayList<ContactSource>()
+    private var duplicateContacts = mutableListOf<Contact>()
+    private var contactSources = mutableListOf<ContactSource>()
     private var recentsAdapter: CallHistoryAdapter? = null
     private var currentRecentCall: RecentCall? = null
     private var currentRecentCallList: List<RecentCall>? = null
-    private var recentsHelper = RecentsHelper(this)
+    private val recentsHelper = RecentsHelper(this)
     private var initShowAll = false
     private var showAll = false
 
@@ -609,10 +609,10 @@ class CallHistoryActivity : SimpleActivity() {
     private fun setupVideoCallActions() {
         if (contact != null) {
             var sources = HashMap<Contact, String>()
-            sources[contact!!] = getPublicContactSourceSync(contact!!.source, contactSources)
+            sources[contact!!] = getPublicContactSourceSync(contact!!.source, ArrayList(contactSources))
 
             duplicateContacts.forEach {
-                sources[it] = getPublicContactSourceSync(it.source, contactSources)
+                sources[it] = getPublicContactSourceSync(it.source, ArrayList(contactSources))
             }
 
             if (sources.size > 1) {
@@ -709,10 +709,10 @@ class CallHistoryActivity : SimpleActivity() {
         binding.contactMessengersActionsHolder.removeAllViews()
         if (contact != null) {
             var sources = HashMap<Contact, String>()
-            sources[contact!!] = getPublicContactSourceSync(contact!!.source, contactSources)
+            sources[contact!!] = getPublicContactSourceSync(contact!!.source, ArrayList(contactSources))
 
             duplicateContacts.forEach {
-                sources[it] = getPublicContactSourceSync(it.source, contactSources)
+                sources[it] = getPublicContactSourceSync(it.source, ArrayList(contactSources))
             }
 
             if (sources.size > 1) {

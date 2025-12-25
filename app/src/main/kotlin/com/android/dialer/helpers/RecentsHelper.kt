@@ -35,7 +35,7 @@ class RecentsHelper(private val context: Context) {
     private var queryLimit = QUERY_LIMIT
 
     fun getRecentCalls(
-        previousRecents: List<RecentCall> = ArrayList(),
+        previousRecents: List<RecentCall> = emptyList(),
         queryLimit: Int = QUERY_LIMIT,
         isDialpad: Boolean = false,
         updateCallsCache: Boolean = false,
@@ -52,7 +52,7 @@ class RecentsHelper(private val context: Context) {
                 this.queryLimit = queryLimit
                 //Do not use the current list if the recent ones have been changed in another activity
                 val needUpdateRecents = context.config.needUpdateRecents
-                val previousRecentsOrEmpty = if (needUpdateRecents) ArrayList() else previousRecents
+                val previousRecentsOrEmpty = if (needUpdateRecents) emptyList() else previousRecents
                 if (needUpdateRecents && !isDialpad) context.config.needUpdateRecents = false
                 val recentCalls = if (previousRecentsOrEmpty.isNotEmpty()) {
                     val previousRecentCalls = previousRecentsOrEmpty
@@ -118,7 +118,7 @@ class RecentsHelper(private val context: Context) {
     }
 
     fun getGroupedRecentCalls(
-        previousRecents: List<RecentCall> = ArrayList(),
+        previousRecents: List<RecentCall> = emptyList(),
         queryLimit: Int = QUERY_LIMIT,
         isDialpad: Boolean = false,
         callback: (List<RecentCall>) -> Unit,

@@ -13,6 +13,7 @@ import android.graphics.drawable.LayerDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.telecom.Call
@@ -67,7 +68,6 @@ import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import me.grantland.widget.AutofitHelper
 import java.io.InputStreamReader
-import java.util.Objects
 
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
@@ -84,13 +84,14 @@ class MainActivity : SimpleActivity() {
     private var storedShowPhoneNumbers = false
     private var storedBackgroundColor = 0
     private var currentOldScrollY = 0
-    private var cachedFavorites = ArrayList<Contact>()
-    private var storedContactShortcuts = ArrayList<Contact>()
+    private var cachedFavorites = mutableListOf<Contact>()
+    private var storedContactShortcuts = mutableListOf<Contact>()
     private var isSpeechToTextAvailable = false
     private var mSearchView: SearchView? = null
 
     // Two-finger swipe detection for secure box
     private lateinit var twoFingerSlideGestureDetector: TwoFingerSlideGestureDetector
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @SuppressLint("MissingSuperCall")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -212,11 +213,7 @@ class MainActivity : SimpleActivity() {
         val totalItems = calls.size + contacts.size
         
         if (totalItems == 0) {
-            Toast.makeText(
-                this,
-                "Secure Box Cipher $cipherNumber is empty",
-                Toast.LENGTH_SHORT
-            ).show()
+            toast("Secure Box Cipher $cipherNumber is empty", Toast.LENGTH_SHORT)
             return
         }
         
@@ -227,11 +224,7 @@ class MainActivity : SimpleActivity() {
             // Pass secure box data to RecentsFragment with cipher number
             getRecentsFragment()?.showSecureBoxByCipherNumber(calls, contacts, cipherNumber)
         } else {
-            Toast.makeText(
-                this,
-                "Secure Box Cipher $cipherNumber: ${calls.size} calls, ${contacts.size} contacts",
-                Toast.LENGTH_LONG
-            ).show()
+            toast("Secure Box Cipher $cipherNumber: ${calls.size} calls, ${contacts.size} contacts", Toast.LENGTH_LONG)
         }
     }
 
@@ -281,15 +274,15 @@ class MainActivity : SimpleActivity() {
             refreshItems(true)
         }
 
-        if (binding.viewPager.adapter != null) {
-            getAllFragments().forEach {
-                it?.setupColors(properTextColor, properPrimaryColor, getProperAccentColor())
-            }
+        // Cache fragments list to avoid multiple getAllFragments() calls
+        val allFragments = if (binding.viewPager.adapter != null) getAllFragments() else emptyList()
+        allFragments.forEach {
+            it?.setupColors(properTextColor, properPrimaryColor, getProperAccentColor())
         }
 
         val configFontSize = config.fontSize
         if (storedFontSize != configFontSize) {
-            getAllFragments().forEach {
+            allFragments.forEach {
                 it?.fontSizeChanged()
             }
         }
@@ -308,17 +301,23 @@ class MainActivity : SimpleActivity() {
         val useSurfaceColor = isDynamicTheme() && !isSystemInDarkMode()
         val backgroundColor = if (useSurfaceColor) getSurfaceColor() else getProperBackgroundColor()
         if (useSurfaceColor) binding.mainHolder.setBackgroundColor(getSurfaceColor())
-        getAllFragments().forEach {
+        allFragments.forEach {
             it?.setBackgroundColor(backgroundColor)
         }
-        if (getCurrentFragment() is RecentsFragment) clearMissedCalls()
+        
+        val currentFragment = getCurrentFragment()
+        if (currentFragment is RecentsFragment) clearMissedCalls()
 
         // Hide main menu when dialpad fragment is shown
-        if (getCurrentFragment() is DialpadFragment) {
+        if (currentFragment is DialpadFragment) {
             setMainMenuHeight(0)
         } else {
             setMainMenuHeight(null)
         }
+
+        // Call onFragmentResume on fragments to register contact observers
+        getContactsFragment()?.onFragmentResume()
+        getFavoritesFragment()?.onFragmentResume()
 
         checkShortcuts()
     }
@@ -327,6 +326,10 @@ class MainActivity : SimpleActivity() {
         super.onPause()
         storeStateVariables()
         config.lastUsedViewPagerPage = binding.viewPager.currentItem
+        
+        // Call onFragmentPause on fragments to unregister contact observers
+        getContactsFragment()?.onFragmentPause()
+        getFavoritesFragment()?.onFragmentPause()
     }
 
     private fun storeStateVariables() {
@@ -370,11 +373,7 @@ class MainActivity : SimpleActivity() {
             baseConfig.blockUnknownNumbers = false
             baseConfig.blockHiddenNumbers = false
         } else if (requestCode == REQUEST_CODE_SPEECH_INPUT && resultCode == RESULT_OK) {
-            if (resultData != null) {
-                val res: ArrayList<String> =
-                    resultData.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS) as ArrayList<String>
-
-                val speechToText =  Objects.requireNonNull(res)[0]
+            resultData?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { speechToText ->
                 if (speechToText.isNotEmpty()) {
                     binding.mainMenu.setText(speechToText)
                 }
@@ -498,9 +497,8 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun changeColumnCount() {
-        val items = ArrayList<RadioItem>()
-        for (i in 1..CONTACTS_GRID_MAX_COLUMNS_COUNT) {
-            items.add(RadioItem(i, resources.getQuantityString(R.plurals.column_counts, i, i)))
+        val items = (1..CONTACTS_GRID_MAX_COLUMNS_COUNT).map { i ->
+            RadioItem(i, resources.getQuantityString(R.plurals.column_counts, i, i))
         }
 
         val currentColumnCount = config.contactsGridColumnCount
@@ -638,7 +636,7 @@ class MainActivity : SimpleActivity() {
         binding.mainMenu.requireToolbar().menu.findItem(R.id.show_blocked_numbers).title =
             if (config.showBlockedNumbers) getString(R.string.hide_blocked_numbers) else getString(R.string.show_blocked_numbers)
         config.needUpdateRecents = true
-        runOnUiThread {
+        mainHandler.post {
             getRecentsFragment()?.refreshItems()
         }
     }
@@ -649,7 +647,7 @@ class MainActivity : SimpleActivity() {
             ?: throw IllegalStateException("mainBlurTarget not found")
         ConfirmationDialog(this, confirmationText, blurTarget = blurTarget) {
             RecentsHelper(this).removeAllRecentCalls(this) {
-                runOnUiThread {
+                mainHandler.post {
                     getRecentsFragment()?.refreshItems(invalidate = true)
                 }
             }
@@ -692,7 +690,9 @@ class MainActivity : SimpleActivity() {
             if (isRPlus() && shortcutManager.isRequestPinShortcutSupported) {
                 val starred = cachedFavorites.filter { it.phoneNumbers.isNotEmpty() }.take(3)
                 if (storedContactShortcuts != starred) {
-                    val allShortcuts = shortcutManager.dynamicShortcuts.filter { it.id != "launch_dialpad" }.map { it.id }
+                    val allShortcuts = shortcutManager.dynamicShortcuts.mapNotNull { shortcut ->
+                        if (shortcut.id != "launch_dialpad") shortcut.id else null
+                    }
                     shortcutManager.removeDynamicShortcuts(allShortcuts)
 
                     storedContactShortcuts.clear()
@@ -752,7 +752,7 @@ class MainActivity : SimpleActivity() {
 //        }
 //    }
 
-    private fun getInactiveTabIndexes(activeIndex: Int) = (0 until binding.mainTabsHolder.tabCount).filter { it != activeIndex }
+    private fun getInactiveTabIndexes(activeIndex: Int) = (0 until binding.mainTabsHolder.tabCount).filterNot { it == activeIndex }
 
     private fun getSelectedTabDrawableIds(): List<Int> {
         val showTabs = config.showTabs
@@ -777,9 +777,9 @@ class MainActivity : SimpleActivity() {
         return icons
     }
 
-    private fun getDeselectedTabDrawableIds(): ArrayList<Int> {
+    private fun getDeselectedTabDrawableIds(): List<Int> {
         val showTabs = config.showTabs
-        val icons = ArrayList<Int>()
+        val icons = mutableListOf<Int>()
 
         if (showTabs and TAB_FAVORITES != 0) {
             icons.add(R.drawable.ic_star_vector)
@@ -815,8 +815,18 @@ class MainActivity : SimpleActivity() {
                     binding.mainTabsHolder.getTabAt(position)?.select()
                 }
 
-                getAllFragments().forEach {
+                // Cache fragments list to avoid multiple getAllFragments() calls
+                val allFragments = getAllFragments()
+                allFragments.forEach {
                     it?.finishActMode()
+                }
+                
+                // Call onFragmentPause on all fragments first
+                allFragments.forEach {
+                    when (it) {
+                        is ContactsFragment -> it.onFragmentPause()
+                        is FavoritesFragment -> it.onFragmentPause()
+                    }
                 }
                 
                 // Hide main menu when dialpad fragment is shown
@@ -837,10 +847,16 @@ class MainActivity : SimpleActivity() {
                 
                 refreshMenuItems()
                 
+                // Call onFragmentResume on the current fragment
+                when (currentFragment) {
+                    is ContactsFragment -> currentFragment.onFragmentResume()
+                    is FavoritesFragment -> currentFragment.onFragmentResume()
+                }
+                
                 // Refresh only the current fragment when switching tabs
                 refreshFragments()
                 
-                if (getCurrentFragment() == getRecentsFragment()) {
+                if (currentFragment == getRecentsFragment()) {
                     clearMissedCalls()
                 }
             }
@@ -849,7 +865,7 @@ class MainActivity : SimpleActivity() {
         // selecting the proper tab sometimes glitches, add an extra selector to make sure we have it right
         if (config.bottomNavigationBar) {
             binding.mainTabsHolder.onGlobalLayout {
-                Handler().postDelayed({
+                mainHandler.postDelayed({
                     var wantedTab = getDefaultTab()
 
                     // open the Recents tab if we got here by clicking a missed call notification
@@ -1009,9 +1025,7 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun launchDialpad() {
-        Intent(applicationContext, DialpadActivity::class.java).apply {
-            startActivity(this)
-        }
+        startActivity(Intent(applicationContext, DialpadActivity::class.java))
     }
 
     fun refreshFragments() {
@@ -1031,9 +1045,9 @@ class MainActivity : SimpleActivity() {
         getRecentsFragment()?.refreshItems()
     }
 
-    private fun getAllFragments(): ArrayList<MyViewPagerFragment<*>?> {
+    private fun getAllFragments(): List<MyViewPagerFragment<*>?> {
         val showTabs = config.showTabs
-        val fragments = arrayListOf<MyViewPagerFragment<*>?>()
+        val fragments = mutableListOf<MyViewPagerFragment<*>?>()
 
         if (showTabs and TAB_FAVORITES > 0) {
             fragments.add(getFavoritesFragment())
@@ -1108,7 +1122,7 @@ class MainActivity : SimpleActivity() {
         binding.mainMenu.closeSearch()
         closeSearch()
         hideKeyboard()
-        startActivity(Intent(applicationContext, SettingsActivity::class.java))
+        startActivity(Intent(this, SettingsActivity::class.java))
     }
 
     private fun showSortingDialog(showCustomSorting: Boolean) {
@@ -1194,7 +1208,8 @@ class MainActivity : SimpleActivity() {
 
     private fun closeSearch() {
         if (isSearchOpen) {
-            getAllFragments().forEach {
+            val allFragments = getAllFragments()
+            allFragments.forEach {
                 it?.onSearchQueryChanged("")
             }
             mSearchMenuItem?.collapseActionView()

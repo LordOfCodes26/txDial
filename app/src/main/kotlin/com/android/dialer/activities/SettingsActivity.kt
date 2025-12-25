@@ -28,7 +28,7 @@ import com.android.dialer.helpers.RecentsHelper
 import com.android.dialer.models.RecentCall
 import com.android.dialer.helpers.*
 import com.goodwy.commons.views.LiquidSliderView
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.shake
 import kotlinx.serialization.SerializationException
@@ -1816,7 +1816,7 @@ class SettingsActivity : SimpleActivity() {
                 val recentNew = if (recent.simID == index) recent.copy(simColor = color) else recent
                 recentsNew.add(recentNew)
             }
-            config.recentCallsCache = Gson().toJson(recentsNew.take(RECENT_CALL_CACHE_SIZE))
+            config.recentCallsCache = sharedGson.toJson(recentsNew.take(RECENT_CALL_CACHE_SIZE))
             config.needUpdateRecents = true
             config.needRestart = true
         }

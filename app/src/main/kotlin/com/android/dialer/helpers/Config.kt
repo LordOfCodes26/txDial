@@ -24,6 +24,7 @@ import java.util.Locale
 class Config(context: Context) : BaseConfig(context) {
     companion object {
         fun newInstance(context: Context) = Config(context)
+        private val gson = Gson()
     }
 
     private val regionHint: String by lazy {
@@ -40,7 +41,7 @@ class Config(context: Context) : BaseConfig(context) {
 
     fun getSpeedDialValues(): ArrayList<SpeedDial> {
         val speedDialType = object : TypeToken<List<SpeedDial>>() {}.type
-        val speedDialValues = Gson().fromJson<ArrayList<SpeedDial>>(speedDial, speedDialType) ?: ArrayList(1)
+        val speedDialValues = gson.fromJson<ArrayList<SpeedDial>>(speedDial, speedDialType) ?: mutableListOf<SpeedDial>()
 
         for (i in 1..9) {
             val speedDial = SpeedDial(i, "", "")
@@ -49,7 +50,7 @@ class Config(context: Context) : BaseConfig(context) {
             }
         }
 
-        return speedDialValues
+        return ArrayList(speedDialValues)
     }
 
     fun saveCustomSIM(number: String, handle: PhoneAccountHandle) {
@@ -252,7 +253,8 @@ class Config(context: Context) : BaseConfig(context) {
 
     fun parseRecentCallsCache(): ArrayList<RecentCall> {
         val listType = object : TypeToken<List<RecentCall>>() {}.type
-        return Gson().fromJson<ArrayList<RecentCall>>(recentCallsCache, listType) ?: ArrayList(1)
+        val result = gson.fromJson<ArrayList<RecentCall>>(recentCallsCache, listType) ?: mutableListOf<RecentCall>()
+        return ArrayList(result)
     }
 
     var queryLimitRecent: Int
@@ -324,7 +326,8 @@ class Config(context: Context) : BaseConfig(context) {
 
     fun parseCallerNotes(): ArrayList<CallerNote> {
         val notesType = object : TypeToken<List<CallerNote>>() {}.type
-        return Gson().fromJson<ArrayList<CallerNote>>(callerNotes, notesType) ?: ArrayList(1)
+        val result = gson.fromJson<ArrayList<CallerNote>>(callerNotes, notesType) ?: mutableListOf<CallerNote>()
+        return ArrayList(result)
     }
 
     var backPressedEndCall: Boolean

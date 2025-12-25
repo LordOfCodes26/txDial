@@ -296,7 +296,7 @@ class CallManager {
 
         fun keypad(char: Char) {
             call?.playDtmfTone(char)
-            Handler().postDelayed({
+            autoRedialHandler.postDelayed({
                 call?.stopDtmfTone()
             }, DIALPAD_TONE_LENGTH_MS)
         }

@@ -61,7 +61,7 @@ import com.android.dialer.models.CallLogItem
 import com.android.dialer.models.RecentCall
 import com.goodwy.commons.extensions.getIntValue
 import com.goodwy.commons.helpers.PERMISSION_READ_CONTACTS
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 
 class RecentsFragment(
     context: Context, attributeSet: AttributeSet,
@@ -72,7 +72,7 @@ class RecentsFragment(
     private var recentsAdapter: RecentCallsAdapter? = null
 
     private var searchQuery: String? = null
-    private var recentsHelper = RecentsHelper(context)
+    private val recentsHelper = RecentsHelper(context)
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -291,7 +291,7 @@ class RecentsFragment(
                 activity?.runOnUiThread { gotRecents(it) }
                 callback?.invoke()
 
-                context.config.recentCallsCache = Gson().toJson(it.take(RECENT_CALL_CACHE_SIZE))
+                context.config.recentCallsCache = sharedGson.toJson(it.take(RECENT_CALL_CACHE_SIZE))
             } else {
                 updateSearchResult()
                 callback?.invoke()

@@ -142,7 +142,7 @@ class RecordingFileManager(private val context: Context) {
         
         fileName = fileName.replace(VAR_DATE, dateFormat.format(now))
         fileName = fileName.replace(VAR_TIME, timeFormat.format(now))
-        fileName = fileName.replace(VAR_TIMESTAMP, timestampFormat.format(now) + timezoneFormat.format(now))
+        fileName = fileName.replace(VAR_TIMESTAMP, "${timestampFormat.format(now)}${timezoneFormat.format(now)}")
         
         // Replace call direction
         val direction = if (call.details.callDirection == Call.Details.DIRECTION_INCOMING) {

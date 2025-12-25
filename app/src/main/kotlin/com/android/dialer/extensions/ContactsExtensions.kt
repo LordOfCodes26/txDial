@@ -16,13 +16,13 @@ import java.util.HashSet
 fun List<Contact>.filterSecureBox(context: Context): List<Contact> {
     val secureBoxHelper = SecureBoxHelper(context)
     val secureBoxContactIds = secureBoxHelper.getSecureBoxContactIds()
-    return this.filter { it.id !in secureBoxContactIds }
+    return this.filterNot { it.id in secureBoxContactIds }
 }
 
 fun ArrayList<Contact>.filterSecureBox(context: Context): ArrayList<Contact> {
     val secureBoxHelper = SecureBoxHelper(context)
     val secureBoxContactIds = secureBoxHelper.getSecureBoxContactIds()
-    return ArrayList(this.filter { it.id !in secureBoxContactIds })
+    return ArrayList(this.filterNot { it.id in secureBoxContactIds })
 }
 
 /**
@@ -53,7 +53,7 @@ fun ContactsHelper.getContactsWithSecureBoxFilter(
             val filteredContacts = if (secureBoxContactIds.isEmpty()) {
                 contacts
             } else {
-                ArrayList(contacts.filterNot { it.id in secureBoxContactIds })
+                contacts.filterNot { it.id in secureBoxContactIds }.let { ArrayList(it) }
             }
 
             mainHandler.post {

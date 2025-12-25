@@ -17,8 +17,8 @@ class FilterContactSourcesDialog(val activity: SimpleActivity, private val blurT
     private val binding by activity.viewBinding(DialogFilterContactSourcesBinding::inflate)
 
     private var dialog: AlertDialog? = null
-    private var contactSources = ArrayList<ContactSource>()
-    private var contacts = ArrayList<Contact>()
+    private var contactSources = mutableListOf<ContactSource>()
+    private var contacts = mutableListOf<Contact>()
     private var isContactSourcesReady = false
     private var isContactsReady = false
 

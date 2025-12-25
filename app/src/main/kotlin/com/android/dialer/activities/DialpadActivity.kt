@@ -39,7 +39,7 @@ import com.android.dialer.extensions.*
 import com.android.dialer.helpers.*
 import com.android.dialer.models.RecentCall
 import com.android.dialer.models.SpeedDial
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.shake
 import me.grantland.widget.AutofitHelper
@@ -59,8 +59,8 @@ import org.greenrobot.eventbus.ThreadMode
 class DialpadActivity : SimpleActivity() {
     private val binding by viewBinding(ActivityDialpadBinding::inflate)
 
-    var allContacts = ArrayList<Contact>()
-    private var speedDialValues = ArrayList<SpeedDial>()
+    var allContacts = mutableListOf<Contact>()
+    private var speedDialValues = mutableListOf<SpeedDial>()
     private var toneGeneratorHelper: ToneGeneratorHelper? = null
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val longPressHandler = Handler(Looper.getMainLooper())
@@ -71,7 +71,7 @@ class DialpadActivity : SimpleActivity() {
     private var storedToneVolume = 0
     private var allRecentCalls = listOf<RecentCall>()
     private var recentsAdapter: RecentCallsAdapter? = null
-    private var recentsHelper = RecentsHelper(this)
+    private val recentsHelper = RecentsHelper(this)
     private var isTalkBackOn = false
     private var initSearch = true
 
@@ -1451,11 +1451,11 @@ class DialpadActivity : SimpleActivity() {
             runOnUiThread { gotRecents(it) }
             callback?.invoke()
 
-            config.recentCallsCache = Gson().toJson(it.take(RECENT_CALL_CACHE_SIZE))
+            config.recentCallsCache = sharedGson.toJson(it.take(RECENT_CALL_CACHE_SIZE))
 
             //Deleting notes if a call has already been deleted
             callerNotesHelper.removeCallerNotes(
-                it.map { recentCall -> recentCall.phoneNumber.numberForNotes()}
+                it.map { it.phoneNumber.numberForNotes() }
             )
         }
 
@@ -1465,10 +1465,10 @@ class DialpadActivity : SimpleActivity() {
                 getRecentCalls(queryLimit = queryCount, updateCallsCache = false) { it ->
                     ensureBackgroundThread {
                         val recentOutgoingNumbers = it
-                            .filter { it.type == Calls.OUTGOING_TYPE }
-                            .map { recentCall -> recentCall.phoneNumber }
+                            .mapNotNull { if (it.type == Calls.OUTGOING_TYPE) it.phoneNumber else null }
+                            .toMutableSet()
 
-                        config.recentOutgoingNumbers = recentOutgoingNumbers.toMutableSet()
+                        config.recentOutgoingNumbers = recentOutgoingNumbers
                     }
                 }
             }
@@ -1575,7 +1575,7 @@ class DialpadActivity : SimpleActivity() {
                         startAddContactIntent(recentCall.phoneNumber)
                     }
                 },
-                contactsProvider = { allContacts }
+                contactsProvider = { ArrayList(allContacts) }
             )
 
             binding.dialpadRecentsList.adapter = recentsAdapter

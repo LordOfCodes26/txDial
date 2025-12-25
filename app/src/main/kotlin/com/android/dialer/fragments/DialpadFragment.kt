@@ -22,23 +22,13 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.core.content.res.ResourcesCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsCompat.Type
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import androidx.core.view.marginBottom
-import androidx.core.view.setPadding
 import androidx.core.view.updateLayoutParams
-import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.RecyclerView
 import com.behaviorule.arturdumchev.library.pixels
 import com.behaviorule.arturdumchev.library.setHeight
-import com.reddit.indicatorfastscroll.FastScrollerThumbView
-import com.reddit.indicatorfastscroll.FastScrollerView
-import com.google.android.material.appbar.MaterialToolbar
 import com.goodwy.commons.helpers.NavigationIcon
-import com.goodwy.commons.views.MyAppBarLayout
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
 import com.goodwy.commons.models.contacts.Contact
@@ -60,7 +50,7 @@ import com.android.dialer.activities.ManageSpeedDialActivity
 import com.goodwy.commons.dialogs.CallConfirmationDialog
 import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.dialogs.ConfirmationDialog
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.shake
 import eightbitlab.com.blurview.BlurTarget
@@ -73,13 +63,19 @@ import java.io.InputStreamReader
 import java.text.Collator
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.DialpadInnerBinding>(context, attributeSet) {
     private lateinit var binding: FragmentDialpadBinding
     private var dialpadGridBinding: DialpadGridBinding? = null
 
-    var allContacts = ArrayList<Contact>()
-    private var speedDialValues = ArrayList<SpeedDial>()
+    var allContacts = mutableListOf<Contact>()
+    private var speedDialValues = mutableListOf<SpeedDial>()
     private var toneGeneratorHelper: ToneGeneratorHelper? = null
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val longPressHandler = Handler(Looper.getMainLooper())
@@ -100,10 +96,11 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private var phoneNumberFormattingWatcher: PhoneNumberFormattingTextWatcher? = null
     private var allRecentCalls = listOf<RecentCall>()
     private var recentsAdapter: RecentCallsAdapter? = null
-    private var recentsHelper = RecentsHelper(context)
-    private var callerNotesHelper = CallerNotesHelper(context)
+    private val recentsHelper = RecentsHelper(context)
+    private val callerNotesHelper = CallerNotesHelper(context)
     private var isTalkBackOn = false
     private var initSearch = true
+    private val fragmentScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -142,20 +139,27 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         isTalkBackOn = context.isTalkBackOn()
 
         binding.dialpadInput.apply {
+            // Disable keyboard first to prevent IME from showing on focus
+            disableKeyboard()
             if (context.config.formatPhoneNumbers) {
                 @Suppress("DEPRECATION")
                 phoneNumberFormattingWatcher = PhoneNumberFormattingTextWatcher(Locale.getDefault().country)
                 addTextChangedListener(phoneNumberFormattingWatcher)
             }
             onTextChangeListener { dialpadValueChanged(it) }
-            requestFocus()
             AutofitHelper.create(this)
-            disableKeyboard()
             // Always visible since it's positioned like a toolbar
             beVisible()
+            // Clear focus to prevent auto-focus on startup
+            clearFocus()
         }
 
-        ContactsHelper(context).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
+        // Optimize: Use loadExtendedFields=false for faster dialpad contact loading
+        // Dialpad only needs basic contact info for T9 search
+        ContactsHelper(context).getContactsWithSecureBoxFilter(
+            showOnlyContactsWithNumbers = true,
+            loadExtendedFields = false
+        ) { contacts ->
             gotContacts(contacts)
         }
         // Initialize stored values - use -1 for storedDialpadStyle to ensure first style change is detected
@@ -181,6 +185,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
 
         // Initialize dialpad style
         initStyle()
+        storedDialpadStyle = context.config.dialpadStyle // Update stored style after initialization
 
         // Update dialpad size
         updateDialpadSize()
@@ -189,6 +194,15 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         if (context.config.dialpadStyle == DIALPAD_GRID || context.config.dialpadStyle == DIALPAD_ORIGINAL) {
             updateCallButtonSize()
         }
+
+        // Initialize placeholder for recent calls
+        val placeholderResId = if (context.hasPermission(PERMISSION_READ_CALL_LOG)) {
+            R.string.no_previous_calls
+        } else {
+            R.string.could_not_access_the_call_history
+        }
+        binding.dialpadRecentsPlaceholder.text = context.getString(placeholderResId)
+        binding.dialpadRecentsPlaceholder.beGone()
 
         // Load recent calls if enabled
         if (context.config.showRecentCallsOnDialpad) {
@@ -241,11 +255,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             }
         }
 
-        if (binding.dialpadInput.value.isEmpty()) {
-            binding.dialpadRecentsList.beVisibleIf(
-                binding.dialpadInput.value.isEmpty() && context.config.showRecentCallsOnDialpad
-            )
-        }
+        // Note: Recent calls list visibility will be updated in gotRecents() when recents are loaded
+        // and in dialpadValueChanged() when input changes
     }
 
     private fun setupScrollListeners() {
@@ -436,13 +447,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                         ConfirmationDialog(currentActivity, context.getString(R.string.open_speed_dial_manage), blurTarget = blurTarget) {
                             currentActivity.startActivity(Intent(currentActivity.applicationContext, ManageSpeedDialActivity::class.java))
                         }
-                    } else {
-                        // Fallback when blurTarget is not available
-                        context.toast(R.string.open_speed_dial_manage)
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            currentActivity.startActivity(Intent(currentActivity.applicationContext, ManageSpeedDialActivity::class.java))
-                        }, 500)
+                } else {
+                    // Fallback when blurTarget is not available
+                    context.toast(R.string.open_speed_dial_manage)
+                    fragmentScope.launch {
+                        delay(500)
+                        currentActivity.startActivity(Intent(currentActivity.applicationContext, ManageSpeedDialActivity::class.java))
                     }
+                }
                 }
             }
         }
@@ -454,6 +466,11 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val view = dialpadView()
         if (len == 0 && view?.isGone == true) {
             slideUp(view)
+            // When input is cleared, refresh visibility to show placeholder if needed
+            if (context.config.showRecentCallsOnDialpad && allRecentCalls.isEmpty()) {
+                binding.dialpadRecentsPlaceholder.beVisible()
+                binding.dialpadRecentsList.beGone()
+            }
         }
         //Only works for system apps, CALL_PRIVILEGED and MODIFY_PHONE_STATE permissions are required
         if (len > 8 && textFormat.startsWith("*#*#") && textFormat.endsWith("#*#*")) {
@@ -552,6 +569,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val recentsEnabled = context.config.showRecentCallsOnDialpad
         val hasContacts = filtered.isNotEmpty()
         val hasRecents = filteredRecents.isNotEmpty()
+        val hasAllRecents = allRecentCalls.isNotEmpty()
         val areMultipleSIMsAvailable = context.areMultipleSIMsAvailable()
 
         binding.dialpadAddNumber.beVisibleIf(hasInput)
@@ -569,6 +587,18 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 (!searchEnabled && recentsEnabled && hasRecents)
         binding.dialpadRecentsList.beVisibleIf(showRecentsList)
         
+        // Show placeholder when recents are enabled but empty
+        // When no input: check allRecentCalls (show if no recents at all)
+        // When has input: check filteredRecents (show if no filtered recents match)
+        val showPlaceholder = if (hasInput) {
+            // Show placeholder if: recents enabled, no filtered recents match, and (no contacts match OR search disabled)
+            recentsEnabled && !hasRecents && (!hasContacts || !searchEnabled)
+        } else {
+            // Show placeholder if: recents enabled and no recents at all
+            recentsEnabled && !hasAllRecents
+        }
+        binding.dialpadRecentsPlaceholder.beVisibleIf(showPlaceholder)
+        
 
         dialpadGridBinding?.dialpadClearCharHolder?.beVisibleIf((hasInput && context.config.dialpadStyle != DIALPAD_IOS && context.config.dialpadStyle != DIALPAD_CONCEPT) || areMultipleSIMsAvailable)
         binding.dialpadRectWrapper?.dialpadClearCharHolder?.beVisibleIf(context.config.dialpadStyle == DIALPAD_CONCEPT)
@@ -585,13 +615,15 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         }
 
         if (binding.dialpadInput.value.isNotEmpty()) {
+            // If there's input, refresh the filtered results
             dialpadValueChanged(binding.dialpadInput.value)
-        } else if (needUpdate || context.config.needUpdateRecents) {
-            refreshCallLog(loadAll = false) {
-                binding.dialpadRecentsList.runAfterAnimations {
-                    refreshCallLog(loadAll = true)
-                }
+            // Also refresh the underlying data if needed
+            if (needUpdate || context.config.needUpdateRecents) {
+                refreshCallLog(loadAll = true)
             }
+        } else if (needUpdate || context.config.needUpdateRecents) {
+            // When needUpdate is true (e.g., call ended), refresh immediately without waiting for animations
+            refreshCallLog(loadAll = true)
         } else {
             var recents = emptyList<RecentCall>()
             if (!invalidate) {
@@ -621,16 +653,19 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private fun refreshCallLog(loadAll: Boolean = false, callback: (() -> Unit)? = null) {
         getRecentCalls(loadAll) { recents ->
             allRecentCalls = recents
-            Handler(Looper.getMainLooper()).post {
+            activity?.runOnUiThread {
+                gotRecents(recents)
+                callback?.invoke()
+            } ?: fragmentScope.launch(Dispatchers.Main) {
                 gotRecents(recents)
                 callback?.invoke()
             }
 
-            context.config.recentCallsCache = Gson().toJson(recents.take(RECENT_CALL_CACHE_SIZE))
+            context.config.recentCallsCache = sharedGson.toJson(recents.take(RECENT_CALL_CACHE_SIZE))
 
             // Deleting notes if a call has already been deleted
             callerNotesHelper.removeCallerNotes(
-                recents.map { recentCall -> recentCall.phoneNumber.numberForNotes() }
+                recents.map { it.phoneNumber.numberForNotes() }
             )
         }
 
@@ -640,10 +675,10 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 getRecentCalls(queryLimit = queryCount, updateCallsCache = false) { calls ->
                     ensureBackgroundThread {
                         val recentOutgoingNumbers = calls
-                            .filter { it.type == Calls.OUTGOING_TYPE }
-                            .map { recentCall -> recentCall.phoneNumber }
+                            .mapNotNull { if (it.type == Calls.OUTGOING_TYPE) it.phoneNumber else null }
+                            .toMutableSet()
 
-                        context.config.recentOutgoingNumbers = recentOutgoingNumbers.toMutableSet()
+                        context.config.recentOutgoingNumbers = recentOutgoingNumbers
                     }
                 }
             }
@@ -744,7 +779,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                         activity?.startAddContactIntent(recentCall.phoneNumber)
                     }
                 },
-                contactsProvider = { allContacts }
+                contactsProvider = { ArrayList(allContacts) }
             )
 
             binding.dialpadRecentsList.adapter = recentsAdapter
@@ -752,12 +787,41 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         } else {
             recentsAdapter?.updateItems(recents)
         }
+        
+        // Update visibility when recents are loaded, especially when input is empty
+        val inputValue = binding.dialpadInput.value
+        val hasInput = inputValue.isNotEmpty()
+        val searchEnabled = context.config.searchContactsInDialpad
+        val recentsEnabled = context.config.showRecentCallsOnDialpad
+        val hasRecents = recents.isNotEmpty()
+        
+        if (recents.isEmpty()) {
+            // No recents: show placeholder, hide list
+            binding.dialpadRecentsList.beGone()
+            // Show placeholder only when recents are enabled and (no input or search disabled)
+            val showPlaceholder = recentsEnabled && (!hasInput || !searchEnabled)
+            binding.dialpadRecentsPlaceholder.beVisibleIf(showPlaceholder)
+        } else {
+            // Has recents: hide placeholder, show list conditionally
+            binding.dialpadRecentsPlaceholder.beGone()
+            // Show recents list when:
+            // 1. No input, recents enabled, and has recents to show
+            // 2. Search disabled, recents enabled, and has recents to show
+            // Note: When there's input, visibility is handled by dialpadValueChanged()
+            val showRecentsList = (!hasInput && recentsEnabled && hasRecents) ||
+                    (!searchEnabled && recentsEnabled && hasRecents)
+            binding.dialpadRecentsList.beVisibleIf(showRecentsList)
+        }
     }
 
     private fun gotContacts(newContacts: ArrayList<Contact>) {
         allContacts = newContacts
 
-        Handler(Looper.getMainLooper()).post {
+        activity?.runOnUiThread {
+            if (!checkDialIntent() && binding.dialpadInput.value.isEmpty()) {
+                dialpadValueChanged("")
+            }
+        } ?: fragmentScope.launch(Dispatchers.Main) {
             if (!checkDialIntent() && binding.dialpadInput.value.isEmpty()) {
                 dialpadValueChanged("")
             }
@@ -942,9 +1006,6 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             }
         }
 
-        // Update speed dial values (like DialpadActivity.onResume())
-        speedDialValues = context.config.getSpeedDialValues()
-
         // Update TalkBack state
         isTalkBackOn = context.isTalkBackOn()
 
@@ -965,6 +1026,9 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         binding.dialpadList.setBackgroundColor(properBackgroundColor)
         binding.dialpadRecentsList.setBackgroundColor(properBackgroundColor)
         binding.dialpadToolbar.setBackgroundColor(properBackgroundColor)
+        
+        // Update placeholder text color
+        binding.dialpadRecentsPlaceholder.setTextColor(properTextColor)
 
         // Update appbar style
         activity?.let { act ->
@@ -1091,7 +1155,9 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     fun showBlockedNumbers() {
         context.config.showBlockedNumbers = !context.config.showBlockedNumbers
         context.config.needUpdateRecents = true
-        Handler(Looper.getMainLooper()).post {
+        activity?.runOnUiThread {
+            refreshItems()
+        } ?: fragmentScope.launch(Dispatchers.Main) {
             refreshItems()
         }
         refreshMenuItems()
@@ -1106,7 +1172,9 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 ConfirmationDialog(currentActivity, confirmationText, blurTarget = blurTarget) {
                     RecentsHelper(context).removeAllRecentCalls(currentActivity) {
                         allRecentCalls = emptyList()
-                        Handler(Looper.getMainLooper()).post {
+                        activity?.runOnUiThread {
+                            refreshItems(invalidate = true)
+                        } ?: fragmentScope.launch(Dispatchers.Main) {
                             refreshItems(invalidate = true)
                         }
                     }
@@ -1119,9 +1187,10 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
 
     private fun clearInputWithDelay() {
-        Handler(Looper.getMainLooper()).postDelayed({
+        fragmentScope.launch {
+            delay(1000)
             clearInput()
-        }, 1000)
+        }
     }
 
     private fun initCall(number: String = binding.dialpadInput.value, handleIndex: Int, displayName: String? = null) {
@@ -1140,7 +1209,10 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             RecentsHelper(context).getRecentCalls(queryLimit = 1) {
                 val mostRecentNumber = it.firstOrNull()?.phoneNumber
                 if (!mostRecentNumber.isNullOrEmpty()) {
-                    Handler(Looper.getMainLooper()).post {
+                    activity?.runOnUiThread {
+                        binding.dialpadInput.setText(mostRecentNumber)
+                        binding.dialpadInput.setSelection(mostRecentNumber.length)
+                    } ?: fragmentScope.launch(Dispatchers.Main) {
                         binding.dialpadInput.setText(mostRecentNumber)
                         binding.dialpadInput.setSelection(mostRecentNumber.length)
                     }
@@ -1245,6 +1317,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun refreshCallLog(event: Events.RefreshCallLog) {
         context.config.needUpdateRecents = true
+        // Refresh immediately when call ends, don't wait for animations
         refreshItems(needUpdate = true)
     }
 
@@ -1930,7 +2003,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         if (view != null) {
             val dimens = pixels(R.dimen.dialpad_phone_button_size)
             view.setHeightAndWidth((dimens * (size / 100f)).toInt())
-            view.setPadding((dimens * 0.1765 * (size / 100f)).toInt())
+            val padding = (dimens * 0.1765 * (size / 100f)).toInt()
+            view.setPadding(padding, padding, padding, padding)
         }
 
         if (context.areMultipleSIMsAvailable()) {
@@ -1940,7 +2014,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 val dimensSecondary = pixels(R.dimen.dialpad_button_size_small)
                 viewSecondary.setHeightAndWidth((dimensSecondary * (sizeSecondary / 100f)).toInt())
                 val dimens = pixels(R.dimen.dialpad_phone_button_size)
-                viewSecondary.setPadding((dimens * 0.1765 * (sizeSecondary / 100f)).toInt())
+                val padding = (dimens * 0.1765 * (sizeSecondary / 100f)).toInt()
+                viewSecondary.setPadding(padding, padding, padding, padding)
             }
         }
     }
@@ -1964,5 +2039,6 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         longPressHandler.removeCallbacksAndMessages(null)
         toneGeneratorHelper?.stopTone()
         toneGeneratorHelper = null
+        fragmentScope.cancel()
     }
 }

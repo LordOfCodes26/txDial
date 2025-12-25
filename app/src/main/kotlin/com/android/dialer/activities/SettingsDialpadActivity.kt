@@ -33,7 +33,7 @@ import com.android.dialer.extensions.*
 import com.android.dialer.helpers.*
 import com.android.dialer.models.RecentCall
 import com.android.dialer.models.SpeedDial
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.shake
 import java.io.InputStreamReader
@@ -54,7 +54,7 @@ class SettingsDialpadActivity : SimpleActivity() {
     private val subscriptionYearIdX2 = BuildConfig.SUBSCRIPTION_YEAR_ID_X2
     private val subscriptionYearIdX3 = BuildConfig.SUBSCRIPTION_YEAR_ID_X3
 
-    private var speedDialValues = ArrayList<SpeedDial>()
+    private var speedDialValues = mutableListOf<SpeedDial>()
     private var toneGeneratorHelper: ToneGeneratorHelper? = null
     private val hideDialpadHandler = Handler(Looper.getMainLooper())
 
@@ -1180,7 +1180,7 @@ class SettingsDialpadActivity : SimpleActivity() {
                 val recentNew = if (recent.simID == index) recent.copy(simColor = color) else recent
                 recentsNew.add(recentNew)
             }
-            config.recentCallsCache = Gson().toJson(recentsNew.take(RECENT_CALL_CACHE_SIZE))
+            config.recentCallsCache = sharedGson.toJson(recentsNew.take(RECENT_CALL_CACHE_SIZE))
             config.needUpdateRecents = true
             config.needRestart = true
         }

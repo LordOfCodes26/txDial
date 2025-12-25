@@ -2,6 +2,11 @@ package com.android.dialer.fragments
 
 import android.content.Context
 import android.content.res.Configuration
+import android.database.ContentObserver
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.ContactsContract
 import android.util.AttributeSet
 import com.goodwy.commons.adapters.MyRecyclerViewAdapter
 import com.goodwy.commons.extensions.*
@@ -32,7 +37,9 @@ import com.android.dialer.models.RecentCall
 class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.LettersInnerBinding>(context, attributeSet),
     RefreshItemsListener {
     private lateinit var binding: FragmentLettersLayoutBinding
-    private var allContacts = ArrayList<Contact>()
+    private var allContacts = mutableListOf<Contact>()
+    private var contactObserver: ContentObserver? = null
+    private var isResumed = false
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -92,15 +99,60 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     }
 
     override fun refreshItems(invalidate: Boolean, needUpdate: Boolean, callback: (() -> Unit)?) {
-        // Load contacts with all fields for search compatibility
-        // Performance optimizations are applied in ContactsHelper (HashMap lookups, optimized duplicate merging)
-        ContactsHelper(context).getContactsWithSecureBoxFilter(showOnlyContactsWithNumbers = true) { contacts ->
+        // Keep loadExtendedFields=true for search compatibility
+        // Extended fields are needed for searching in addresses, notes, etc.
+        ContactsHelper(context).getContactsWithSecureBoxFilter(
+            showOnlyContactsWithNumbers = true,
+            loadExtendedFields = true
+        ) { contacts ->
             allContacts = contacts
 
             activity?.runOnUiThread {
                 gotContacts(contacts)
                 callback?.invoke()
             }
+        }
+    }
+    
+    fun onFragmentResume() {
+        isResumed = true
+        // Register ContentObserver to detect contact changes
+        registerContactObserver()
+        // Refresh on resume to catch changes made while app was in background
+        refreshItems(needUpdate = true)
+    }
+    
+    fun onFragmentPause() {
+        isResumed = false
+        unregisterContactObserver()
+    }
+    
+    private fun registerContactObserver() {
+        if (contactObserver == null && context.hasPermission(PERMISSION_READ_CONTACTS)) {
+            contactObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    if (!selfChange && isResumed) {
+                        // Debounce: wait a bit before refreshing to avoid multiple rapid refreshes
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            if (isResumed) {
+                                refreshItems(needUpdate = true)
+                            }
+                        }, 500) // 500ms debounce
+                    }
+                }
+            }
+            context.contentResolver.registerContentObserver(
+                ContactsContract.Contacts.CONTENT_URI,
+                true,
+                contactObserver!!
+            )
+        }
+    }
+    
+    private fun unregisterContactObserver() {
+        contactObserver?.let {
+            context.contentResolver.unregisterContentObserver(it)
+            contactObserver = null
         }
     }
 
@@ -196,7 +248,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
     override fun onSearchClosed() {
         binding.fragmentPlaceholder.beVisibleIf(allContacts.isEmpty())
         (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(allContacts)
-        setupLetterFastScroller(allContacts)
+        setupLetterFastScroller(ArrayList(allContacts))
     }
 
     override fun onSearchQueryChanged(text: String) {
@@ -206,12 +258,14 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
             // Reset to full list quickly on main thread
             binding.fragmentPlaceholder.beVisibleIf(allContacts.isEmpty())
             (binding.fragmentList.adapter as? ContactsAdapter)?.updateItems(allContacts)
-            setupLetterFastScroller(allContacts)
+            setupLetterFastScroller(ArrayList(allContacts))
             return
         }
 
         ensureBackgroundThread {
             val shouldNormalize = fixedText.normalizeString() == fixedText
+            // For search, we need extended fields, so filter from allContacts which may not have them
+            // If search is needed with extended fields, we should reload with loadExtendedFields=true
             val filtered = allContacts.filter { contact ->
                 getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
                     getProperText(contact.nickname, shouldNormalize).contains(fixedText, true) ||

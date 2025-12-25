@@ -1,8 +1,13 @@
 package com.android.dialer.fragments
 
 import android.content.Context
+import android.database.ContentObserver
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.ContactsContract
 import android.util.AttributeSet
-import com.google.gson.Gson
+import com.android.dialer.helpers.sharedGson
 import com.goodwy.commons.adapters.MyRecyclerViewAdapter
 import com.goodwy.commons.extensions.*
 import com.goodwy.commons.helpers.*
@@ -34,7 +39,9 @@ import com.android.dialer.interfaces.RefreshItemsListener
 class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.LettersInnerBinding>(context, attributeSet),
     RefreshItemsListener {
     private lateinit var binding: FragmentLettersLayoutBinding
-    private var allContacts = ArrayList<Contact>()
+    private var allContacts = mutableListOf<Contact>()
+    private var contactObserver: ContentObserver? = null
+    private var isResumed = false
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -82,7 +89,11 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     }
 
     override fun refreshItems(invalidate: Boolean, needUpdate: Boolean, callback: (() -> Unit)?) {
-        ContactsHelper(context).getContactsWithSecureBoxFilter { contacts ->
+        // Optimize: Use loadExtendedFields=false for faster loading
+        // Favorites don't need extended fields for display
+        ContactsHelper(context).getContactsWithSecureBoxFilter(
+            loadExtendedFields = false
+        ) { contacts ->
             allContacts = contacts
             val favorites = contacts.filter { it.starred == 1 } as ArrayList<Contact>
 
@@ -93,9 +104,51 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
             }
 
             activity?.runOnUiThread {
-                gotContacts(allContacts)
+                gotContacts(ArrayList(allContacts))
                 callback?.invoke()
             }
+        }
+    }
+    
+    fun onFragmentResume() {
+        isResumed = true
+        // Register ContentObserver to detect contact changes
+        registerContactObserver()
+        // Refresh on resume to catch changes made while app was in background
+        refreshItems(needUpdate = true)
+    }
+    
+    fun onFragmentPause() {
+        isResumed = false
+        unregisterContactObserver()
+    }
+    
+    private fun registerContactObserver() {
+        if (contactObserver == null && context.hasPermission(PERMISSION_READ_CONTACTS)) {
+            contactObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    if (!selfChange && isResumed) {
+                        // Debounce: wait a bit before refreshing to avoid multiple rapid refreshes
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            if (isResumed) {
+                                refreshItems(needUpdate = true)
+                            }
+                        }, 500) // 500ms debounce
+                    }
+                }
+            }
+            context.contentResolver.registerContentObserver(
+                ContactsContract.Contacts.CONTENT_URI,
+                true,
+                contactObserver!!
+            )
+        }
+    }
+    
+    private fun unregisterContactObserver() {
+        contactObserver?.let {
+            context.contentResolver.unregisterContentObserver(it)
+            contactObserver = null
         }
     }
 
@@ -199,9 +252,9 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     private fun saveCustomOrderToPrefs(items: List<Contact>) {
         activity?.apply {
             val orderIds = items.map { it.contactId }
-            val orderGsonString = Gson().toJson(orderIds)
+            val orderGsonString = sharedGson.toJson(orderIds)
             config.favoritesContactsOrder = orderGsonString
-            allContacts = ArrayList(items)
+            allContacts = items.toMutableList()
         }
     }
 
