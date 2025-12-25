@@ -34,37 +34,42 @@ class RecordingNotificationManager(private val context: Context) {
     
     /**
      * Create notification channel for recording notifications (Android 8.0+)
+     * BCR-style: Low importance, silent, no badge
      */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_LOW // BCR uses low importance
             ).apply {
                 description = "Notifications shown during call recording"
-                setShowBadge(false)
-                enableLights(false)
-                enableVibration(false)
-                setSound(null, null)
+                setShowBadge(false) // No badge
+                enableLights(false) // No LED
+                enableVibration(false) // No vibration
+                setSound(null, null) // Silent
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC // Show on lock screen
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
     
     /**
-     * Show recording notification
+     * Show recording notification (BCR-style)
+     * @param phoneNumber Phone number being recorded
+     * @param contactName Contact name if available (optional)
+     * @param isPaused Whether recording is paused
      */
-    fun showRecordingNotification(phoneNumber: String?, isPaused: Boolean = false) {
-        val notification = buildRecordingNotification(phoneNumber, isPaused)
+    fun showRecordingNotification(phoneNumber: String?, contactName: String? = null, isPaused: Boolean = false) {
+        val notification = buildRecordingNotification(phoneNumber, contactName, isPaused)
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
     
     /**
      * Update notification when recording state changes
      */
-    fun updateNotification(phoneNumber: String?, isPaused: Boolean) {
-        showRecordingNotification(phoneNumber, isPaused)
+    fun updateNotification(phoneNumber: String?, contactName: String? = null, isPaused: Boolean) {
+        showRecordingNotification(phoneNumber, contactName, isPaused)
     }
     
     /**
@@ -75,9 +80,9 @@ class RecordingNotificationManager(private val context: Context) {
     }
     
     /**
-     * Build the recording notification
+     * Build the recording notification (BCR-style)
      */
-    private fun buildRecordingNotification(phoneNumber: String?, isPaused: Boolean): Notification {
+    private fun buildRecordingNotification(phoneNumber: String?, contactName: String? = null, isPaused: Boolean): Notification {
         // Main intent - open app when notification is tapped
         val mainIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -89,55 +94,74 @@ class RecordingNotificationManager(private val context: Context) {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         
-        // Format title and text
+        // BCR-style: Simple title "Recording" or "Recording paused"
         val title = if (isPaused) {
             context.getString(R.string.recording_paused)
         } else {
-            context.getString(R.string.recording_call)
+            context.getString(R.string.recording)
         }
         
-        val text = if (phoneNumber.isNullOrEmpty()) {
-            context.getString(R.string.recording_in_progress)
-        } else {
-            context.getString(R.string.recording_phone_number, formatPhoneNumber(phoneNumber))
+        // BCR-style: Show contact name if available, otherwise phone number
+        val text = when {
+            !contactName.isNullOrEmpty() -> contactName // BCR shows contact name first
+            !phoneNumber.isNullOrEmpty() -> formatPhoneNumber(phoneNumber) // Then formatted phone number
+            else -> context.getString(R.string.recording_in_progress) // Fallback
         }
         
-        // Build notification
-        return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_microphone_vector) // Recording icon
+        // Build notification in BCR style
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_microphone_vector)
             .setContentTitle(title)
             .setContentText(text)
-            .setOngoing(true) // Can't be dismissed while recording
+            .setOngoing(true) // Persistent notification
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(mainPendingIntent)
-            .setShowWhen(true)
-            .setUsesChronometer(!isPaused) // Show timer when recording
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setColor(context.getColor(R.color.color_primary))
-            .apply {
-                // Add recording indicator for Android 12+
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-                }
-                
-                // Show "On Hold" status if paused
-                if (isPaused) {
-                    setSubText(context.getString(R.string.call_on_hold))
-                }
-            }
-            .build()
+            .setShowWhen(false) // Don't show timestamp, we use chronometer instead
+        
+        // Add chronometer (timer) - BCR style
+        if (!isPaused) {
+            // Show elapsed time using chronometer
+            builder.setUsesChronometer(true)
+            builder.setWhen(System.currentTimeMillis())
+        } else {
+            // When paused, show "On Hold" as subtext
+            builder.setSubText(context.getString(R.string.call_on_hold))
+            builder.setUsesChronometer(false)
+        }
+        
+        // Android 12+ foreground service behavior
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+        
+        return builder.build()
     }
     
     /**
-     * Format phone number for display
+     * Format phone number for display (BCR-style: simple and clean)
      */
     private fun formatPhoneNumber(number: String): String {
-        return if (number.length > 10) {
-            // Format long numbers
-            number.replace(Regex("(\\d{3})(\\d{3})(\\d{4})"), "$1-$2-$3")
+        // BCR shows numbers simply, just clean up formatting
+        val cleaned = number.replace(Regex("[^+\\d]"), "") // Keep only digits and +
+        
+        // For US numbers, format nicely: +1 (234) 567-8900
+        return if (cleaned.startsWith("+1") && cleaned.length == 12) {
+            val area = cleaned.substring(2, 5)
+            val first = cleaned.substring(5, 8)
+            val second = cleaned.substring(8, 12)
+            "+1 ($area) $first-$second"
+        } else if (cleaned.length == 10 && !cleaned.startsWith("+")) {
+            // 10-digit US number without country code
+            val area = cleaned.substring(0, 3)
+            val first = cleaned.substring(3, 6)
+            val second = cleaned.substring(6, 10)
+            "($area) $first-$second"
         } else {
-            number
+            // For other numbers, just return cleaned version
+            cleaned
         }
     }
     
@@ -145,8 +169,8 @@ class RecordingNotificationManager(private val context: Context) {
      * Get notification for foreground service
      * Used when recording as a foreground service
      */
-    fun getRecordingNotification(phoneNumber: String?): Notification {
-        return buildRecordingNotification(phoneNumber, false)
+    fun getRecordingNotification(phoneNumber: String?, contactName: String? = null): Notification {
+        return buildRecordingNotification(phoneNumber, contactName, false)
     }
 }
 

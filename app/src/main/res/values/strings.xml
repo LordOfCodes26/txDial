@@ -94,7 +94,7 @@
     <string name="faq_3_text">Fossify Phone only displays contacts that have a phone number associated with them. Contacts without a phone number are not shown in the app.</string>
 
     <!-- Call Recording -->
-    <string name="recording_call">Recording call</string>
+    <string name="recording">Recording</string>
     <string name="recording_paused">Recording paused</string>
     <string name="recording_in_progress">Recording in progress</string>
     <string name="recording_phone_number">Recording: %s</string>
@@ -173,4 +173,7 @@
     <string name="stop_recording">Stop recording</string>
     <string name="recording_active">Recording</string>
     <string name="record">Record</string>
+    
+    <!-- Error messages -->
+    <string name="enable_recording_first">Please enable call recording first</string>
 </resources>

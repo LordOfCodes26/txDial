@@ -697,7 +697,7 @@ class SettingsActivity : SimpleActivity() {
         binding.settingsBackgroundCallScreen.text = getBackgroundCallScreenText()
         binding.settingsBackgroundCallScreenHolder.setOnClickListener {
             val customImageItem = RadioItem(CUSTOM_BACKGROUND, getString(R.string.custom_image), icon = R.drawable.ic_photo_custom)
-            val customVideoItem = RadioItem(VIDEO_BACKGROUND, getString(R.string.custom_video), icon = R.drawable.ic_wallpaper)
+            val customVideoItem = RadioItem(VIDEO_BACKGROUND, getString(R.string.custom_video), icon = R.drawable.ic_video)
             val items = if (isTiramisuPlus()) {
                 arrayListOf(
                     RadioItem(THEME_BACKGROUND, getString(R.string.theme), icon = R.drawable.ic_theme),

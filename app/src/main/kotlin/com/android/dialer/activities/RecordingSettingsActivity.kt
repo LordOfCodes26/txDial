@@ -94,8 +94,10 @@ class RecordingSettingsActivity : SimpleActivity() {
         
         // Custom Path (only if custom location is selected)
         binding.settingsRecordingCustomPathHolder.setOnClickListener {
-            if (config.recordingSaveLocation == RecordingFileManager.LOCATION_CUSTOM) {
+            if (config.callRecordingEnabled && config.recordingSaveLocation == RecordingFileManager.LOCATION_CUSTOM) {
                 showCustomPathPicker()
+            } else if (!config.callRecordingEnabled) {
+                toast(R.string.enable_recording_first)
             }
         }
         
@@ -117,7 +119,8 @@ class RecordingSettingsActivity : SimpleActivity() {
     
     private fun updateUI() {
         // Recording Enabled
-        binding.settingsShowVoicemailIcon.isChecked = config.callRecordingEnabled
+        val enabled = config.callRecordingEnabled
+        binding.settingsRecordingEnabledSwitch.isChecked = enabled
         
         // Auto-recording Rule
         val ruleName = when (config.callRecordingAutoRule) {
@@ -152,9 +155,9 @@ class RecordingSettingsActivity : SimpleActivity() {
         
         // Custom Path
         val isCustomLocation = config.recordingSaveLocation == RecordingFileManager.LOCATION_CUSTOM
-        binding.settingsRecordingCustomPathHolder.beVisibleIf(isCustomLocation)
+        binding.settingsRecordingCustomPathHolder.beVisibleIf(isCustomLocation && enabled)
         
-        if (isCustomLocation) {
+        if (isCustomLocation && enabled) {
             val path = config.recordingCustomPath.ifEmpty { getString(R.string.not_set) }
             binding.settingsRecordingCustomPath.text = path
         }
@@ -171,13 +174,51 @@ class RecordingSettingsActivity : SimpleActivity() {
         binding.settingsRecordingCurrentPath.text = directory.absolutePath
         
         // Enable/disable dependent settings
-        val enabled = config.callRecordingEnabled
-        binding.settingsRecordingFormatHolder.alpha = if (enabled) 1f else 0.5f
-        binding.settingsRecordingSaveLocationHolder.alpha = if (enabled) 1f else 0.5f
-        binding.settingsRecordingCustomPathHolder.alpha = if (enabled) 1f else 0.5f
-        binding.settingsRecordingFileTemplateHolder.alpha = if (enabled) 1f else 0.5f
-        binding.settingsRecordingPreviewHolder.alpha = if (enabled) 1f else 0.5f
-        binding.settingsRecordingOpenFolderHolder.alpha = if (enabled) 1f else 0.5f
+        val disabledAlpha = 0.5f
+        val enabledAlpha = 1f
+        
+        // Update alpha and clickable state
+        binding.settingsRecordingAutoRuleHolder.apply {
+            alpha = if (enabled) enabledAlpha else disabledAlpha
+            isClickable = enabled
+            isEnabled = enabled
+        }
+        
+        binding.settingsRecordingFormatHolder.apply {
+            alpha = if (enabled) enabledAlpha else disabledAlpha
+            isClickable = enabled
+            isEnabled = enabled
+        }
+        
+        binding.settingsRecordingSaveLocationHolder.apply {
+            alpha = if (enabled) enabledAlpha else disabledAlpha
+            isClickable = enabled
+            isEnabled = enabled
+        }
+        
+        binding.settingsRecordingCustomPathHolder.apply {
+            alpha = if (enabled) enabledAlpha else disabledAlpha
+            isClickable = enabled && config.recordingSaveLocation == RecordingFileManager.LOCATION_CUSTOM
+            isEnabled = enabled && config.recordingSaveLocation == RecordingFileManager.LOCATION_CUSTOM
+        }
+        
+        binding.settingsRecordingFileTemplateHolder.apply {
+            alpha = if (enabled) enabledAlpha else disabledAlpha
+            isClickable = enabled
+            isEnabled = enabled
+        }
+        
+        binding.settingsRecordingPreviewHolder.apply {
+            alpha = if (enabled) enabledAlpha else disabledAlpha
+            isClickable = enabled
+            isEnabled = enabled
+        }
+        
+        binding.settingsRecordingOpenFolderHolder.apply {
+            alpha = if (enabled) enabledAlpha else disabledAlpha
+            isClickable = enabled
+            isEnabled = enabled
+        }
     }
     
     private fun getCurrentFormat(): CallRecorder.OutputFormat {
@@ -191,7 +232,10 @@ class RecordingSettingsActivity : SimpleActivity() {
     }
     
     private fun showAutoRecordingRulePicker() {
-        if (!config.callRecordingEnabled) return
+        if (!config.callRecordingEnabled) {
+            toast(R.string.enable_recording_first)
+            return
+        }
         
         val items = arrayListOf(
             RadioItem(RECORDING_RULE_NONE, getString(R.string.recording_rule_none)),
@@ -215,7 +259,10 @@ class RecordingSettingsActivity : SimpleActivity() {
     }
     
     private fun showFormatPicker() {
-        if (!config.callRecordingEnabled) return
+        if (!config.callRecordingEnabled) {
+            toast(R.string.enable_recording_first)
+            return
+        }
         
         val items = arrayListOf(
             RadioItem(0, getString(R.string.format_wav_desc)),
@@ -239,7 +286,10 @@ class RecordingSettingsActivity : SimpleActivity() {
     }
     
     private fun showLocationPicker() {
-        if (!config.callRecordingEnabled) return
+        if (!config.callRecordingEnabled) {
+            toast(R.string.enable_recording_first)
+            return
+        }
         
         val locations = fileManager.getAvailableLocations()
         val items = locations.mapIndexed { index, location ->
@@ -309,7 +359,10 @@ class RecordingSettingsActivity : SimpleActivity() {
     }
     
     private fun showTemplateEditor() {
-        if (!config.callRecordingEnabled) return
+        if (!config.callRecordingEnabled) {
+            toast(R.string.enable_recording_first)
+            return
+        }
         
         val variables = fileManager.getTemplateVariables()
         val variablesText = variables.joinToString("\n") {
@@ -349,7 +402,10 @@ class RecordingSettingsActivity : SimpleActivity() {
     }
     
     private fun showPreview() {
-        if (!config.callRecordingEnabled) return
+        if (!config.callRecordingEnabled) {
+            toast(R.string.enable_recording_first)
+            return
+        }
         
         val example = fileManager.getExampleFileName(getCurrentFormat())
         val directory = fileManager.getSaveDirectory()
@@ -370,25 +426,72 @@ class RecordingSettingsActivity : SimpleActivity() {
     }
     
     private fun openRecordingsFolder() {
-        if (!config.callRecordingEnabled) return
+        if (!config.callRecordingEnabled) {
+            toast(R.string.enable_recording_first)
+            return
+        }
         
         ensureBackgroundThread {
             try {
                 val directory = fileManager.getSaveDirectory()
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(Uri.parse(directory.absolutePath), "resource/folder")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                
+                // Try multiple methods to open the folder
+                val intents = mutableListOf<Intent>()
+                
+                // Method 1: Standard file manager intent (works on most devices)
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                    // Android 6 and below: direct file URI
+                    intents.add(Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(Uri.parse("file://${directory.absolutePath}"), "resource/folder")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    })
                 }
                 
-                if (intent.resolveActivity(packageManager) != null) {
-                    startActivity(intent)
-                } else {
-                    // Fallback: use file manager
-                    val fileManagerIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                        type = "*/*"
-                        addCategory(Intent.CATEGORY_OPENABLE)
+                // Method 2: Generic file manager picker
+                intents.add(Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "*/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                })
+                
+                // Method 3: Try to open with DocumentsUI (Android 5.0+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    intents.add(Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A${directory.name}"), "*/*")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    })
+                }
+                
+                var opened = false
+                for (intent in intents) {
+                    try {
+                        if (intent.resolveActivity(packageManager) != null) {
+                            runOnUiThread {
+                                startActivity(intent)
+                            }
+                            opened = true
+                            break
+                        }
+                    } catch (e: Exception) {
+                        // Try next method
+                        continue
                     }
-                    startActivity(fileManagerIntent)
+                }
+                
+                if (!opened) {
+                    runOnUiThread {
+                        // Show directory path as fallback
+                        val message = getString(R.string.cannot_open_folder) + "\n\n" + 
+                                getString(R.string.save_location_label) + " " + directory.absolutePath
+                        val blurTarget = findViewById<BlurTarget>(R.id.mainBlurTarget)
+                        ConfirmationDialog(
+                            this,
+                            message = message,
+                            positive = R.string.ok,
+                            negative = 0,
+                            cancelOnTouchOutside = true,
+                            blurTarget = blurTarget
+                        ) {}
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread {

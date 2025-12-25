@@ -64,7 +64,7 @@
                             style="@style/SettingsHolderStyle">
 
                             <com.goodwy.commons.views.MyLiquidSwitch
-                                android:id="@+id/settingsShowVoicemailIcon"
+                                android:id="@+id/settingsRecordingEnabledSwitch"
                                 style="@style/SettingsSwitchStyle"
                                 android:text="@string/enable_call_recording"
                                 app:switchPadding="@dimen/bigger_margin" />

@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.provider.ContactsContract
 import android.telecom.Call
 import android.util.Log
 import kotlinx.coroutines.*
@@ -110,9 +111,10 @@ class CallRecorder(
                 recordingLoop(bufferSize)
             }
 
-            // Show notification
+            // Show notification with contact name if available
             val phoneNumber = call.details.handle?.schemeSpecificPart
-            notificationManager?.showRecordingNotification(phoneNumber, isPaused = false)
+            val contactName = phoneNumber?.let { getContactName(it) }
+            notificationManager?.showRecordingNotification(phoneNumber, contactName, isPaused = false)
 
             Log.i(TAG, "Recording started for call")
             return true
@@ -162,7 +164,8 @@ class CallRecorder(
             
             // Update notification to show paused state
             val phoneNumber = call.details.handle?.schemeSpecificPart
-            notificationManager?.updateNotification(phoneNumber, isPaused = true)
+            val contactName = phoneNumber?.let { getContactName(it) }
+            notificationManager?.updateNotification(phoneNumber, contactName, isPaused = true)
             
             Log.d(TAG, "Recording paused")
         }
@@ -177,7 +180,8 @@ class CallRecorder(
             
             // Update notification to show recording state
             val phoneNumber = call.details.handle?.schemeSpecificPart
-            notificationManager?.updateNotification(phoneNumber, isPaused = false)
+            val contactName = phoneNumber?.let { getContactName(it) }
+            notificationManager?.updateNotification(phoneNumber, contactName, isPaused = false)
             
             Log.d(TAG, "Recording resumed")
         }
@@ -285,6 +289,33 @@ class CallRecorder(
         }
     }
 
+    /**
+     * Get contact name from phone number (BCR-style)
+     */
+    private fun getContactName(phoneNumber: String): String? {
+        return try {
+            val normalizedNumber = phoneNumber.replace(Regex("[^0-9+]"), "")
+            val uri = ContactsContract.PhoneLookup.CONTENT_FILTER_URI
+                .buildUpon()
+                .appendPath(normalizedNumber)
+                .build()
+            
+            val projection = arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME)
+            
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        cursor.getString(nameIndex)
+                    } else null
+                } else null
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Could not get contact name for $phoneNumber", e)
+            null
+        }
+    }
+    
     /**
      * Cleanup resources
      */
