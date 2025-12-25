@@ -1,6 +1,5 @@
 package com.android.dialer.dialogs
 
-import androidx.appcompat.app.AlertDialog
 import com.goodwy.commons.extensions.*
 import com.android.dialer.R
 import com.android.dialer.activities.SimpleActivity
@@ -28,19 +27,45 @@ class ExportCallHistoryDialog(val activity: SimpleActivity, blurTarget: BlurTarg
             exportCallHistoryFilename.setText("call_history_${getCurrentFormattedDateTime()}")
         }
 
-        activity.getAlertDialogBuilder().setPositiveButton(R.string.ok, null).setNegativeButton(R.string.cancel, null).apply {
-            activity.setupDialogStuff(binding.root, this, R.string.export_call_history) { alertDialog ->
-                alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+        // Setup title inside BlurView
+        val titleTextView = binding.root.findViewById<com.goodwy.commons.views.MyTextView>(R.id.dialog_title)
+        titleTextView?.apply {
+            beVisible()
+            text = activity.resources.getString(R.string.export_call_history)
+        }
 
-                    val filename = binding.exportCallHistoryFilename.value
-                    when {
-                        filename.isEmpty() -> activity.toast(R.string.empty_name)
-                        filename.isAValidFilename() -> {
-                            callback(filename)
-                            alertDialog.dismiss()
+        activity.getAlertDialogBuilder().apply {
+            // Pass empty titleText to prevent setupDialogStuff from adding title outside BlurView
+            activity.setupDialogStuff(binding.root, this, titleText = "") { alertDialog ->
+                // Setup custom buttons inside BlurView
+                val primaryColor = activity.getProperPrimaryColor()
+                val positiveButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.positive_button)
+                val negativeButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.negative_button)
+                val buttonsContainer = binding.root.findViewById<android.widget.LinearLayout>(R.id.buttons_container)
+
+                buttonsContainer?.visibility = android.view.View.VISIBLE
+
+                positiveButton?.apply {
+                    visibility = android.view.View.VISIBLE
+                    setTextColor(primaryColor)
+                    setOnClickListener {
+                        val filename = binding.exportCallHistoryFilename.value
+                        when {
+                            filename.isEmpty() -> activity.toast(R.string.empty_name)
+                            filename.isAValidFilename() -> {
+                                callback(filename)
+                                alertDialog.dismiss()
+                            }
+                            else -> activity.toast(R.string.invalid_name)
                         }
+                    }
+                }
 
-                        else -> activity.toast(R.string.invalid_name)
+                negativeButton?.apply {
+                    visibility = android.view.View.VISIBLE
+                    setTextColor(primaryColor)
+                    setOnClickListener {
+                        alertDialog.dismiss()
                     }
                 }
             }

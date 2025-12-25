@@ -12,8 +12,8 @@
 
     <douglasspgyn.com.github.circularcountdown.CircularCountdown
         android:id="@+id/countdownView"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_marginTop="@dimen/normal_margin"

@@ -105,11 +105,13 @@ class SelectSIMDialog(
             onDismiss()
         }
 
-        // Start auto-select countdown if enabled
-        if (activity.config.autoSimSelectEnabled) {
-            startAutoSelectCountdown()
-        } else {
-            binding.countdownView.beGone()
+        // Start auto-select countdown if enabled - wait for dialog to be shown
+        dialog?.setOnShowListener {
+            if (activity.config.autoSimSelectEnabled) {
+                startAutoSelectCountdown()
+            } else {
+                binding.countdownView.beGone()
+            }
         }
     }
 

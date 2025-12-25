@@ -142,12 +142,13 @@ class SettingsDialpadActivity : SimpleActivity() {
     @SuppressLint("MissingSuperCall")
     override fun onResume() {
         super.onResume()
+        val properBackgroundColor = if (isDynamicTheme() && !isSystemInDarkMode()) getSurfaceColor() else getProperBackgroundColor()
+        setupTopAppBar(binding.dialpadAppbar, NavigationIcon.Arrow, topBarColor = properBackgroundColor)
+        
         val properTextColor = getProperTextColor()
-        val properBackgroundColor = getProperBackgroundColor()
         val surfaceColor = getSurfaceColor()
 
         binding.apply {
-            setupTopAppBar(dialpadAppbar, NavigationIcon.Arrow)
 
             arrayOf(
                 dialpadSettingsCardHolder,

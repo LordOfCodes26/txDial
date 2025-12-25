@@ -4,36 +4,73 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:android="http://schemas.android.com/apk/res/android">
-<ScrollView
-    android:id="@+id/export_contacts_scrollview"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-
     <LinearLayout
-        android:id="@+id/export_call_history_holder"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingTop="@dimen/activity_margin">
+        android:orientation="vertical">
 
-        <com.goodwy.commons.views.MyTextInputLayout
-            android:id="@+id/export_call_history_filename_hint"
+        <com.goodwy.commons.views.MyTextView
+            android:id="@+id/dialog_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/medium_margin"
-            android:hint="@string/filename_without_json"
-            android:paddingStart="@dimen/activity_margin"
-            android:paddingEnd="@dimen/activity_margin">
+            style="@style/DialogTitleStyle"
+            android:visibility="visible" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/export_call_history_filename"
+        <ScrollView
+            android:id="@+id/export_contacts_scrollview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/export_call_history_holder"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:textCursorDrawable="@null"
-                android:textSize="@dimen/bigger_text_size" />
+                android:orientation="vertical"
+                android:paddingTop="@dimen/activity_margin">
 
-        </com.goodwy.commons.views.MyTextInputLayout>
+                <com.goodwy.commons.views.MyTextInputLayout
+                    android:id="@+id/export_call_history_filename_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/medium_margin"
+                    android:hint="@string/filename_without_json"
+                    android:paddingStart="@dimen/activity_margin"
+                    android:paddingEnd="@dimen/activity_margin">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/export_call_history_filename"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:textCursorDrawable="@null"
+                        android:textSize="@dimen/bigger_text_size" />
+
+                </com.goodwy.commons.views.MyTextInputLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/buttons_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/DialogButtonContainerStyle">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/negative_button"
+                style="@style/Widget.Material3.Button.TextButton.Dialog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cancel"
+                android:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/positive_button"
+                style="@style/Widget.Material3.Button.TextButton.Dialog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ok"
+                android:visibility="visible" />
+
+        </LinearLayout>
     </LinearLayout>
-</ScrollView>
 </eightbitlab.com.blurview.BlurView>
