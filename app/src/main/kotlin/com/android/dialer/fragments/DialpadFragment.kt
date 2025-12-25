@@ -1321,6 +1321,14 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         refreshItems(needUpdate = true)
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun refreshDialpadSettings(event: Events.RefreshDialpadSettings) {
+        // Refresh dialpad settings immediately when settings are changed
+        val properTextColor = context.getProperTextColor()
+        val properPrimaryColor = context.getProperPrimaryColor()
+        setupColors(properTextColor, properPrimaryColor, context.getProperAccentColor())
+    }
+
     private fun setupOptionsMenu() {
         binding.dialpadToolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {

@@ -311,6 +311,8 @@ class MainActivity : SimpleActivity() {
         // Hide main menu when dialpad fragment is shown
         if (currentFragment is DialpadFragment) {
             setMainMenuHeight(0)
+            // Post event to refresh dialpad settings immediately when returning from settings
+            EventBus.getDefault().post(Events.RefreshDialpadSettings)
         } else {
             setMainMenuHeight(null)
         }
