@@ -185,6 +185,7 @@ class ContactsAdapter(
         return viewType
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val contact = contacts[position]
         var lastTouchX: Float = -1f

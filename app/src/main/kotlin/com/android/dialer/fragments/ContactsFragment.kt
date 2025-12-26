@@ -1,5 +1,6 @@
 package com.android.dialer.fragments
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.database.ContentObserver
@@ -156,6 +157,7 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun gotContacts(contacts: ArrayList<Contact>) {
         setupLetterFastScroller(contacts)
         if (contacts.isEmpty()) {
