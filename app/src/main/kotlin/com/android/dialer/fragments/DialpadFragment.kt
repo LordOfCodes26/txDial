@@ -2149,7 +2149,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         binding.dialpadToolbar.menu.apply {
             val dialpadInputValue = binding.dialpadInput.value
             findItem(R.id.copy_number).isVisible = dialpadInputValue.isNotEmpty()
-            findItem(R.id.web_search).isVisible = dialpadInputValue.isNotEmpty()
+            findItem(R.id.web_search).isVisible = /*dialpadInputValue.isNotEmpty()*/false
 //            findItem(R.id.cab_call_anonymously).isVisible = dialpadInputValue.isNotEmpty()
             findItem(R.id.clear_call_history).isVisible = context.config.showRecentCallsOnDialpad
             findItem(R.id.show_blocked_numbers).isVisible = context.config.showRecentCallsOnDialpad

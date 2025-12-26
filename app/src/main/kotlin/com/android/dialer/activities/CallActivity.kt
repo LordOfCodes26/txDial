@@ -16,6 +16,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.*
 import android.os.VibrationEffect
@@ -2194,13 +2195,18 @@ class CallActivity : SimpleActivity() {
 
             val videoView = videoBackgroundView ?: return
             videoView.setOnPreparedListener { mediaPlayer ->
-                mediaPlayer.isLooping = true
                 try {
+                    mediaPlayer.isLooping = true
                     mediaPlayer.setVolume(0f, 0f)
+                    // Scale video to fill the screen (crop if necessary to maintain aspect ratio)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        mediaPlayer.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
+                    }
                 } catch (_: Exception) {
                 }
                 videoView.start()
             }
+            
             videoView.setVideoURI(Uri.parse(videoUriString))
             videoView.start()
         } catch (_: Exception) {

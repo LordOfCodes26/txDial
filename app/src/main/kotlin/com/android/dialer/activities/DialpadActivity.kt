@@ -949,7 +949,7 @@ class DialpadActivity : SimpleActivity() {
     private fun refreshMenuItems() {
         binding.dialpadToolbar.menu.apply {
             findItem(R.id.copy_number).isVisible = binding.dialpadInput.value.isNotEmpty()
-            findItem(R.id.web_search).isVisible = binding.dialpadInput.value.isNotEmpty()
+            findItem(R.id.web_search).isVisible = /*binding.dialpadInput.value.isNotEmpty()*/ false
 //            findItem(R.id.cab_call_anonymously).isVisible = binding.dialpadInput.value.isNotEmpty()
             findItem(R.id.clear_call_history).isVisible = config.showRecentCallsOnDialpad
             findItem(R.id.show_blocked_numbers).isVisible = config.showRecentCallsOnDialpad
