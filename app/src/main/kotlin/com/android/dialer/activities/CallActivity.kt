@@ -40,6 +40,7 @@ import com.android.dialer.databinding.ActivityCallBinding
 import com.android.dialer.dialogs.ChangeTextDialog
 import com.android.dialer.extensions.*
 import com.android.dialer.helpers.*
+import com.android.dialer.helpers.RECORDING_RULE_NONE
 import com.android.dialer.models.*
 import com.mikhaellopez.rxanimation.*
 import com.mikhaellopez.rxanimation.fadeIn
@@ -86,6 +87,12 @@ class CallActivity : SimpleActivity() {
     private var isMicrophoneInitialized = false
     private var isCallEnded = false
     private var callContact: CallContact? = null
+    
+    // Cached values for performance
+    private val isSmallScreen by lazy {
+        resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK == Configuration.SCREENLAYOUT_SIZE_SMALL
+    }
+    
     private var proximityWakeLock: PowerManager.WakeLock? = null
     private var screenOnWakeLock: PowerManager.WakeLock? = null
     private var callDuration = 0
@@ -119,6 +126,7 @@ class CallActivity : SimpleActivity() {
                 onHoldCallerName, onHoldLabel, callMessageLabel, callRemindLabel,
                 callToggleMicrophoneLabel, callDialpadLabel, callToggleSpeakerLabel, callAddLabel,
                 callSwapLabel, callMergeLabel, callToggleLabel, callAddContactLabel,
+                callRedialLabel, callToggleRecordingLabel,
                 dialpadClose, callEndLabel, callAcceptAndDecline
             )
         }
@@ -263,8 +271,6 @@ class CallActivity : SimpleActivity() {
             }
         }
 
-        val isSmallScreen =
-            resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK == Configuration.SCREENLAYOUT_SIZE_SMALL
         if (config.callButtonStyle == IOS17 || isSmallScreen) {
             binding.callEndLabel.beVisible()
             binding.callAddContactHolder.beGone()
@@ -1005,11 +1011,12 @@ class CallActivity : SimpleActivity() {
             val supportedAudioRoutes = CallManager.getSupportedAudioRoutes()
             binding.callToggleSpeaker.apply {
                 val bluetoothConnected = supportedAudioRoutes.contains(AudioRoute.BLUETOOTH)
-                contentDescription = if (bluetoothConnected) {
+                val description = if (bluetoothConnected) {
                     getString(R.string.choose_audio_route)
                 } else {
                     getString(if (isSpeakerOn) R.string.turn_speaker_off else R.string.turn_speaker_on)
                 }
+                contentDescription = description
                 // show speaker icon when a headset is connected, a headset icon maybe confusing to some
                 if (/*route == AudioRoute.WIRED_HEADSET || */route == AudioRoute.EARPIECE) {
                     setImageResource(R.drawable.ic_volume_down_vector)
@@ -1017,9 +1024,8 @@ class CallActivity : SimpleActivity() {
                     setImageResource(route.iconRes)
                 }
             }
-            val supportAudioRoutes = CallManager.getSupportedAudioRoutes()
             binding.callToggleSpeakerLabel.text =
-                if (supportAudioRoutes.size == 2) getString(R.string.audio_route_speaker) else  getString(route.stringRes)
+                if (supportedAudioRoutes.size == 2) getString(R.string.audio_route_speaker) else getString(route.stringRes)
             toggleButtonColor(binding.callToggleSpeaker, enabled = route != AudioRoute.EARPIECE && route != AudioRoute.WIRED_HEADSET)
             createOrUpdateAudioRouteChooser(supportedAudioRoutes, create = false)
 
@@ -1048,49 +1054,57 @@ class CallActivity : SimpleActivity() {
             val drawable = if (!isMicrophoneOff) R.drawable.ic_microphone_vector else R.drawable.ic_microphone_off_vector
             callToggleMicrophone.setImageDrawable(AppCompatResources.getDrawable(this@CallActivity, drawable))
 
-            val configBackgroundCallScreen = config.backgroundCallScreen
-            if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND ||
-                configBackgroundCallScreen == BLUR_AVATAR ||
-                configBackgroundCallScreen == AVATAR
-            ) {
+            if (isSpecialBackground(config.backgroundCallScreen)) {
                 val color = if (isMicrophoneOff) Color.WHITE else Color.GRAY
                 callToggleMicrophone.background.applyColorFilter(color)
                 val colorIcon = if (isMicrophoneOff) Color.BLACK else Color.WHITE
                 callToggleMicrophone.applyColorFilter(colorIcon)
             }
             callToggleMicrophone.background.alpha = if (isMicrophoneOff) 255 else 60
-            callToggleMicrophone.contentDescription =
-                getString(if (isMicrophoneOff) R.string.turn_microphone_on else R.string.turn_microphone_off)
-//            callToggleMicrophoneLabel.text =
-//                getString(if (isMicrophoneOff) R.string.turn_microphone_on else R.string.turn_microphone_off)
+            val microphoneDescription = getString(if (isMicrophoneOff) R.string.turn_microphone_on else R.string.turn_microphone_off)
+            callToggleMicrophone.contentDescription = microphoneDescription
+//            callToggleMicrophoneLabel.text = microphoneDescription
         }
     }
 
     private fun toggleRecording() {
+        // Toggle recording (works for both manual and auto mode)
         CallManager.toggleRecording(this)
-        // Update button state
         updateRecordingButton()
+        // Update visibility to refresh alpha like redial button
+        updateRecordingButtonVisibility()
     }
 
     private fun updateRecordingButton() {
         binding.apply {
             val isRecording = CallManager.isRecording
+            val isManualOnly = config.callRecordingAutoRule == RECORDING_RULE_NONE
             
-            val configBackgroundCallScreen = config.backgroundCallScreen
-            if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND ||
-                configBackgroundCallScreen == BLUR_AVATAR ||
-                configBackgroundCallScreen == AVATAR
-            ) {
+            // Button is always enabled and clickable (like redial button)
+            callToggleRecording.isEnabled = true
+            callToggleRecording.isClickable = true
+            callToggleRecording.isFocusable = true
+            
+            if (isSpecialBackground(config.backgroundCallScreen)) {
                 val color = if (isRecording) Color.RED else Color.GRAY
                 callToggleRecording.background.applyColorFilter(color)
-                val colorIcon = if (isRecording) Color.WHITE else Color.WHITE
-                callToggleRecording.applyColorFilter(colorIcon)
+                callToggleRecording.applyColorFilter(Color.WHITE)
             }
+            
+            // Background alpha based on recording state
             callToggleRecording.background.alpha = if (isRecording) 255 else 60
-            callToggleRecording.contentDescription =
-                getString(if (isRecording) R.string.stop_recording else R.string.start_recording)
-            callToggleRecordingLabel.text =
-                getString(if (isRecording) R.string.recording_active else R.string.record)
+            
+            // In manual mode: update alpha like redial button (1.0f when active, 0.5f when inactive)
+            // Only update if button is visible (like redial button pattern)
+            callToggleRecording.alpha = when {
+                isManualOnly && callToggleRecording.isVisible -> if (isRecording) 1f else 0.5f
+                !isManualOnly -> 1f
+                else -> callToggleRecording.alpha // Keep current alpha
+            }
+            
+            val recordingDescription = getString(if (isRecording) R.string.stop_recording else R.string.start_recording)
+            callToggleRecording.contentDescription = recordingDescription
+            callToggleRecordingLabel.text = getString(if (isRecording) R.string.recording_active else R.string.record)
         }
     }
 
@@ -1138,15 +1152,14 @@ class CallActivity : SimpleActivity() {
                 ).forEach {
                     it.beVisible()
                 }
-                val isSmallScreen =
-                    resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK == Configuration.SCREENLAYOUT_SIZE_SMALL
-                callAddContactHolder.beVisibleIf(config.callButtonStyle == IOS16 && !isSmallScreen)
                 callerDescription.beVisibleIf(callerDescription.text.isNotEmpty())
                 callerNotes.beVisibleIf(callerNotes.text.isNotEmpty())
                 val accounts = telecomManager.callCapablePhoneAccounts
                 callSimImage.beVisibleIf(accounts.size > 1)
                 callSimId.beVisibleIf(accounts.size > 1)
                 updateState()
+                // Update recording button visibility after state update to ensure correct button visibility
+                updateRecordingButtonVisibility()
             }.subscribe()
         }
     }
@@ -1164,11 +1177,7 @@ class CallActivity : SimpleActivity() {
                 .shake()
                 .subscribe()
 
-            val configBackgroundCallScreen = config.backgroundCallScreen
-            if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND ||
-                configBackgroundCallScreen == BLUR_AVATAR ||
-                configBackgroundCallScreen == AVATAR
-            ) {
+            if (isSpecialBackground(config.backgroundCallScreen)) {
                 val color = if (isOnHold) Color.WHITE else Color.GRAY
                 callToggleHold.background.applyColorFilter(color)
                 val colorIcon = if (isOnHold) Color.BLACK else Color.WHITE
@@ -1529,6 +1538,7 @@ class CallActivity : SimpleActivity() {
             updateCallAudioState(CallManager.getCallAudioRoute(), changeProximitySensor)
             updateMicrophoneButton()
             updateRecordingButton()
+            updateRecordingButtonVisibility()
             updateRedialButtonVisibility()
         }
     }
@@ -1696,14 +1706,32 @@ class CallActivity : SimpleActivity() {
     }
 
     private fun updateRecordingButtonVisibility() {
-        val shouldShow = config.callRecordingEnabled
+        val primaryCall = CallManager.getPrimaryCall()
+        val callState = primaryCall?.getStateCompat()
+        val isActiveCall = !isCallEnded && callState == Call.STATE_ACTIVE
+        val shouldShow = config.callRecordingEnabled && isActiveCall
+        val isManualOnly = config.callRecordingAutoRule == RECORDING_RULE_NONE
+        
         binding.apply {
             if (shouldShow) {
                 callToggleRecording.beVisible()
                 callToggleRecordingLabel.beVisible()
+                // Hide add contact button when recording button is shown
+                callAddContactHolder.beGone()
+                
+                // Set button enabled and alpha like redial button
+                callToggleRecording.isEnabled = true
+                // In manual mode: use alpha like redial button (1.0f when active, 0.5f when inactive)
+                if (isManualOnly) {
+                    callToggleRecording.alpha = if (CallManager.isRecording) 1f else 0.5f
+                } else {
+                    callToggleRecording.alpha = 1f
+                }
             } else {
                 callToggleRecording.beGone()
                 callToggleRecordingLabel.beGone()
+                // Show add contact button when recording button is hidden (if other conditions allow)
+                callAddContactHolder.beVisibleIf(config.callButtonStyle == IOS16 && !isSmallScreen && dialpadWrapper.isGone())
             }
         }
     }
@@ -2023,14 +2051,18 @@ class CallActivity : SimpleActivity() {
     }
 
     private fun toggleButtonColor(view: ImageView, enabled: Boolean) {
-        val configBackgroundCallScreen = config.backgroundCallScreen
-        if (configBackgroundCallScreen == TRANSPARENT_BACKGROUND || configBackgroundCallScreen == BLUR_AVATAR || configBackgroundCallScreen == AVATAR) {
+        if (isSpecialBackground(config.backgroundCallScreen)) {
             val color = if (enabled) Color.WHITE else Color.GRAY
             view.background.applyColorFilter(color)
             val colorIcon = if (enabled) Color.BLACK else Color.WHITE
             view.applyColorFilter(colorIcon)
         }
         view.background.alpha = if (enabled) 255 else 60
+    }
+    
+    // Helper function to check if background is special (transparent/blur/avatar)
+    private fun isSpecialBackground(bgScreen: Int): Boolean {
+        return bgScreen == TRANSPARENT_BACKGROUND || bgScreen == BLUR_AVATAR || bgScreen == AVATAR
     }
 
     /**

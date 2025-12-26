@@ -373,7 +373,7 @@
                 android:layout_width="@dimen/call_button_size"
                 android:layout_height="@dimen/call_button_size"
                 android:layout_marginTop="42dp"
-                android:layout_marginEnd="@dimen/margin_button_horizontal"
+                android:layout_marginStart="@dimen/margin_button_horizontal"
                 android:background="@drawable/pulsing_background_ripple"
                 android:contentDescription="@string/start_recording"
                 android:padding="@dimen/bigger_margin"

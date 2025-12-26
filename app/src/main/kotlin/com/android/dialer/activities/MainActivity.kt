@@ -170,6 +170,9 @@ class MainActivity : SimpleActivity() {
         CallManager.addListener(callCallback)
         binding.mainCallButton.setOnClickListener { startActivity(Intent(this, CallActivity::class.java)) }
         
+        // Set initial button state based on current call state
+        updateState()
+        
         // Set up two-finger swipe detection on the main holder
         setupTwoFingerSwipeDetection()
     }
@@ -295,6 +298,9 @@ class MainActivity : SimpleActivity() {
         
         handleCurrentFragment()
         checkShortcuts()
+        
+        // Update call button state when resuming to ensure correct visibility
+        updateState()
     }
     
     private fun setupButtons(iconTintColor: Int, backgroundColor: Int) {
