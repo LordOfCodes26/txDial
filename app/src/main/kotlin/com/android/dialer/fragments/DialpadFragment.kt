@@ -7,9 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.CallLog.Calls
+import android.provider.ContactsContract
 import android.telephony.PhoneNumberFormattingTextWatcher
 import android.telephony.TelephonyManager
 import android.util.AttributeSet
@@ -25,6 +27,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.behaviorule.arturdumchev.library.pixels
 import com.behaviorule.arturdumchev.library.setHeight
@@ -43,6 +46,7 @@ import com.android.dialer.databinding.FragmentDialpadBinding
 import com.android.dialer.helpers.CallerNotesHelper
 import com.android.dialer.extensions.*
 import com.android.dialer.helpers.*
+import com.android.dialer.interfaces.RefreshItemsListener
 import com.android.dialer.models.RecentCall
 import com.android.dialer.models.SpeedDial
 import com.android.dialer.activities.CallHistoryActivity
@@ -70,7 +74,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.DialpadInnerBinding>(context, attributeSet) {
+class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPagerFragment<MyViewPagerFragment.DialpadInnerBinding>(context, attributeSet), RefreshItemsListener {
     private lateinit var binding: FragmentDialpadBinding
     private var dialpadGridBinding: DialpadGridBinding? = null
 
@@ -103,6 +107,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private var isTalkBackOn = false
     private var initSearch = true
     private val fragmentScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var contactObserver: ContentObserver? = null
+    private var isResumed = false
     
     // Cached values for performance
     private var cachedDialpadView: View? = null
@@ -677,7 +683,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         refreshMenuItems()
     }
 
-    private fun refreshItems(invalidate: Boolean = false, needUpdate: Boolean = false) {
+    override fun refreshItems(invalidate: Boolean, needUpdate: Boolean, callback: (() -> Unit)?) {
         if (invalidate) {
             allRecentCalls = emptyList()
             config.recentCallsCache = ""
@@ -685,14 +691,27 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
 
         if (binding.dialpadInput.value.isNotEmpty()) {
             // If there's input, refresh the filtered results
-            dialpadValueChanged(binding.dialpadInput.value)
+            // When contact is deleted, refresh contacts list too
+            ContactsHelper(context).getContactsWithSecureBoxFilter(
+                showOnlyContactsWithNumbers = true,
+                loadExtendedFields = false
+            ) { contacts ->
+                allContacts = contacts.toMutableList()
+                dialpadValueChanged(binding.dialpadInput.value)
+            }
             // Also refresh the underlying data if needed
             if (needUpdate || config.needUpdateRecents) {
-                refreshCallLog(loadAll = true)
+                refreshCallLog(loadAll = true) {
+                    callback?.invoke()
+                }
+            } else {
+                callback?.invoke()
             }
         } else if (needUpdate || config.needUpdateRecents) {
-            // When needUpdate is true (e.g., call ended), refresh immediately without waiting for animations
-            refreshCallLog(loadAll = true)
+            // When needUpdate is true (e.g., call ended or contact deleted), refresh immediately without waiting for animations
+            refreshCallLog(loadAll = true) {
+                callback?.invoke()
+            }
         } else {
             var recents = emptyList<RecentCall>()
             if (!invalidate) {
@@ -706,13 +725,17 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             if (recents.isNotEmpty()) {
                 refreshCallLogFromCache(recents) {
                     binding.dialpadRecentsList.runAfterAnimations {
-                        refreshCallLog(loadAll = true)
+                        refreshCallLog(loadAll = true) {
+                            callback?.invoke()
+                        }
                     }
                 }
             } else {
                 refreshCallLog(loadAll = false) {
                     binding.dialpadRecentsList.runAfterAnimations {
-                        refreshCallLog(loadAll = true)
+                        refreshCallLog(loadAll = true) {
+                            callback?.invoke()
+                        }
                     }
                 }
             }
@@ -794,17 +817,34 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private fun updateNamesIfEmpty(calls: List<RecentCall>, contacts: List<Contact>): List<RecentCall> {
         if (calls.isEmpty()) return mutableListOf()
 
+        // Create a map for O(1) contact lookups instead of O(n) linear search
         val contactsWithNumbers = contacts.filter { it.phoneNumbers.isNotEmpty() }
-        return calls.map { call ->
-            if (call.phoneNumber == call.name) {
-                val contact = contactsWithNumbers.firstOrNull { it.phoneNumbers.first().normalizedNumber == call.phoneNumber }
+        val phoneNumberToContact = HashMap<String, Contact>(contactsWithNumbers.size)
+        
+        contactsWithNumbers.forEach { contact ->
+            contact.phoneNumbers.forEach { phoneNumber ->
+                phoneNumberToContact[phoneNumber.normalizedNumber] = contact
+            }
+        }
 
-                when {
-                    contact != null -> withUpdatedName(call = call, name = contact.getNameToDisplay())
-                    else -> call
+        return calls.map { call ->
+            val normalizedNumber = call.phoneNumber.normalizePhoneNumber()
+            val contact = phoneNumberToContact[normalizedNumber]
+            
+            if (contact != null) {
+                // Contact exists, update name if needed
+                if (call.phoneNumber == call.name || call.name != contact.getNameToDisplay()) {
+                    withUpdatedName(call = call, name = contact.getNameToDisplay())
+                } else {
+                    call
                 }
             } else {
-                call
+                // Contact doesn't exist (was deleted), revert to phone number
+                if (call.phoneNumber != call.name) {
+                    withUpdatedName(call = call, name = call.phoneNumber)
+                } else {
+                    call
+                }
             }
         }
     }
@@ -1200,6 +1240,80 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         return binding.dialpadList
     }
 
+    fun onFragmentResume() {
+        isResumed = true
+        // Register ContentObserver to detect contact changes
+        registerContactObserver()
+        // Refresh contacts on resume to catch changes made while app was in background
+        refreshContacts()
+    }
+    
+    fun onFragmentPause() {
+        isResumed = false
+        unregisterContactObserver()
+    }
+    
+    private fun registerContactObserver() {
+        if (contactObserver == null && context.hasPermission(PERMISSION_READ_CONTACTS)) {
+            contactObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    if (!selfChange && isResumed) {
+                        // Debounce: wait a bit before refreshing to avoid multiple rapid refreshes
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            if (isResumed) {
+                                refreshContacts()
+                            }
+                        }, 500) // 500ms debounce
+                    }
+                }
+            }
+            context.contentResolver.registerContentObserver(
+                ContactsContract.Contacts.CONTENT_URI,
+                true,
+                contactObserver!!
+            )
+        }
+    }
+    
+    private fun unregisterContactObserver() {
+        contactObserver?.let {
+            context.contentResolver.unregisterContentObserver(it)
+            contactObserver = null
+        }
+    }
+    
+    private fun refreshContacts() {
+        ContactsHelper(context).getContactsWithSecureBoxFilter(
+            showOnlyContactsWithNumbers = true,
+            loadExtendedFields = false
+        ) { contacts ->
+            allContacts = contacts.toMutableList()
+            // If there's input, refresh the search results with new contacts
+            val currentInput = binding.dialpadInput.value
+            if (currentInput.isNotEmpty()) {
+                activity?.runOnUiThread {
+                    dialpadValueChanged(currentInput)
+                    // Also refresh recents to update contact names when contacts change
+                    if (config.showRecentCallsOnDialpad) {
+                        refreshCallLog(loadAll = true)
+                    }
+                } ?: fragmentScope.launch(Dispatchers.Main) {
+                    dialpadValueChanged(currentInput)
+                    // Also refresh recents to update contact names when contacts change
+                    if (config.showRecentCallsOnDialpad) {
+                        refreshCallLog(loadAll = true)
+                    }
+                }
+            } else {
+                gotContacts(contacts)
+                // Also refresh recents to update contact names when contacts change
+                if (config.showRecentCallsOnDialpad) {
+                    refreshItems(needUpdate = true)
+                }
+            }
+        }
+    }
+
     fun getDialedNumber(): String {
         return binding.dialpadInput.value.removeNumberFormatting()
     }
@@ -1219,6 +1333,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         activity?.launchInternetSearch(text)
     }
 
+    @SuppressLint("StringFormatInvalid")
     fun initCallAnonymous() {
         val dialpadValue = binding.dialpadInput.value
         if (dialpadValue.isEmpty()) return
@@ -1369,7 +1484,10 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         ) {
             // Ensure margins are set before showing the button
             ensureDialpadButtonMargins()
-            slideUp(binding.dialpadRoundWrapperUp)
+            // Post to ensure layout is complete before showing
+            binding.dialpadRoundWrapperUp.post {
+                slideUp(binding.dialpadRoundWrapperUp)
+            }
         }
     }
 
@@ -2115,10 +2233,48 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     }
     
     private fun ensureDialpadButtonMargins() {
-        val margin = context.config.dialpadBottomMargin
-        binding.dialpadRoundWrapperUp.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+        // Get the dialpad bottom margin view to calculate call button position
+        val marginView = when (config.dialpadStyle) {
+            DIALPAD_IOS -> binding.dialpadRoundWrapper.root.findViewById<View>(R.id.dialpadBottomMargin)
+            DIALPAD_CONCEPT -> binding.dialpadRectWrapper.root.findViewById<View>(R.id.dialpadBottomMargin)
+            else -> dialpadGridBinding?.dialpadBottomMargin
+        }
+        
+        val parentView = binding.dialpadRoundWrapperUp.parent as? View
+        
+        if (marginView != null && parentView != null) {
+            // Post to ensure layout is complete
+            parentView.post {
+                // Get the dialpad bottom margin height (this is the space at the bottom of the dialpad)
+                val dialpadBottomMarginHeight = marginView.height
+                
+                // Calculate where the call button center would be
+                // Call button is at the bottom of the dialpad content, which is at parent bottom - dialpad bottom margin
+                val parentHeight = parentView.height
+                val callButtonSize = pixels(R.dimen.dialpad_phone_button_size)
+                val dialpadRoundWrapperUpSize = pixels(R.dimen.call_button_size)
+                
+                // Call button center Y = parent bottom - dialpad bottom margin - (call button size / 2)
+                val callButtonCenterY = parentHeight - dialpadBottomMarginHeight - (callButtonSize / 2f)
+                
+                // Calculate bottom margin for dialpadRoundWrapperUp to align centers
+                val bottomMargin = (parentHeight - callButtonCenterY - (dialpadRoundWrapperUpSize / 2f)).toInt().coerceAtLeast(0) + callButtonSize.toInt()
+                
+                binding.dialpadRoundWrapperUp.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                    this.bottomMargin = bottomMargin
+                }
+                binding.dialpadRoundWrapperUp.requestLayout()
+            }
+        } else {
+            // Fallback: use the configured margin if views are not available
+            val margin = context.config.dialpadBottomMargin
             val start = if (context.config.dialpadStyle == DIALPAD_IOS) pixels(R.dimen.dialpad_margin_bottom_ios) else pixels(R.dimen.zero)
-            bottomMargin = (start + margin).toInt()
+            val bottomMarginValue = (start + margin + margin).toInt()
+            
+            binding.dialpadRoundWrapperUp.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                bottomMargin = bottomMarginValue
+            }
+            binding.dialpadRoundWrapperUp.requestLayout()
         }
     }
 
@@ -2166,6 +2322,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         toneGeneratorHelper?.stopTone()
         toneGeneratorHelper = null
         fragmentScope.cancel()
+        // Unregister contact observer
+        unregisterContactObserver()
         // Clear caches and adapters
         cachedDialpadView = null
         cachedCollator = null

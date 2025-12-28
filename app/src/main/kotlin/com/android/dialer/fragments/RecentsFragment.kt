@@ -119,9 +119,14 @@ class RecentsFragment(
         }
 
         if (needUpdate || !searchQuery.isNullOrEmpty() || activity!!.config.needUpdateRecents) {
-            refreshCallLog(loadAll = false) {
-                binding.recentsList.runAfterAnimations {
-                    refreshCallLog(loadAll = true)
+            // When needUpdate is true (e.g., contact deleted), refresh immediately without waiting for animations
+            if (needUpdate) {
+                refreshCallLog(loadAll = true)
+            } else {
+                refreshCallLog(loadAll = false) {
+                    binding.recentsList.runAfterAnimations {
+                        refreshCallLog(loadAll = true)
+                    }
                 }
             }
         } else {

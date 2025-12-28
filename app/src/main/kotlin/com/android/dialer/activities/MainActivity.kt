@@ -352,6 +352,7 @@ class MainActivity : SimpleActivity() {
         // Call onFragmentResume on fragments to register contact observers
         getContactsFragment()?.onFragmentResume()
         getFavoritesFragment()?.onFragmentResume()
+        getDialpadFragment()?.onFragmentResume()
     }
 
     override fun onPause() {
@@ -362,6 +363,7 @@ class MainActivity : SimpleActivity() {
         // Call onFragmentPause on fragments to unregister contact observers
         getContactsFragment()?.onFragmentPause()
         getFavoritesFragment()?.onFragmentPause()
+        getDialpadFragment()?.onFragmentPause()
     }
 
     private fun storeStateVariables() {
@@ -821,6 +823,7 @@ class MainActivity : SimpleActivity() {
                     when (fragment) {
                         is ContactsFragment -> fragment.onFragmentPause()
                         is FavoritesFragment -> fragment.onFragmentPause()
+                        is DialpadFragment -> fragment.onFragmentPause()
                     }
                 }
                 
@@ -846,6 +849,7 @@ class MainActivity : SimpleActivity() {
                 when (currentFragment) {
                     is ContactsFragment -> currentFragment.onFragmentResume()
                     is FavoritesFragment -> currentFragment.onFragmentResume()
+                    is DialpadFragment -> currentFragment.onFragmentResume()
                 }
                 
                 // Refresh only the current fragment when switching tabs
@@ -996,7 +1000,7 @@ class MainActivity : SimpleActivity() {
             is ContactsFragment -> getContactsFragment()?.refreshItems()
             is FavoritesFragment -> getFavoritesFragment()?.refreshItems()
             is RecentsFragment -> getRecentsFragment()?.refreshItems()
-            // DialpadFragment doesn't have refreshItems() method
+            is DialpadFragment -> getDialpadFragment()?.refreshItems(needUpdate = true)
         }
     }
 
@@ -1005,6 +1009,13 @@ class MainActivity : SimpleActivity() {
         getContactsFragment()?.refreshItems()
         getFavoritesFragment()?.refreshItems()
         getRecentsFragment()?.refreshItems()
+    }
+
+    fun refreshRecentsFragments() {
+        // Refresh fragments that show recents (RecentsFragment and DialpadFragment)
+        // This is called when contacts are deleted to update contact names in recents
+        getRecentsFragment()?.refreshItems(needUpdate = true)
+        getDialpadFragment()?.refreshItems(needUpdate = true)
     }
 
     private fun getAllFragments(): List<MyViewPagerFragment<*>?> {

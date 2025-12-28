@@ -402,8 +402,14 @@ class ContactsAdapter(
 
         SimpleContactsHelper(activity).deleteContactRawIDs(idsToRemove) {
             activity.runOnUiThread {
-                // Refresh recents fragment to update contact names (remove deleted contact names)
-                (activity as? com.android.dialer.activities.MainActivity)?.refreshFragments()
+                // Refresh all fragments that show recents to update contact names (remove deleted contact names)
+                val mainActivity = activity as? com.android.dialer.activities.MainActivity
+                mainActivity?.let {
+                    // Refresh current fragment
+                    it.refreshFragments()
+                    // Also refresh RecentsFragment and DialpadFragment to update recents immediately
+                    it.refreshRecentsFragments()
+                }
                 
                 if (contacts.isEmpty()) {
                     refreshItemsListener?.refreshItems()
