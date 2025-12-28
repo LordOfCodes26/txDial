@@ -176,4 +176,7 @@
     
     <!-- Error messages -->
     <string name="enable_recording_first">Please enable call recording first</string>
+    <string name="koryo_label">Koryo</string>
+    <string name="kangsong_label">Kangsong</string>
+    <string name="mirae_label">Mirae</string>
 </resources>

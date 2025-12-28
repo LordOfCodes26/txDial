@@ -1425,6 +1425,7 @@
                             android:layout_marginStart="@dimen/small_margin"
                             android:layout_marginEnd="@dimen/small_margin"
                             android:layout_centerVertical="true"
+                            android:visibility="gone"
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:layout_toStartOf="@+id/settingsBlockCallFromAnotherApp"
                             android:src="@drawable/ic_question_round"

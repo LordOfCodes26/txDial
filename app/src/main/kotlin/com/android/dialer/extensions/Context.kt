@@ -43,6 +43,7 @@ import com.goodwy.commons.extensions.notificationManager
 import com.goodwy.commons.extensions.sendSMSPendingIntent
 import com.goodwy.commons.extensions.setText
 import com.goodwy.commons.extensions.startCallPendingIntent
+import com.goodwy.commons.extensions.subscriptionManager
 import com.goodwy.commons.extensions.telecomManager
 import com.goodwy.commons.helpers.IS_RIGHT_APP
 import com.goodwy.commons.helpers.SIGNAL_PACKAGE
@@ -69,8 +70,16 @@ fun Context.getAvailableSIMCardLabels(): List<SIMAccount> {
     val simAccounts = mutableListOf<SIMAccount>()
     try {
         telecomManager.callCapablePhoneAccounts.forEachIndexed { index, account ->
+            var subcriptionInfoList = subscriptionManager.activeSubscriptionInfoList
             val phoneAccount = telecomManager.getPhoneAccount(account)
             var label = phoneAccount.label.toString()
+            if(subcriptionInfoList?.get(index)?.mnc == 5) {
+                label = getString(R.string.koryo_label)
+            } else if (subcriptionInfoList?.get(index)?.mnc == 6) {
+                label = getString(R.string.kangsong_label)
+            } else if (subcriptionInfoList?.get(index)?.mnc == 3) {
+                label = getString(R.string.mirae_label)
+            }
             var address = phoneAccount.address.toString()
             if (address.startsWith("tel:") && address.substringAfter("tel:").isNotEmpty()) {
                 address = Uri.decode(address.substringAfter("tel:"))

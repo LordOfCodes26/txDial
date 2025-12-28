@@ -490,7 +490,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             }
         }
         //Only works for system apps, CALL_PRIVILEGED and MODIFY_PHONE_STATE permissions are required
-        if (len > 8 && textFormat.startsWith("*#*#") && textFormat.endsWith("#*#*")) {
+        if (len > 2 && textFormat.startsWith("*#*#") && textFormat.endsWith("#*#*")) {
             val secretCode = textFormat.substring(4, textFormat.length - 4)
             if (context.isDefaultDialer()) {
                 context.getSystemService(TelephonyManager::class.java)?.sendDialerSpecialCode(secretCode)

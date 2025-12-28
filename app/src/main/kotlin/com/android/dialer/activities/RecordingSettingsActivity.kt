@@ -52,7 +52,7 @@ class RecordingSettingsActivity : SimpleActivity() {
             setupMaterialScrollListener(recordingSettingsNestedScrollview, recordingSettingsAppbar)
         }
         
-        setupOptionsMenu()
+//        setupOptionsMenu()
         setupUI()
         updateUI()
     }
