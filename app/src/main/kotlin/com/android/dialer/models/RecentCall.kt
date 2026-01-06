@@ -36,15 +36,25 @@ data class RecentCall(
     val dayCode = startTS.getDayCode()
 
     fun doesContainPhoneNumber(text: String): Boolean {
-        return if (text.toLongOrNull() != null) {
-            val normalizedText = text.normalizePhoneNumber()
-            PhoneNumberUtils.compare(phoneNumber.normalizePhoneNumber(), normalizedText) ||
-                phoneNumber.contains(text) ||
-                phoneNumber.normalizePhoneNumber().contains(normalizedText) ||
-                phoneNumber.contains(normalizedText)
-        } else {
-            false
-        }
+        if (text.isEmpty()) return false
+        
+        // Check if text contains any digits (for phone number search)
+        val hasDigits = text.any { it.isDigit() }
+        if (!hasDigits) return false
+        
+        // Extract digits and + sign for phone number matching
+        val numericText = text.filter { it.isDigit() || it == '+' }
+        if (numericText.isEmpty()) return false
+        
+        val normalizedText = numericText.normalizePhoneNumber()
+        val normalizedPhoneNumber = phoneNumber.normalizePhoneNumber()
+        
+        return PhoneNumberUtils.compare(normalizedPhoneNumber, normalizedText) ||
+            phoneNumber.contains(text) ||
+            normalizedPhoneNumber.contains(normalizedText) ||
+            phoneNumber.contains(normalizedText) ||
+            normalizedPhoneNumber.contains(numericText) ||
+            phoneNumber.contains(numericText)
     }
 
     fun isABusinessCall() = name.contains(company) && company.isNotEmpty()

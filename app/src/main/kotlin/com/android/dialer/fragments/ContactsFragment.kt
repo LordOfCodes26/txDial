@@ -266,12 +266,16 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
 
         ensureBackgroundThread {
             val shouldNormalize = fixedText.normalizeString() == fixedText
+            // Check if text contains digits for phone number search
+            val hasDigits = fixedText.any { it.isDigit() }
+            val numericText = if (hasDigits) fixedText.filter { it.isDigit() || it == '+' } else ""
+            
             // For search, we need extended fields, so filter from allContacts which may not have them
             // If search is needed with extended fields, we should reload with loadExtendedFields=true
             val filtered = allContacts.filter { contact ->
                 getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
                     getProperText(contact.nickname, shouldNormalize).contains(fixedText, true) ||
-                    (fixedText.toLongOrNull() != null && contact.doesContainPhoneNumber(fixedText, true)) ||
+                    (hasDigits && numericText.isNotEmpty() && contact.doesContainPhoneNumber(numericText, convertLetters = false, search = true)) ||
                     contact.emails.any { it.value.contains(fixedText, true) } ||
                     contact.relations.any { it.name.contains(fixedText, true) } ||
                     contact.addresses.any { getProperText(it.value, shouldNormalize).contains(fixedText, true) } ||

@@ -271,12 +271,14 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     override fun onSearchQueryChanged(text: String) {
         val fixedText = text.trim().replace("\\s+".toRegex(), " ")
         val shouldNormalize = fixedText.normalizeString() == fixedText
+        // Check if text contains digits for phone number search
+        val hasDigits = fixedText.any { it.isDigit() }
+        val numericText = if (hasDigits) fixedText.filter { it.isDigit() || it == '+' } else ""
+        
         val contacts = allContacts.filter { contact ->
             getProperText(contact.getNameToDisplay(), shouldNormalize).contains(fixedText, true) ||
                 getProperText(contact.nickname, shouldNormalize).contains(fixedText, true) ||
-                (fixedText.toLongOrNull() != null && contact.phoneNumbers.any {
-                    fixedText.normalizePhoneNumber().isNotEmpty() && it.normalizedNumber.contains(fixedText.normalizePhoneNumber(), true)
-                }) ||
+                (hasDigits && numericText.isNotEmpty() && contact.doesContainPhoneNumber(numericText, convertLetters = false, search = true)) ||
                 contact.emails.any { it.value.contains(fixedText, true) } ||
                 contact.addresses.any { getProperText(it.value, shouldNormalize).contains(fixedText, true) } ||
                 contact.IMs.any { it.value.contains(fixedText, true) } ||

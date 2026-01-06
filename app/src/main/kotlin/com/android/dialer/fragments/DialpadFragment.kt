@@ -549,8 +549,19 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         val textLower = text.lowercase()
         val textLowerNoSpaces = textLower.filterNot { it.isWhitespace() }
         
+        // Check if text is numeric (for direct phone number search)
+        val isNumeric = text.all { it.isDigit() || it == '+' || it == '-' || it == ' ' || it == '(' || it == ')' }
+        val numericText = text.filter { it.isDigit() || it == '+' }
+        
         val filtered = allContacts.filter { contact ->
-            // Check phone number first (fastest check)
+            // Check phone number first - try both with and without letter conversion
+            // Direct phone number search (for numeric input)
+            if (isNumeric && numericText.isNotEmpty()) {
+                if (contact.doesContainPhoneNumber(numericText, convertLetters = false, search = true)) {
+                    return@filter true
+                }
+            }
+            // Phone number search with letter conversion (for T9-style input)
             if (contact.doesContainPhoneNumber(text, convertLetters = true, search = true)) {
                 return@filter true
             }
