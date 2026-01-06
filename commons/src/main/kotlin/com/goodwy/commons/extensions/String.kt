@@ -346,9 +346,14 @@ fun String.isEmoji(): Boolean {
 fun String.normalizePhoneNumber(): String = PhoneNumberUtils.normalizeNumber(this)
 
 fun String.formatPhoneNumber(minimumLength: Int = 4): String {
-    val country = Locale.getDefault().country
-    return if (this.length >= minimumLength) {
-        PhoneNumberUtils.formatNumber(this, country)?.toString() ?: this
+    val normalizedNumber = this.normalizePhoneNumber()
+    return if (normalizedNumber.length >= minimumLength) {
+        com.goodwy.commons.helpers.PhoneNumberFormatManager.formatPhoneNumber(
+            this,
+            normalizedNumber,
+            null,
+            minimumLength
+        )
     } else {
         this
     }

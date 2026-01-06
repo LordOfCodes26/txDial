@@ -12,7 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.CallLog.Calls
 import android.provider.ContactsContract
-import android.telephony.PhoneNumberFormattingTextWatcher
+import com.goodwy.commons.views.CustomPhoneNumberFormattingTextWatcher
 import android.telephony.TelephonyManager
 import android.util.AttributeSet
 import android.util.TypedValue
@@ -98,7 +98,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
     private var storedDialpadSecondaryTypeface = 0
     private var storedShowVoicemailIcon = false
     private var storedFormatPhoneNumbers = false
-    private var phoneNumberFormattingWatcher: PhoneNumberFormattingTextWatcher? = null
+    private var phoneNumberFormattingWatcher: CustomPhoneNumberFormattingTextWatcher? = null
     private var allRecentCalls = listOf<RecentCall>()
     private var recentsAdapter: RecentCallsAdapter? = null
     private var contactsAdapter: ContactsAdapter? = null
@@ -167,8 +167,7 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             // Disable keyboard first to prevent IME from showing on focus
             disableKeyboard()
             if (config.formatPhoneNumbers) {
-                @Suppress("DEPRECATION")
-                phoneNumberFormattingWatcher = PhoneNumberFormattingTextWatcher(Locale.getDefault().country)
+                phoneNumberFormattingWatcher = CustomPhoneNumberFormattingTextWatcher()
                 addTextChangedListener(phoneNumberFormattingWatcher)
             }
             onTextChangeListener { dialpadValueChanged(it) }
@@ -1091,14 +1090,13 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         if (formatPhoneNumbersChanged) {
             storedFormatPhoneNumbers = config.formatPhoneNumbers
             binding.dialpadInput.apply {
-                // Remove existing PhoneNumberFormattingTextWatcher if present
+                // Remove existing CustomPhoneNumberFormattingTextWatcher if present
                 phoneNumberFormattingWatcher?.let { removeTextChangedListener(it) }
                 phoneNumberFormattingWatcher = null
 
-                // Add PhoneNumberFormattingTextWatcher if enabled
+                // Add CustomPhoneNumberFormattingTextWatcher if enabled
                 if (config.formatPhoneNumbers) {
-                    @Suppress("DEPRECATION")
-                    phoneNumberFormattingWatcher = PhoneNumberFormattingTextWatcher(Locale.getDefault().country)
+                    phoneNumberFormattingWatcher = CustomPhoneNumberFormattingTextWatcher()
                     addTextChangedListener(phoneNumberFormattingWatcher)
                 }
             }

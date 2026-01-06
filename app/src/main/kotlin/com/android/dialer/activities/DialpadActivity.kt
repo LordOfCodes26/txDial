@@ -11,7 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.CallLog.Calls
-import android.telephony.PhoneNumberFormattingTextWatcher
+import com.goodwy.commons.views.CustomPhoneNumberFormattingTextWatcher
 import android.telephony.TelephonyManager
 import android.util.TypedValue
 import android.view.*
@@ -154,8 +154,7 @@ class DialpadActivity : SimpleActivity() {
 
         binding.dialpadInput.apply {
             if (config.formatPhoneNumbers) {
-                @Suppress("DEPRECATION")
-                addTextChangedListener(PhoneNumberFormattingTextWatcher(Locale.getDefault().country))
+                addTextChangedListener(CustomPhoneNumberFormattingTextWatcher())
             }
             onTextChangeListener { dialpadValueChanged(it) }
             requestFocus()
