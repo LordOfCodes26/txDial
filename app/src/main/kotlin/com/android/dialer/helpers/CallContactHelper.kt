@@ -64,7 +64,14 @@ fun getCallContact(context: Context, call: Call?, callback: (CallContact) -> Uni
                 }
 
                 callContact.number = if (context.config.formatPhoneNumbers) {
-                    number.formatPhoneNumber()
+                    // Try district format first (from database), then fall back to default formatting
+                    // Note: formatPhoneNumberWithDistrict requires context and should be called from background thread
+                    val districtFormatted = number.formatPhoneNumberWithDistrict(context)
+                    if (districtFormatted != number) {
+                        districtFormatted
+                    } else {
+                        number.formatPhoneNumber()
+                    }
                 } else {
                     number
                 }

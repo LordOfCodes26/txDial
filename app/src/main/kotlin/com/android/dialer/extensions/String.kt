@@ -18,6 +18,14 @@ fun String.getCountryByNumber(): String {
     }
 }
 
+// Phone number format and location functions are now in commons library
+// Use: com.goodwy.commons.extensions.*
+// Available functions:
+// - formatPhoneNumberWithDistrict(context)
+// - formatPhoneNumberWithDistrictAsync(context, callback)
+// - getLocationByPrefix(context)
+// - getLocationByPrefixAsync(context, callback)
+
 // remove the pluses, spaces and hyphens.
 fun String.numberForNotes() = replace("\\s".toRegex(), "")
     .replace("\\+".toRegex(), "")

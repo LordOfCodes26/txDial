@@ -1210,7 +1210,13 @@ class CallActivity : SimpleActivity() {
             callerNameLabel.text =
                 formatterUnicodeWrap(name.ifEmpty { getString(R.string.unknown_caller) })
             if (number.isNotEmpty() && number != name) {
-                val numberText = formatterUnicodeWrap(number)
+                // Format number with district format if applicable (from database)
+                // DatabasePhoneNumberFormatter now works on main thread with caching
+                val numberText = if (config.formatPhoneNumbers) {
+                    formatterUnicodeWrap(number.formatPhoneNumber())
+                } else {
+                    formatterUnicodeWrap(number)
+                }
                 if (numberLabel.isNotEmpty()) {
                     val numberLabelText = formatterUnicodeWrap(numberLabel)
                     callerNumber.text = numberLabelText
@@ -1223,10 +1229,25 @@ class CallActivity : SimpleActivity() {
                     callerNumber.text = numberText
                 }
 
-                if (description.isNotEmpty() && description != name) {
-                    callerDescription.text = formatterUnicodeWrap(description)
-                    callerDescription.beVisible()
-                } else callerDescription.beGone()
+                // Show location for database-formatted phone numbers
+                // Location lookup uses the same format matching logic as formatting
+                callerDescription.beGone() // Hide initially
+                number.getLocationByPrefixAsync(this@CallActivity) { location ->
+                    if (location != null && callContact != null && callContact!!.number == number) {
+                        // If there's a description, show both description and location
+                        val displayText = if (description.isNotEmpty() && description != name) {
+                            "$description - $location"
+                        } else {
+                            location
+                        }
+                        callerDescription.text = formatterUnicodeWrap(displayText)
+                        callerDescription.beVisible()
+                    } else if (description.isNotEmpty() && description != name) {
+                        // If no location found but we have description, show description
+                        callerDescription.text = formatterUnicodeWrap(description)
+                        callerDescription.beVisible()
+                    }
+                }
             } else {
                 callerDescription.beGone()
                 val country = number.getCountryByNumber()
