@@ -42,4 +42,10 @@
     <item
         android:id="@+id/cab_remove"
         android:title="@string/delete" />
+    <item
+        android:id="@+id/cab_encrypt_call"
+        android:title="@string/encrypt" />
+    <item
+        android:id="@+id/cab_decrypt_call"
+        android:title="@string/decrypt" />
 </menu>

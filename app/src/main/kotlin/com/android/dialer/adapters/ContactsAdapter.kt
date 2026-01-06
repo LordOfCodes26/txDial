@@ -45,6 +45,7 @@ import com.goodwy.commons.views.MyRecyclerView
 import com.android.dialer.BuildConfig
 import com.android.dialer.R
 import com.android.dialer.activities.SimpleActivity
+import com.android.dialer.activities.MainActivity
 import com.android.dialer.databinding.ItemContactWithNumberGridSwipeBinding
 import com.android.dialer.databinding.ItemContactWithNumberInfoSwipeBinding
 import com.android.dialer.extensions.*
@@ -957,6 +958,15 @@ class ContactsAdapter(
                 findItem(R.id.cab_view_details).isVisible = true
                 findItem(R.id.cab_block_unblock_contact).isVisible = true
                 findItem(R.id.cab_select_all).isVisible = false  // Hide select all in popup menu
+                
+                // Show encrypt/decrypt menu items only in MainActivity
+                val isInSecureBox = if (activity is MainActivity) {
+                    (activity as MainActivity).isContactInSecureBox(contact.id)
+                } else {
+                    false
+                }
+                findItem(R.id.cab_encrypt_contact).isVisible = !isInSecureBox && activity is MainActivity
+                findItem(R.id.cab_decrypt_contact).isVisible = isInSecureBox && activity is MainActivity
 
                 // Update block/unblock title asynchronously
                 activity.isContactBlocked(contact) { blocked ->
@@ -1008,10 +1018,31 @@ class ContactsAdapter(
                     R.id.cab_delete -> {
                         askConfirmDelete()
                     }
+                    
+                    R.id.cab_encrypt_contact -> {
+                        if (activity is MainActivity) {
+                            (activity as MainActivity).encryptContactWithPrivateSpace(contact)
+                        }
+                    }
+                    
+                    R.id.cab_decrypt_contact -> {
+                        if (activity is MainActivity) {
+                            (activity as MainActivity).decryptContact(contact)
+                        }
+                    }
                 }
                 true
             }
-            show()
+            
+            // Ensure menu shows (delete should always be visible if showDeleteButton is true)
+            try {
+                show()
+            } catch (e: Exception) {
+                // If show fails, try to show with just delete option
+                android.util.Log.e("ContactsAdapter", "Error showing popup menu", e)
+                menu.findItem(R.id.cab_delete)?.isVisible = true
+                show()
+            }
 
             // Adjust X position based on touch location using reflection
             if (touchX >= 0) {

@@ -18,12 +18,14 @@ import android.speech.RecognizerIntent
 import android.telecom.Call
 import android.view.Menu
 import android.view.MenuItem
+import android.content.ActivityNotFoundException
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.MenuItemCompat
@@ -58,6 +60,7 @@ import com.android.dialer.helpers.*
 import com.android.dialer.interfaces.RefreshItemsListener
 import com.android.dialer.models.AudioRoute
 import com.android.dialer.models.Events
+import com.android.dialer.models.RecentCall
 import com.goodwy.commons.views.TwoFingerSlideGestureDetector
 import com.mikhaellopez.rxanimation.RxAnimation
 import com.mikhaellopez.rxanimation.fadeIn
@@ -97,6 +100,14 @@ class MainActivity : SimpleActivity() {
     // Two-finger swipe detection for secure box
     private lateinit var twoFingerSlideGestureDetector: TwoFingerSlideGestureDetector
     private val mainHandler = Handler(Looper.getMainLooper())
+    
+    // Secure box / Private space integration
+    private val PRIVATE_SPACE_PACKAGE_NAME = "chonha.get.secret.number"
+    private var unlockedPrivateSpaceCode: Int? = null
+    private var pendingCallToEncrypt: RecentCall? = null
+    private var pendingContactToEncrypt: Contact? = null
+    private val isInPrivateMode: Boolean
+        get() = unlockedPrivateSpaceCode != null
 
     @SuppressLint("MissingSuperCall")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -190,15 +201,22 @@ class MainActivity : SimpleActivity() {
                     avgDeltaY: Float,
                     avgDistance: Float
                 ) {
-                    unlockSecureBoxWithCipher(cipherNumber = 1)
+                    // If already in private mode, show secure box with current cipher
+                    if (isInPrivateMode && unlockedPrivateSpaceCode != null) {
+                        unlockSecureBoxWithCipher(unlockedPrivateSpaceCode!!)
+                    } else {
+                        // Launch private space app to get cipher number
+                        handlePrivateSpaceSwipe()
+                    }
                 }
             }
         )
     }
     
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        // Handle 2 finger gestures globally
+        // Handle 2 finger gestures globally - intercept all 2-finger touches
         if (ev.pointerCount == 2) {
+            // Pass event to gesture detector and consume to prevent child views from handling it
             twoFingerSlideGestureDetector.onTouchEvent(ev)
             return true
         }
@@ -207,13 +225,186 @@ class MainActivity : SimpleActivity() {
         return super.dispatchTouchEvent(ev)
     }
     
+    private fun handlePrivateSpaceSwipe() {
+        val launchIntent = Intent(PRIVATE_SPACE_PACKAGE_NAME)
+        
+        // Start private space app and expect a result back
+        try {
+            startPrivateSpaceForUnlock.launch(launchIntent)
+        } catch (e: ActivityNotFoundException) {
+            e.printStackTrace()
+            toast("Private space app not found", Toast.LENGTH_SHORT)
+        }
+    }
+    
+    private val startPrivateSpaceForUnlock = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        
+        // Expect private code as extra
+        val cipher = result.data?.getIntExtra("secret_number", -1)
+            ?.takeIf { it > -1 }
+            ?: return@registerForActivityResult
+        
+        unlockedPrivateSpaceCode = cipher
+        SecureBoxHelper.unlockSecureBox()
+        
+        // Show secure box with the unlocked cipher
+        unlockSecureBoxWithCipher(cipher)
+    }
+    
+    private val startPrivateSpaceForEncrypt = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        
+        // Expect private code as extra
+        val cipher = result.data?.getIntExtra("secret_number", -1)
+            ?.takeIf { it > -1 }
+            ?: return@registerForActivityResult
+        
+        // Encrypt pending call if exists
+        pendingCallToEncrypt?.let { call ->
+            pendingCallToEncrypt = null
+            encryptCall(call, cipher)
+        }
+        
+        // Encrypt pending contact if exists
+        pendingContactToEncrypt?.let { contact ->
+            pendingContactToEncrypt = null
+            encryptContact(contact, cipher)
+        }
+    }
+    
     private fun unlockSecureBoxWithCipher(cipherNumber: Int) {
-        // Directly access secure box cipher number 1 without unlock check
+        // Directly access secure box cipher number without unlock check
         val secureBoxHelper = SecureBoxHelper(this)
         val (calls, contacts) = secureBoxHelper.getSecureBoxByCipherNumber(cipherNumber)
         
         // Navigate to RecentsFragment and show secure box contents filtered by cipher number
         showSecureBoxInRecents(calls, contacts, cipherNumber)
+    }
+    
+    /**
+     * Encrypt a call by adding it to secure box with specified cipher number
+     */
+    fun encryptCall(call: RecentCall, cipherNumber: Int) {
+        val secureBoxHelper = SecureBoxHelper(this)
+        secureBoxHelper.addCallToSecureBox(call.id, cipherNumber)
+        
+        // Refresh UI
+        mainHandler.post {
+            getRecentsFragment()?.refreshItems()
+        }
+    }
+    
+    /**
+     * Decrypt a call by removing it from secure box
+     */
+    fun decryptCall(call: RecentCall) {
+        val secureBoxHelper = SecureBoxHelper(this)
+        secureBoxHelper.removeCallFromSecureBox(call.id)
+        
+        // Refresh UI
+        mainHandler.post {
+            getRecentsFragment()?.refreshItems()
+        }
+    }
+    
+    /**
+     * Encrypt a contact by adding it to secure box with specified cipher number
+     */
+    fun encryptContact(contact: Contact, cipherNumber: Int) {
+        val secureBoxHelper = SecureBoxHelper(this)
+        secureBoxHelper.addContactToSecureBox(contact.id, cipherNumber)
+        
+        // Refresh UI
+        mainHandler.post {
+            getContactsFragment()?.refreshItems()
+            getFavoritesFragment()?.refreshItems()
+        }
+    }
+    
+    /**
+     * Decrypt a contact by removing it from secure box
+     */
+    fun decryptContact(contact: Contact) {
+        val secureBoxHelper = SecureBoxHelper(this)
+        secureBoxHelper.removeContactFromSecureBox(contact.id)
+        
+        // Refresh UI
+        mainHandler.post {
+            getContactsFragment()?.refreshItems()
+            getFavoritesFragment()?.refreshItems()
+        }
+    }
+    
+    /**
+     * Launch private space app to encrypt a call
+     */
+    fun encryptCallWithPrivateSpace(call: RecentCall) {
+        // Save current call that must be encrypted after user picks cipher
+        pendingCallToEncrypt = call
+        
+        // Launch PrivateSpaceApp to get a new private space code
+        val launchIntent = Intent(PRIVATE_SPACE_PACKAGE_NAME)
+        
+        // Start private space app and expect a result back
+        try {
+            startPrivateSpaceForEncrypt.launch(launchIntent)
+        } catch (e: ActivityNotFoundException) {
+            e.printStackTrace()
+            toast("Private space app not found", Toast.LENGTH_SHORT)
+        }
+    }
+    
+    /**
+     * Launch private space app to encrypt a contact
+     */
+    fun encryptContactWithPrivateSpace(contact: Contact) {
+        // Save current contact that must be encrypted after user picks cipher
+        pendingContactToEncrypt = contact
+        
+        // Launch PrivateSpaceApp to get a new private space code
+        val launchIntent = Intent(PRIVATE_SPACE_PACKAGE_NAME)
+        
+        // Start private space app and expect a result back
+        try {
+            startPrivateSpaceForEncrypt.launch(launchIntent)
+        } catch (e: ActivityNotFoundException) {
+            e.printStackTrace()
+            toast("Private space app not found", Toast.LENGTH_SHORT)
+        }
+    }
+    
+    /**
+     * Check if a call is in secure box
+     */
+    fun isCallInSecureBox(callId: Int): Boolean {
+        val secureBoxHelper = SecureBoxHelper(this)
+        return secureBoxHelper.isCallInSecureBox(callId)
+    }
+    
+    /**
+     * Check if a contact is in secure box
+     */
+    fun isContactInSecureBox(contactId: Int): Boolean {
+        val secureBoxHelper = SecureBoxHelper(this)
+        return secureBoxHelper.isContactInSecureBox(contactId)
+    }
+    
+    /**
+     * Exit private mode
+     */
+    private fun exitPrivateMode() {
+        unlockedPrivateSpaceCode = null
+        SecureBoxHelper.lockSecureBox()
+        
+        // Refresh UI
+        mainHandler.post {
+            refreshFragments()
+        }
     }
     
     private fun showSecureBoxInRecents(calls: List<SecureBoxCall>, contacts: List<SecureBoxContact>, cipherNumber: Int) {
@@ -426,6 +617,13 @@ class MainActivity : SimpleActivity() {
     }
 
     override fun onBackPressedCompat(): Boolean {
+        // 1) Exit private mode first
+        if (isInPrivateMode) {
+            exitPrivateMode()
+            return true
+        }
+        
+        // 2) Handle search
         return when {
             binding.mainMenu.isSearchOpen -> {
                 binding.mainMenu.closeSearch()

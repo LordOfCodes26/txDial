@@ -600,6 +600,18 @@ class RecentCallsAdapter(
                 findItem(R.id.cab_block_number).isVisible = !call.isUnknownNumber && !activity.isNumberBlocked(call.phoneNumber, getBlockedNumbers)
                 findItem(R.id.cab_unblock_number).isVisible = !call.isUnknownNumber && activity.isNumberBlocked(call.phoneNumber, getBlockedNumbers)
                 findItem(R.id.cab_remove_default_sim).isVisible = (activity.config.getCustomSIM(selectedNumber) ?: "") != "" && !call.isUnknownNumber
+                
+                // Show encrypt/decrypt menu items only in MainActivity
+                val isInSecureBox = if (activity is MainActivity) {
+                    (activity as MainActivity).isCallInSecureBox(call.id)
+                } else {
+                    false
+                }
+                findItem(R.id.cab_encrypt_call).isVisible = !call.isUnknownNumber && !isInSecureBox && activity is MainActivity
+                findItem(R.id.cab_decrypt_call).isVisible = !call.isUnknownNumber && isInSecureBox && activity is MainActivity
+                
+                // Always show delete option to ensure menu is not empty
+                findItem(R.id.cab_remove).isVisible = true
             }
             setOnMenuItemClickListener { item ->
                 val callId = call.id
@@ -714,10 +726,31 @@ class RecentCallsAdapter(
                             removeDefaultSIM()
                         }
                     }
+                    
+                    R.id.cab_encrypt_call -> {
+                        if (activity is MainActivity) {
+                            (activity as MainActivity).encryptCallWithPrivateSpace(call)
+                        }
+                    }
+                    
+                    R.id.cab_decrypt_call -> {
+                        if (activity is MainActivity) {
+                            (activity as MainActivity).decryptCall(call)
+                        }
+                    }
                 }
                 true
             }
-            show()
+            
+            // Ensure at least one item is visible (delete should always be visible)
+            try {
+                show()
+            } catch (e: Exception) {
+                // If show fails, try to show with just delete option
+                android.util.Log.e("RecentCallsAdapter", "Error showing popup menu", e)
+                menu.findItem(R.id.cab_remove)?.isVisible = true
+                show()
+            }
 
             // Adjust X position based on touch location using reflection
             if (touchX >= 0) {

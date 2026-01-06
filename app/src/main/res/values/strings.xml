@@ -179,4 +179,8 @@
     <string name="koryo_label">Koryo</string>
     <string name="kangsong_label">Kangsong</string>
     <string name="mirae_label">Mirae</string>
+    
+    <!-- Secure Box -->
+    <string name="encrypt">Encrypt</string>
+    <string name="decrypt">Decrypt</string>
 </resources>

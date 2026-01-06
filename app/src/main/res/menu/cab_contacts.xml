@@ -60,4 +60,12 @@
         android:showAsAction="ifRoom"
         android:title="@string/select_all"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/cab_encrypt_contact"
+        android:title="@string/encrypt"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/cab_decrypt_contact"
+        android:title="@string/decrypt"
+        app:showAsAction="never" />
 </menu>
