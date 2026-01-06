@@ -135,7 +135,8 @@ class CCFeeClass(
 
                         if (fCash != -1f) {
                             FeeInfoUtils.setCash(context, slotId, fCash)
-                            FeeInfoUtils.sendFeeInfoChange(context)
+                            // Send broadcast with slot ID (hybrid method)
+                            FeeInfoUtils.sendFeeInfoChange(context, slotId)
                         }
 
                         FeeInfoUtils.setFinishDate(context, slotId, strExpireDate)
@@ -206,7 +207,8 @@ class CCFeeClass(
 
                         if (fCash != -1f) {
                             FeeInfoUtils.setCash(context, slotId, fCash)
-                            FeeInfoUtils.sendFeeInfoChange(context)
+                            // Send broadcast with slot ID (hybrid method)
+                            FeeInfoUtils.sendFeeInfoChange(context, slotId)
                         }
 
                         FeeInfoUtils.setFinishDate(context, slotId, strDate)
@@ -501,7 +503,8 @@ class CCFeeClass(
 
                     FeeInfoUtils.setFinishDate(context, slotId, strExpireDate)
                     bKR_USSD_Running = false
-                    FeeInfoUtils.sendFeeInfoChange(context)
+                    // Send broadcast with slot ID (hybrid method)
+                    FeeInfoUtils.sendFeeInfoChange(context, slotId)
 
                     listener?.onFinished()
                 }
@@ -599,7 +602,8 @@ class CCFeeClass(
                     // Save fee info
                     if (fCash != -1f) {
                         FeeInfoUtils.setCash(context, slotId, fCash)
-                        FeeInfoUtils.sendFeeInfoChange(context)
+                        // Send broadcast with slot ID (hybrid method)
+                        FeeInfoUtils.sendFeeInfoChange(context, slotId)
                     }
 
                     FeeInfoUtils.setFinishDate(context, slotId, strDate)
@@ -664,7 +668,8 @@ class CCFeeClass(
         FeeInfoUtils.setSms(context, slotId, nSms)
         FeeInfoUtils.setByte(context, slotId, nBytes)
 
-        FeeInfoUtils.sendFeeInfoChange(context)
+        // Send broadcast with slot ID (hybrid method)
+        FeeInfoUtils.sendFeeInfoChange(context, slotId)
     }
 
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)

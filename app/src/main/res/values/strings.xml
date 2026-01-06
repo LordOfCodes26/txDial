@@ -212,6 +212,10 @@
     
     <string name="confirm_dialog_allow_button">OK</string>
     
+    <!-- Fee Info Permission -->
+    <string name="read_fee_info_permission_label">Read Fee Information</string>
+    <string name="read_fee_info_permission_description">Allows reading phone fee information (balance, minutes, SMS)</string>
+    
     <!-- Secure Box -->
     <string name="encrypt">Encrypt</string>
     <string name="decrypt">Decrypt</string>

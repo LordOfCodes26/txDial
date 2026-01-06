@@ -28,6 +28,13 @@
     <uses-permission android:name="android.telecom.action.CONFIGURE_PHONE_ACCOUNT" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Fee Info Provider Permission -->
+    <permission
+        android:name="com.android.dialer.permission.READ_FEE_INFO"
+        android:label="@string/read_fee_info_permission_label"
+        android:description="@string/read_fee_info_permission_description"
+        android:protectionLevel="normal" />
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     
@@ -332,6 +339,12 @@
             android:name="com.goodwy.commons.securebox.SecureBoxContentProvider"
             android:authorities="com.android.dialer.securebox"
             android:exported="false" />
+
+        <provider
+            android:name=".providers.FeeInfoContentProvider"
+            android:authorities="com.android.dialer.feeinfo"
+            android:exported="true"
+            android:readPermission="com.android.dialer.permission.READ_FEE_INFO" />
 
         <receiver
             android:name=".receivers.CallActionReceiver"

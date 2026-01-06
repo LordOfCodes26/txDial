@@ -82,9 +82,33 @@ object FeeInfoUtils {
         return getPrefs(context).getString("$KEY_FINISH_DATE_PREFIX$slotId", "") ?: ""
     }
 
-    fun sendFeeInfoChange(context: Context) {
-        val intent = Intent(ACTION_FEE_INFO_CHANGED)
+    /**
+     * Send broadcast when fee info changes (hybrid method)
+     * Includes slot ID and basic info in intent extras for quick access
+     * Apps can use ContentProvider for full details
+     */
+    fun sendFeeInfoChange(context: Context, slotId: Int? = null) {
+        val intent = Intent(ACTION_FEE_INFO_CHANGED).apply {
+            // Include slot ID if specified
+            if (slotId != null) {
+                putExtra("slot_id", slotId)
+                // Include basic fee info in broadcast for quick access
+                putExtra("cash", getCash(context, slotId))
+                putExtra("minute", getMinute(context, slotId))
+                putExtra("remain_minute", getRemainMinute(context, slotId))
+                putExtra("sms", getSms(context, slotId))
+                putExtra("byte", getByte(context, slotId))
+                putExtra("finish_date", getFinishDate(context, slotId))
+            }
+        }
         context.sendBroadcast(intent)
+    }
+    
+    /**
+     * Send broadcast for all slots (when multiple slots are updated)
+     */
+    fun sendFeeInfoChangeAll(context: Context) {
+        sendFeeInfoChange(context, null)
     }
 }
 
