@@ -180,6 +180,38 @@
     <string name="kangsong_label">Kangsong</string>
     <string name="mirae_label">Mirae</string>
     
+    <!-- Fee Service - USSD Response Strings -->
+    <string name="koryo_cash_response_header">료금</string>
+    <string name="koryo_cash_response_footer">원</string>
+    <string name="koryo_date_response_header">회선료삭감날자</string>
+    <string name="koryo_date_response_footer">일</string>
+    
+    <string name="kangsong_cash_response_header">료금</string>
+    <string name="kangsong_cash_response_footer">원</string>
+    <string name="kangsong_date_response_header">회선료삭감날자</string>
+    <string name="kangsong_date_response_footer">일</string>
+    <string name="cash_response_header_kangsong">료금</string>
+    <string name="cash_response_footer_kangsong">원</string>
+    <string name="date_response_header_kangsong">회선료삭감날자</string>
+    <string name="date_response_footer_kangsong">일</string>
+    <string name="charge_response_header_kangsong">회선료</string>
+    <string name="charge_response_footer_kangsong">원</string>
+    <string name="minute_response_header_kangsong">음성</string>
+    <string name="minute_response_footer_kangsong">분</string>
+    <string name="remain_minute_response_header_kangsong">무료통화</string>
+    <string name="remain_minute_response_footer_kangsong">분</string>
+    <string name="sms_response_header_kangsong">통보문</string>
+    <string name="sms_response_footer_kangsong">개</string>
+    
+    <!-- Koryo SMS parsing strings -->
+    <string name="minute_response_footer">분</string>
+    <string name="remain_minute_response_footer">분</string>
+    <string name="sms_response_footer">개</string>
+    <string name="bytes_response_footer">MB</string>
+    <string name="received_cash_sms">료금</string>
+    
+    <string name="confirm_dialog_allow_button">OK</string>
+    
     <!-- Secure Box -->
     <string name="encrypt">Encrypt</string>
     <string name="decrypt">Decrypt</string>
