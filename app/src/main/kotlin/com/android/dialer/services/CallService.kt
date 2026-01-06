@@ -7,6 +7,7 @@ import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.DisconnectCause
 import android.telecom.InCallService
+import android.telecom.PhoneAccountHandle
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.goodwy.commons.extensions.baseConfig
@@ -38,6 +39,11 @@ class CallService : InCallService() {
     // Fee info update
     private var ccFeeClass: CCFeeClass? = null
     private val feeUpdateHandler = Handler(Looper.getMainLooper())
+    
+    // Auto-reply SMS tracking
+    private val incomingCallTracker = mutableMapOf<String, Boolean>() // phoneNumber -> wasAnswered
+    private val missedCallCounts = mutableMapOf<String, Int>() // phoneNumber -> missed call count
+    private val autoReplySmsHandler = Handler(Looper.getMainLooper())
 
     private val callListener = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
@@ -45,6 +51,23 @@ class CallService : InCallService() {
             
             // Handle call recording based on state
             handleRecordingState(call, state)
+            
+            // Track incoming calls for auto-reply SMS
+            if (!call.isOutgoing()) {
+                val phoneNumber = call.details.handle?.schemeSpecificPart
+                if (phoneNumber != null) {
+                    when (state) {
+                        Call.STATE_RINGING -> {
+                            // Track incoming call
+                            incomingCallTracker[phoneNumber] = false // Not answered yet
+                        }
+                        Call.STATE_ACTIVE -> {
+                            // Call was answered
+                            incomingCallTracker[phoneNumber] = true
+                        }
+                    }
+                }
+            }
             
             if (state == Call.STATE_DISCONNECTED || state == Call.STATE_DISCONNECTING) {
                 callNotificationManager.cancelNotification()
@@ -55,6 +78,11 @@ class CallService : InCallService() {
                 // Update fee info after call ends (with delay to ensure call is fully disconnected)
                 if (state == Call.STATE_DISCONNECTED) {
                     updateFeeInfoAfterCall(call)
+                    
+                    // Check if auto-reply SMS should be sent for missed incoming calls
+                    if (!call.isOutgoing()) {
+                        handleMissedCallAutoReply(call)
+                    }
                 }
                 
                 // Check if auto redial should be triggered
@@ -317,6 +345,78 @@ class CallService : InCallService() {
         } else {
             // Stop recording
             stopRecording()
+        }
+    }
+    
+    /**
+     * Handle auto-reply SMS for missed incoming calls
+     */
+    private fun handleMissedCallAutoReply(call: Call) {
+        val phoneNumber = call.details.handle?.schemeSpecificPart ?: return
+        val wasAnswered = incomingCallTracker[phoneNumber] ?: false
+        
+        // Remove from tracker
+        incomingCallTracker.remove(phoneNumber)
+        
+        // Only send SMS if call was not answered (missed)
+        if (!wasAnswered) {
+            val disconnectCause = call.details.disconnectCause
+            val disconnectCode = disconnectCause?.code ?: DisconnectCause.UNKNOWN
+            
+            // Check if this is a missed call (not rejected by user)
+            // DisconnectCause.REJECTED means user explicitly rejected
+            // DisconnectCause.MISSED indicates missed call
+            val isMissedCall = when (disconnectCode) {
+                DisconnectCause.MISSED -> true
+                DisconnectCause.REJECTED -> false // User explicitly rejected, don't send SMS
+                else -> {
+                    // For other codes, check if call was never answered
+                    !wasAnswered
+                }
+            }
+            
+            if (isMissedCall) {
+                // Increment missed call count for this number
+                val currentCount = missedCallCounts[phoneNumber] ?: 0
+                val newCount = currentCount + 1
+                missedCallCounts[phoneNumber] = newCount
+                
+                // Check if we've reached the threshold
+                val threshold = context.config.autoReplySmsMissedCount
+                if (newCount >= threshold) {
+                    // Reset count after sending SMS
+                    missedCallCounts.remove(phoneNumber)
+                    
+                    // Delay SMS sending slightly to ensure call is fully disconnected
+                    autoReplySmsHandler.postDelayed({
+                        sendAutoReplySms(phoneNumber, call.details.accountHandle)
+                    }, 1000) // 1 second delay
+                } else {
+                    Log.d("CallService", "Missed call count for $phoneNumber: $newCount/$threshold")
+                }
+            }
+        }
+    }
+    
+    /**
+     * Send auto-reply SMS for missed call
+     */
+    private fun sendAutoReplySms(phoneNumber: String, phoneAccountHandle: PhoneAccountHandle?) {
+        try {
+            val smsHelper = AutoReplySmsHelper(context)
+            
+            if (smsHelper.shouldSendAutoReply(phoneNumber)) {
+                val message = context.config.autoReplySmsMessage
+                val success = smsHelper.sendSms(phoneNumber, message, phoneAccountHandle)
+                
+                if (success) {
+                    Log.i("CallService", "Auto-reply SMS sent to $phoneNumber")
+                } else {
+                    Log.w("CallService", "Failed to send auto-reply SMS to $phoneNumber")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("CallService", "Error sending auto-reply SMS", e)
         }
     }
 }

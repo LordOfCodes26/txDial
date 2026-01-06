@@ -134,6 +134,7 @@ class SettingsActivity : SimpleActivity() {
 
         setupManageBlockedNumbers()
         setupCallRecording()
+        setupAutoReplySms()
         setupUseSpeechToText()
 //        setupChangeDateTimeFormat()
 //        setupFormatPhoneNumbers()
@@ -387,6 +388,68 @@ class SettingsActivity : SimpleActivity() {
                 startActivity(this)
             }
         }
+    }
+
+    private fun setupAutoReplySms() = binding.apply {
+        // Enable/Disable toggle
+        settingsAutoReplySmsEnabled.isChecked = config.autoReplySmsEnabled
+        settingsAutoReplySmsEnabledHolder.setOnClickListener {
+            settingsAutoReplySmsEnabled.toggle()
+            config.autoReplySmsEnabled = settingsAutoReplySmsEnabled.isChecked
+            updateAutoReplySmsUI()
+        }
+
+        // Missed call count threshold
+        settingsAutoReplySmsMissedCountHolder.setOnClickListener {
+            val items = arrayListOf(
+                RadioItem(1, "1"),
+                RadioItem(2, "2"),
+                RadioItem(3, "3"),
+                RadioItem(4, "4"),
+                RadioItem(5, "5"),
+            )
+            RadioGroupDialog(
+                this@SettingsActivity,
+                items,
+                config.autoReplySmsMissedCount,
+                R.string.missed_call_count_threshold,
+                blurTarget = blurTarget
+            ) {
+                config.autoReplySmsMissedCount = it as Int
+                updateAutoReplySmsUI()
+            }
+        }
+
+        // Edit SMS message
+        settingsAutoReplySmsMessageHolder.setOnClickListener {
+            ChangeTextDialog(
+                this@SettingsActivity,
+                title = getString(R.string.edit_auto_reply_message),
+                currentText = config.autoReplySmsMessage,
+                blurTarget = blurTarget
+            ) {
+                if (it.isNotEmpty()) {
+                    config.autoReplySmsMessage = it
+                    updateAutoReplySmsUI()
+                }
+            }
+        }
+
+        updateAutoReplySmsUI()
+    }
+
+    private fun updateAutoReplySmsUI() = binding.apply {
+        val isEnabled = config.autoReplySmsEnabled
+        settingsAutoReplySmsMissedCount.text = config.autoReplySmsMissedCount.toString()
+        
+        // Enable/disable other controls based on main toggle
+        settingsAutoReplySmsMissedCountHolder.isEnabled = isEnabled
+        settingsAutoReplySmsMessageHolder.isEnabled = isEnabled
+        
+        // Update alpha for disabled state
+        val alpha = if (isEnabled) 1.0f else 0.5f
+        settingsAutoReplySmsMissedCount.alpha = alpha
+        settingsAutoReplySmsMessageLabel.alpha = alpha
     }
 
     private fun setupUseSpeechToText() = binding.apply {

@@ -19,6 +19,7 @@ import com.android.dialer.models.RecentCall
 import com.android.dialer.models.SpeedDial
 import androidx.core.content.edit
 import com.goodwy.commons.helpers.ON_CONTACT_CLICK
+import com.android.dialer.R
 import java.util.Locale
 
 class Config(context: Context) : BaseConfig(context) {
@@ -434,5 +435,19 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getString(RECORDING_FILE_NAME_TEMPLATE, "{timestamp}_{direction}_{phone_number}") 
             ?: "{timestamp}_{direction}_{phone_number}"
         set(recordingFileNameTemplate) = prefs.edit { putString(RECORDING_FILE_NAME_TEMPLATE, recordingFileNameTemplate) }
+
+    // Auto Reply SMS
+    var autoReplySmsEnabled: Boolean
+        get() = prefs.getBoolean(AUTO_REPLY_SMS_ENABLED, false)
+        set(autoReplySmsEnabled) = prefs.edit { putBoolean(AUTO_REPLY_SMS_ENABLED, autoReplySmsEnabled) }
+
+    var autoReplySmsMessage: String
+        get() = prefs.getString(AUTO_REPLY_SMS_MESSAGE, context.getString(R.string.auto_reply_sms_default_message)) 
+            ?: context.getString(R.string.auto_reply_sms_default_message)
+        set(autoReplySmsMessage) = prefs.edit { putString(AUTO_REPLY_SMS_MESSAGE, autoReplySmsMessage) }
+
+    var autoReplySmsMissedCount: Int
+        get() = prefs.getInt(AUTO_REPLY_SMS_MISSED_COUNT, 1) // Default: send after 1 missed call
+        set(autoReplySmsMissedCount) = prefs.edit { putInt(AUTO_REPLY_SMS_MISSED_COUNT, autoReplySmsMissedCount) }
 }
 

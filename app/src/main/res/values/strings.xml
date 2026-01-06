@@ -219,4 +219,13 @@
     <!-- Secure Box -->
     <string name="encrypt">Encrypt</string>
     <string name="decrypt">Decrypt</string>
+    
+    <!-- Auto Reply SMS -->
+    <string name="auto_reply_sms">Auto Reply SMS</string>
+    <string name="enable_auto_reply_sms">Enable auto-reply SMS</string>
+    <string name="auto_reply_sms_default_message">Sorry, I missed your call. I will call you back later.</string>
+    <string name="auto_reply_sms_message">SMS message</string>
+    <string name="missed_call_count_threshold">Missed call count</string>
+    <string name="edit_auto_reply_message">Edit auto-reply message</string>
+    <string name="auto_reply_sms_description">Automatically send SMS when you miss calls</string>
 </resources>

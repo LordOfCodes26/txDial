@@ -80,6 +80,11 @@ const val AUTO_REDIAL_MAX_RETRIES = "auto_redial_max_retries"
 const val AUTO_REDIAL_DELAY_MS = "auto_redial_delay_ms"
 const val SHAKE_TO_ANSWER = "shake_to_answer"
 
+// Auto Reply SMS
+const val AUTO_REPLY_SMS_ENABLED = "auto_reply_sms_enabled"
+const val AUTO_REPLY_SMS_MESSAGE = "auto_reply_sms_message"
+const val AUTO_REPLY_SMS_MISSED_COUNT = "auto_reply_sms_missed_count"
+
 // Call Recording
 const val CALL_RECORDING_ENABLED = "call_recording_enabled"
 const val CALL_RECORDING_FORMAT = "call_recording_format"
