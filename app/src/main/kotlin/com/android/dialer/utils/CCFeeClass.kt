@@ -44,6 +44,15 @@ class CCFeeClass(
         const val KANGSONG = "KANGSONG NET"
         private const val TAG = "CCFeeClass"
         
+        // Static flags to track automatic USSD requests (for SMS receiver to check)
+        @Volatile
+        var isKoryoUSSD_Automatic = false
+            private set
+        
+        @Volatile
+        var isKangsongUSSD_Automatic = false
+            private set
+        
         /**
          * Static method to call USSD code
          * Note: This method requires a valid context. Use the instance method callUssdCode instead.
@@ -244,6 +253,10 @@ class CCFeeClass(
 
     private var bKR_USSD_Running = false
     private var bKS_USSD_Running = false
+    
+    // Track if USSD was initiated automatically (without user interaction)
+    private var bKR_USSD_Automatic = false
+    private var bKS_USSD_Automatic = false
 
     private val simStateKey = "sim_state_value"
 
@@ -502,7 +515,10 @@ class CCFeeClass(
                     }
 
                     FeeInfoUtils.setFinishDate(context, slotId, strExpireDate)
+                    val wasAutomatic = bKR_USSD_Automatic
                     bKR_USSD_Running = false
+                    bKR_USSD_Automatic = false
+                    isKoryoUSSD_Automatic = false
                     // Send broadcast with slot ID (hybrid method)
                     FeeInfoUtils.sendFeeInfoChange(context, slotId)
 
@@ -522,10 +538,15 @@ class CCFeeClass(
                     }
                     Log.e(TAG, "onReceiveUssdResponse(KORYO)-Failed: $failureCode")
                     bKR_USSD_Running = false
+                    bKR_USSD_Automatic = false
+                    isKoryoUSSD_Automatic = false
                     listener?.onFinished()
                 }
             }, Handler(Looper.getMainLooper()))
 
+            // Track if USSD was initiated automatically (without user interaction)
+            bKR_USSD_Automatic = !byUser
+            isKoryoUSSD_Automatic = !byUser
             bKR_USSD_Running = true
         } else if (ussdType.contains(KANGSONG)) {
             val number = "*900#"
@@ -597,7 +618,10 @@ class CCFeeClass(
                         strDate = responseStr.substring(nIdStart, nIdEnd)
                     }
 
+                    val wasAutomatic = bKS_USSD_Automatic
                     bKS_USSD_Running = false
+                    bKS_USSD_Automatic = false
+                    isKangsongUSSD_Automatic = false
 
                     // Save fee info
                     if (fCash != -1f) {
@@ -623,10 +647,15 @@ class CCFeeClass(
                     }
                     Log.e(TAG, "onReceiveUssdResponse(KANGSONG)-Failed: $failureCode")
                     bKS_USSD_Running = false
+                    bKS_USSD_Automatic = false
+                    isKangsongUSSD_Automatic = false
                     listener?.onFinished()
                 }
             }, Handler(Looper.getMainLooper()))
 
+            // Track if USSD was initiated automatically (without user interaction)
+            bKS_USSD_Automatic = !byUser
+            isKangsongUSSD_Automatic = !byUser
             bKS_USSD_Running = true
         }
 
@@ -678,6 +707,96 @@ class CCFeeClass(
             subManager.activeSubscriptionInfoList?.size ?: 0
         } catch (e: Exception) {
             0
+        }
+    }
+
+    /**
+     * Update fee info after a call ends
+     * This method determines which SIM was used and requests fee info update via USSD
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    @RequiresPermission(allOf = [Manifest.permission.READ_PHONE_STATE, Manifest.permission.CALL_PHONE])
+    @SuppressLint("MissingPermission")
+    fun updateFeeInfoAfterCall(phoneAccountHandle: android.telecom.PhoneAccountHandle?) {
+        if (phoneAccountHandle == null) {
+            Log.d(TAG, "updateFeeInfoAfterCall: No phone account handle, skipping")
+            return
+        }
+
+        try {
+            // Get subscription ID from PhoneAccountHandle
+            // The PhoneAccountHandle.id might be the subscription ID or we need to match it
+            val subscriptionId = try {
+                val subscriptionInfos = subManager.activeSubscriptionInfoList
+                if (subscriptionInfos != null) {
+                    // Try to match by PhoneAccountHandle ID
+                    val handleId = phoneAccountHandle.id
+                    subscriptionInfos.firstOrNull { info ->
+                        // Match by various possible identifiers
+                        info.iccId == handleId || 
+                        info.subscriptionId.toString() == handleId ||
+                        info.simSlotIndex.toString() == handleId
+                    }?.subscriptionId ?: run {
+                        // Fallback: try to parse subscription ID from handle ID
+                        handleId.toIntOrNull()?.takeIf { it >= 0 } 
+                            ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                    }
+                } else {
+                    // Last resort: try to parse handle ID as subscription ID
+                    phoneAccountHandle.id.toIntOrNull()?.takeIf { it >= 0 }
+                        ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting subscription ID from PhoneAccountHandle", e)
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID
+            }
+
+            if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                Log.d(TAG, "updateFeeInfoAfterCall: Invalid subscription ID, skipping")
+                return
+            }
+
+            // Get slot ID from subscription ID
+            val slotId = SimCardUtils.getSlotIdUsingSubId(subscriptionId)
+            if (slotId < 0) {
+                Log.d(TAG, "updateFeeInfoAfterCall: Invalid slot ID, skipping")
+                return
+            }
+
+            // Get subscription info to determine network type
+            val subscriptionInfo = SimCardUtils.getSubscriptionInfoForSlot(context, slotId)
+            if (subscriptionInfo == null) {
+                Log.d(TAG, "updateFeeInfoAfterCall: No subscription info for slot $slotId, skipping")
+                return
+            }
+
+            val mnc = subscriptionInfo.mnc
+            Log.d(TAG, "updateFeeInfoAfterCall: Slot=$slotId, MNC=$mnc, SubscriptionId=$subscriptionId")
+
+            // Determine network type and call appropriate USSD
+            when {
+                SimCardUtils.isKoryoNetwork(mnc) -> {
+                    if (!bKR_USSD_Running) {
+                        Log.d(TAG, "updateFeeInfoAfterCall: Requesting Koryo fee info for slot $slotId")
+                        callUssdCode(KORYO, slotId, null)
+                    } else {
+                        Log.d(TAG, "updateFeeInfoAfterCall: Koryo USSD already running, skipping")
+                    }
+                }
+                SimCardUtils.isKangsongNetwork(mnc) -> {
+                    if (!bKS_USSD_Running) {
+                        Log.d(TAG, "updateFeeInfoAfterCall: Requesting Kangsong fee info for slot $slotId")
+                        callUssdCode(KANGSONG, slotId, null)
+                    } else {
+                        Log.d(TAG, "updateFeeInfoAfterCall: Kangsong USSD already running, skipping")
+                    }
+                }
+                else -> {
+                    Log.d(TAG, "updateFeeInfoAfterCall: Network type not supported (MNC=$mnc), skipping")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating fee info after call", e)
         }
     }
 }

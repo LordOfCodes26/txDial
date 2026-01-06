@@ -1,10 +1,14 @@
 package com.android.dialer.services
 
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.DisconnectCause
 import android.telecom.InCallService
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.goodwy.commons.extensions.baseConfig
 import com.goodwy.commons.extensions.canUseFullScreenIntent
 import com.goodwy.commons.extensions.hasPermission
@@ -20,6 +24,7 @@ import com.android.dialer.models.Events
 import com.android.dialer.recording.CallRecorder
 import com.android.dialer.recording.RecordingNotificationManager
 import com.android.dialer.recording.AutoRecordingHelper
+import com.android.dialer.utils.CCFeeClass
 import org.greenrobot.eventbus.EventBus
 
 class CallService : InCallService() {
@@ -29,6 +34,10 @@ class CallService : InCallService() {
     // Call recording
     private var callRecorder: CallRecorder? = null
     private val recordingNotificationManager by lazy { RecordingNotificationManager(this) }
+    
+    // Fee info update
+    private var ccFeeClass: CCFeeClass? = null
+    private val feeUpdateHandler = Handler(Looper.getMainLooper())
 
     private val callListener = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
@@ -42,6 +51,11 @@ class CallService : InCallService() {
                 
                 // Stop recording when call ends
                 stopRecording()
+                
+                // Update fee info after call ends (with delay to ensure call is fully disconnected)
+                if (state == Call.STATE_DISCONNECTED) {
+                    updateFeeInfoAfterCall(call)
+                }
                 
                 // Check if auto redial should be triggered
                 if (state == Call.STATE_DISCONNECTED && call.isOutgoing()) {
@@ -149,7 +163,46 @@ class CallService : InCallService() {
         super.onDestroy()
         stopRecording()
         callNotificationManager.cancelNotification()
+        
+        // Clean up fee info updater
+        ccFeeClass?.unregisterReceiver()
+        ccFeeClass = null
+        
         if (baseConfig.flashForAlerts) MyCameraImpl.newInstance(this).stopSOS()
+    }
+    
+    /**
+     * Update fee info after a call ends
+     * Delays the update to ensure the call is fully disconnected before making USSD request
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun updateFeeInfoAfterCall(call: Call) {
+        // Initialize CCFeeClass if not already initialized
+        if (ccFeeClass == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                ccFeeClass = CCFeeClass(context, registerReceiver = true)
+            } catch (e: Exception) {
+                Log.e("CallService", "Error initializing CCFeeClass", e)
+                return
+            }
+        }
+        
+        if (ccFeeClass == null) {
+            return
+        }
+        
+        // Get the phone account handle from the call
+        val phoneAccountHandle = call.details.accountHandle
+        
+        // Delay fee info update by 2 seconds to ensure call is fully disconnected
+        // and network is ready for USSD request
+        feeUpdateHandler.postDelayed({
+            try {
+                ccFeeClass?.updateFeeInfoAfterCall(phoneAccountHandle)
+            } catch (e: Exception) {
+                Log.e("CallService", "Error updating fee info after call", e)
+            }
+        }, 2000) // 2 second delay
     }
     
     /**

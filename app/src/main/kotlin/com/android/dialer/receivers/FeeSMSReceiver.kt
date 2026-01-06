@@ -78,6 +78,9 @@ class FeeSMSReceiver : BroadcastReceiver() {
                 
                 Log.e(TAG, "Processing fee SMS: $messageBody")
                 
+                // Check if this SMS is from an automatic USSD request
+                val isAutomaticUSSD = com.android.dialer.utils.CCFeeClass.isKoryoUSSD_Automatic
+                
                 // Parse the SMS
                 val nMinute = getKoryoMinute(messageBody, resources)
                 val nMinuteMonth = getKoryoRemainMinute(messageBody, resources)
@@ -89,6 +92,12 @@ class FeeSMSReceiver : BroadcastReceiver() {
                     ccFeeClassInstance?.onReceived919SMS(nMinute, nMinuteMonth, nSms, nBytes, subId)
                 } else {
                     Log.e(TAG, "Invalid subscription ID")
+                }
+                
+                // If this SMS is from an automatic USSD request, abort broadcast to hide it
+                if (isAutomaticUSSD) {
+                    Log.d(TAG, "SMS from automatic USSD request - aborting broadcast to hide SMS")
+                    abortBroadcast()
                 }
             }
         } catch (e: Exception) {
