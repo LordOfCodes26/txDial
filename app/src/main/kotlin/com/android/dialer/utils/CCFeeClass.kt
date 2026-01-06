@@ -778,7 +778,7 @@ class CCFeeClass(
                 SimCardUtils.isKoryoNetwork(mnc) -> {
                     if (!bKR_USSD_Running) {
                         Log.d(TAG, "updateFeeInfoAfterCall: Requesting Koryo fee info for slot $slotId")
-                        callUssdCode(KORYO, slotId, null)
+                        callUssdCode(KORYO, false, slotId, null) // false = automatic (not by user)
                     } else {
                         Log.d(TAG, "updateFeeInfoAfterCall: Koryo USSD already running, skipping")
                     }
@@ -786,7 +786,7 @@ class CCFeeClass(
                 SimCardUtils.isKangsongNetwork(mnc) -> {
                     if (!bKS_USSD_Running) {
                         Log.d(TAG, "updateFeeInfoAfterCall: Requesting Kangsong fee info for slot $slotId")
-                        callUssdCode(KANGSONG, slotId, null)
+                        callUssdCode(KANGSONG, false, slotId, null) // false = automatic (not by user)
                     } else {
                         Log.d(TAG, "updateFeeInfoAfterCall: Kangsong USSD already running, skipping")
                     }
