@@ -292,8 +292,13 @@ class SettingsActivity : SimpleActivity() {
     }
 
     private fun setupOptionsMenu() {
+        // Ensure menu is inflated
+        if (binding.settingsToolbar.menu.size() == 0) {
+            binding.settingsToolbar.inflateMenu(R.menu.menu_settings)
+        }
+        
         binding.settingsToolbar.menu.apply {
-            findItem(R.id.calling_accounts).isVisible = canLaunchAccountsConfiguration()
+            findItem(R.id.calling_accounts)?.isVisible = canLaunchAccountsConfiguration()
         }
         binding.settingsToolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {

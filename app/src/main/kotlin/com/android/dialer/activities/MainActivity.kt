@@ -783,7 +783,7 @@ class MainActivity : SimpleActivity() {
         val getRecentsFragment = getRecentsFragment()
         val getFavoritesFragment = getFavoritesFragment()
         val dialpadFragment = getDialpadFragment()
-        binding.mainMenu.requireToolbar().menu.apply {
+        binding.mainMenu.requireCustomToolbar().menu.apply {
             findItem(R.id.search).isVisible = /*!config.bottomNavigationBar*/ true // always show the search menu icon
             findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment && currentFragment != dialpadFragment
@@ -800,7 +800,7 @@ class MainActivity : SimpleActivity() {
 
     private fun setupOptionsMenu() {
         binding.mainMenu.apply {
-            requireToolbar().inflateMenu(R.menu.menu)
+            requireCustomToolbar().inflateMenu(R.menu.menu)
 //            toggleHideOnScroll(false)
             /*if (config.bottomNavigationBar) {
                 if (baseConfig.useSpeechToText) {
@@ -824,9 +824,9 @@ class MainActivity : SimpleActivity() {
                     getCurrentFragment()?.onSearchQueryChanged(text)
                     clearSearch()
                 }
-            } else*/ setupSearch(requireToolbar().menu)
+            } else*/ setupSearch(requireCustomToolbar().menu)
 
-            requireToolbar().setOnMenuItemClickListener { menuItem ->
+            requireCustomToolbar().setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
                     R.id.show_blocked_numbers -> {
                         val dialpadFragment = getDialpadFragment()
@@ -892,6 +892,13 @@ class MainActivity : SimpleActivity() {
         updateMenuItemColors(menu)
         val searchManager = getSystemService(SEARCH_SERVICE) as SearchManager
         mSearchMenuItem = menu.findItem(R.id.search)
+        
+        // If actionView is null (CustomToolbar doesn't auto-create action views), create it
+        if (mSearchMenuItem!!.actionView == null) {
+            val searchView = SearchView(this)
+            mSearchMenuItem!!.actionView = searchView
+        }
+        
         mSearchView = (mSearchMenuItem!!.actionView as SearchView).apply {
             val textColor = getProperTextColor()
             findViewById<TextView>(androidx.appcompat.R.id.search_src_text).apply {
@@ -942,7 +949,7 @@ class MainActivity : SimpleActivity() {
                 mSearchView?.let { searchView ->
                     searchView.post {
                         // Get the parent toolbar width for smooth slide-in
-                        val toolbar = binding.mainMenu.requireToolbar()
+                        val toolbar = binding.mainMenu.requireCustomToolbar()
                         val slideDistance = toolbar.width.toFloat()
                         
                         // Start from right side
@@ -971,7 +978,7 @@ class MainActivity : SimpleActivity() {
                 
                 // Animate search bar disappearance with smooth translation (slide out to right)
                 mSearchView?.let { searchView ->
-                    val toolbar = binding.mainMenu.requireToolbar()
+                    val toolbar = binding.mainMenu.requireCustomToolbar()
                     val slideDistance = toolbar.width.toFloat()
                     
                     searchView.animate()
@@ -996,7 +1003,7 @@ class MainActivity : SimpleActivity() {
 
     private fun showBlockedNumbers() {
         config.showBlockedNumbers = !config.showBlockedNumbers
-        binding.mainMenu.requireToolbar().menu.findItem(R.id.show_blocked_numbers).title =
+        binding.mainMenu.requireCustomToolbar().menu.findItem(R.id.show_blocked_numbers).title =
             if (config.showBlockedNumbers) getString(R.string.hide_blocked_numbers) else getString(R.string.show_blocked_numbers)
         config.needUpdateRecents = true
         mainHandler.post {
