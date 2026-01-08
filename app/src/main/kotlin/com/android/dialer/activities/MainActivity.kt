@@ -101,6 +101,11 @@ class MainActivity : SimpleActivity() {
     private lateinit var twoFingerSlideGestureDetector: TwoFingerSlideGestureDetector
     private val mainHandler = Handler(Looper.getMainLooper())
     
+    // Track menu height animation state for smooth transitions
+    private var menuHeightAnimator: android.animation.ValueAnimator? = null
+    private var currentMenuHeight: Int = -1
+    private var fullMenuHeight: Int = -1
+    
     // Secure box / Private space integration
     private val PRIVATE_SPACE_PACKAGE_NAME = "chonha.get.secret.number"
     private var unlockedPrivateSpaceCode: Int? = null
@@ -490,6 +495,21 @@ class MainActivity : SimpleActivity() {
         handleCurrentFragment()
         checkShortcuts()
         
+        // Initialize full menu height if not set and not on dialpad
+        if (fullMenuHeight == -1) {
+            val currentFragment = getCurrentFragment()
+            if (currentFragment !is DialpadFragment) {
+                binding.mainMenu.post {
+                    // Measure menu height when it's visible
+                    binding.mainMenu.measure(
+                        View.MeasureSpec.makeMeasureSpec(binding.mainMenu.width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                    )
+                    fullMenuHeight = binding.mainMenu.measuredHeight.coerceAtLeast(0)
+                }
+            }
+        }
+        
         // Update call button state when resuming to ensure correct visibility
         updateState()
     }
@@ -534,10 +554,10 @@ class MainActivity : SimpleActivity() {
 
         // Hide main menu when dialpad fragment is shown
         if (currentFragment is DialpadFragment) {
-            setMainMenuHeight(0)
+            setMainMenuHeight(0, animated = true)
             EventBus.getDefault().post(Events.RefreshDialpadSettings)
         } else {
-            setMainMenuHeight(null)
+            setMainMenuHeight(null, animated = true)
         }
 
         // Call onFragmentResume on fragments to register contact observers
@@ -568,20 +588,109 @@ class MainActivity : SimpleActivity() {
         storedBackgroundColor = getProperBackgroundColor()
     }
 
-    private fun setMainMenuHeight(height: Int?) {
+    private fun setMainMenuHeight(height: Int?, animated: Boolean = true) {
         binding.mainMenu.apply {
-            if (height != null) {
-                // Set specific height (e.g., 0 to hide while keeping it in layout)
+            // Initialize current height if needed
+            if (currentMenuHeight == -1) {
+                currentMenuHeight = if (layoutParams.height > 0) {
+                    layoutParams.height
+                } else {
+                    measuredHeight.takeIf { it > 0 } ?: (height ?: 0)
+                }
+            }
+            
+            // Store full menu height when it's visible (wrap_content)
+            if (height == null && fullMenuHeight == -1) {
+                // Measure wrap_content height
+                post {
+                    measure(
+                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                    )
+                    fullMenuHeight = measuredHeight
+                    if (currentMenuHeight == -1 || currentMenuHeight == 0) {
+                        currentMenuHeight = fullMenuHeight
+                    }
+                }
+            }
+            
+            val targetHeight = if (height != null) {
+                height
+            } else {
+                // Use stored full height or measure if not available
+                if (fullMenuHeight > 0) {
+                    fullMenuHeight
+                } else {
+                    // Fallback: measure now
+                    measure(
+                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                    )
+                    measuredHeight.also { fullMenuHeight = it }
+                }
+            }
+            
+            if (currentMenuHeight == targetHeight && currentMenuHeight != -1) {
+                return
+            }
+            
+            // Cancel any ongoing animation
+            menuHeightAnimator?.cancel()
+            
+            if (animated) {
+                // Animate smoothly
                 beVisible()
-                updateLayoutParams<ViewGroup.LayoutParams> {
-                    this.height = height
+                val startHeight = if (currentMenuHeight > 0) currentMenuHeight else targetHeight
+                menuHeightAnimator = android.animation.ValueAnimator.ofInt(startHeight, targetHeight).apply {
+                    duration = 300
+                    interpolator = android.view.animation.DecelerateInterpolator(1.5f)
+                    addUpdateListener { animator ->
+                        val animatedHeight = animator.animatedValue as Int
+                        currentMenuHeight = animatedHeight
+                        updateLayoutParams<ViewGroup.LayoutParams> {
+                            this.height = animatedHeight.coerceAtLeast(0)
+                        }
+                    }
+                    addListener(object : android.animation.AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: android.animation.Animator) {
+                            currentMenuHeight = targetHeight
+                            if (height == null) {
+                                // Reset to wrap_content after animation
+                                updateLayoutParams<ViewGroup.LayoutParams> {
+                                    this.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                                }
+                                // Re-measure to get actual height
+                                post {
+                                    measure(
+                                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                                    )
+                                    fullMenuHeight = measuredHeight
+                                    currentMenuHeight = fullMenuHeight
+                                }
+                            }
+                        }
+                    })
+                    start()
                 }
             } else {
-                // Reset to wrap_content (default behavior)
-                updateLayoutParams<ViewGroup.LayoutParams> {
-                    this.height = ViewGroup.LayoutParams.WRAP_CONTENT
-                }
+                // Set directly without animation (for initial setup)
                 beVisible()
+                currentMenuHeight = targetHeight
+                updateLayoutParams<ViewGroup.LayoutParams> {
+                    this.height = if (height != null) height else ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+                if (height == null) {
+                    // Store full height
+                    post {
+                        measure(
+                            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                        )
+                        fullMenuHeight = measuredHeight
+                        currentMenuHeight = fullMenuHeight
+                    }
+                }
             }
         }
     }
@@ -646,6 +755,9 @@ class MainActivity : SimpleActivity() {
         CallManager.removeListener(callCallback)
         EventBus.getDefault().unregister(this)
         clearFragmentCache()
+        // Cancel any ongoing animations
+        menuHeightAnimator?.cancel()
+        menuHeightAnimator = null
     }
 
     private fun refreshMenuItems() {
@@ -1001,11 +1113,87 @@ class MainActivity : SimpleActivity() {
     @Suppress("DEPRECATION")
     private fun initFragments() {
         binding.viewPager.offscreenPageLimit = 2
+        
+        // Track previous position for smooth menu height transitions
+        var previousPosition = binding.viewPager.currentItem
+        var previousFragment: MyViewPagerFragment<*>? = null
+        
         binding.viewPager.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
-            override fun onPageScrollStateChanged(state: Int) {}
+            override fun onPageScrollStateChanged(state: Int) {
+                // When scrolling ends, ensure final state is correct
+                if (state == ViewPager.SCROLL_STATE_IDLE) {
+                    val currentFragment = getCurrentFragment()
+                    // Use a small delay to ensure smooth transition completes
+                    binding.viewPager.postDelayed({
+                        if (currentFragment is DialpadFragment) {
+                            setMainMenuHeight(0, animated = false) // No animation needed, already animated during scroll
+                        } else {
+                            setMainMenuHeight(null, animated = false) // No animation needed, already animated during scroll
+                        }
+                    }, 50)
+                }
+            }
 
             override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
                 if (config.bottomNavigationBar && config.changeColourTopBar) scrollChange()
+                
+                // Smoothly animate menu height during scroll for dialpad transitions
+                val fragments = getAllFragments()
+                val currentFragment = fragments.getOrNull(position)
+                val nextFragment = fragments.getOrNull(position + 1)
+                
+                // Determine if we're transitioning to/from dialpad
+                val currentIsDialpad = currentFragment is DialpadFragment
+                val nextIsDialpad = nextFragment is DialpadFragment
+                
+                if (currentIsDialpad != nextIsDialpad && nextFragment != null) {
+                    // Cancel any ongoing animation to avoid conflicts
+                    menuHeightAnimator?.cancel()
+                    
+                    // Get full menu height if not stored
+                    if (fullMenuHeight == -1) {
+                        // Try to get from current height if menu is visible
+                        val currentHeight = binding.mainMenu.height
+                        if (currentHeight > 0 && !currentIsDialpad) {
+                            fullMenuHeight = currentHeight
+                        } else {
+                            // Temporarily set to wrap_content to measure
+                            binding.mainMenu.beVisible()
+                            val layoutParams = binding.mainMenu.layoutParams
+                            val savedHeight = layoutParams.height
+                            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                            binding.mainMenu.layoutParams = layoutParams
+                            
+                            binding.mainMenu.measure(
+                                View.MeasureSpec.makeMeasureSpec(binding.mainMenu.width, View.MeasureSpec.EXACTLY),
+                                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                            )
+                            fullMenuHeight = binding.mainMenu.measuredHeight.coerceAtLeast(0)
+                            
+                            // Restore original height
+                            layoutParams.height = savedHeight
+                            binding.mainMenu.layoutParams = layoutParams
+                        }
+                    }
+                    
+                    // Interpolate menu height smoothly during scroll
+                    if (fullMenuHeight > 0) {
+                        val interpolatedHeight = if (nextIsDialpad) {
+                            // Transitioning to dialpad: fade out menu
+                            (fullMenuHeight * (1 - positionOffset)).toInt().coerceAtLeast(0)
+                        } else {
+                            // Transitioning from dialpad: fade in menu
+                            (fullMenuHeight * positionOffset).toInt().coerceAtLeast(0)
+                        }
+                        
+                        // Update height smoothly during scroll
+                        binding.mainMenu.beVisible()
+                        binding.mainMenu.updateLayoutParams<ViewGroup.LayoutParams> {
+                            this.height = interpolatedHeight
+                        }
+                        currentMenuHeight = interpolatedHeight
+                    }
+                }
             }
 
             override fun onPageSelected(position: Int) {
@@ -1013,49 +1201,53 @@ class MainActivity : SimpleActivity() {
                     binding.mainTabsHolder.getTabAt(position)?.select()
                 }
 
-                // Cache fragments list to avoid multiple getAllFragments() calls
-                val allFragments = getAllFragments()
-                // Batch fragment operations
-                allFragments.forEach { fragment ->
-                    fragment?.finishActMode()
-                    when (fragment) {
-                        is ContactsFragment -> fragment.onFragmentPause()
-                        is FavoritesFragment -> fragment.onFragmentPause()
-                        is DialpadFragment -> fragment.onFragmentPause()
-                    }
-                }
-                
-                // Hide main menu when dialpad fragment is shown
+                // Get current fragment
                 val currentFragment = getCurrentFragment()
-                if (currentFragment is DialpadFragment) {
-                    // Close search if open
-                    if (binding.mainMenu.isSearchOpen) {
-                        binding.mainMenu.closeSearch()
+                
+                // Defer heavy operations to avoid blocking the transition
+                binding.viewPager.post {
+                    // Cache fragments list to avoid multiple getAllFragments() calls
+                    val allFragments = getAllFragments()
+                    // Batch fragment operations
+                    allFragments.forEach { fragment ->
+                        fragment?.finishActMode()
+                        when (fragment) {
+                            is ContactsFragment -> fragment.onFragmentPause()
+                            is FavoritesFragment -> fragment.onFragmentPause()
+                            is DialpadFragment -> fragment.onFragmentPause()
+                        }
                     }
-                    if (isSearchOpen && mSearchMenuItem != null) {
-                        mSearchMenuItem!!.collapseActionView()
-                        isSearchOpen = false
+                    
+                    // Close search if switching to dialpad
+                    if (currentFragment is DialpadFragment) {
+                        if (binding.mainMenu.isSearchOpen) {
+                            binding.mainMenu.closeSearch()
+                        }
+                        if (isSearchOpen && mSearchMenuItem != null) {
+                            mSearchMenuItem!!.collapseActionView()
+                            isSearchOpen = false
+                        }
                     }
-                    setMainMenuHeight(0)
-                } else {
-                    setMainMenuHeight(null)
+                    
+                    refreshMenuItems()
+                    
+                    // Call onFragmentResume on the current fragment
+                    when (currentFragment) {
+                        is ContactsFragment -> currentFragment.onFragmentResume()
+                        is FavoritesFragment -> currentFragment.onFragmentResume()
+                        is DialpadFragment -> currentFragment.onFragmentResume()
+                    }
+                    
+                    // Refresh only the current fragment when switching tabs
+                    refreshFragments()
+                    
+                    if (currentFragment == getRecentsFragment()) {
+                        clearMissedCalls()
+                    }
                 }
                 
-                refreshMenuItems()
-                
-                // Call onFragmentResume on the current fragment
-                when (currentFragment) {
-                    is ContactsFragment -> currentFragment.onFragmentResume()
-                    is FavoritesFragment -> currentFragment.onFragmentResume()
-                    is DialpadFragment -> currentFragment.onFragmentResume()
-                }
-                
-                // Refresh only the current fragment when switching tabs
-                refreshFragments()
-                
-                if (currentFragment == getRecentsFragment()) {
-                    clearMissedCalls()
-                }
+                previousPosition = position
+                previousFragment = currentFragment
             }
         })
 
@@ -1180,7 +1372,7 @@ class MainActivity : SimpleActivity() {
                     refreshFragments()
                     // Update menu visibility based on initial fragment
                     val currentFragment = getCurrentFragment()
-                    setMainMenuHeight(if (currentFragment is DialpadFragment) 0 else null)
+                    setMainMenuHeight(if (currentFragment is DialpadFragment) 0 else null, animated = false)
                 }
             } else {
                 refreshFragments()

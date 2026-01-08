@@ -126,9 +126,9 @@ class SettingsActivity : SimpleActivity() {
 //        setupCustomizeColors()
         setupDialPadOpen()
 //        setupOverflowIcon()
-        setupFloatingButtonStyle()
-        setupUseColoredContacts()
-        setupContactsColorList()
+//        setupFloatingButtonStyle()
+//        setupUseColoredContacts()
+//        setupContactsColorList()
         setupColorSimIcons()
         setupSimCardColorList()
 
@@ -700,45 +700,45 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupUseColoredContacts() = binding.apply {
-        settingsColoredContacts.isChecked = config.useColoredContacts
-        settingsColoredContactsHolder.setOnClickListener {
-            settingsColoredContacts.toggle()
-            config.useColoredContacts = settingsColoredContacts.isChecked
-            settingsContactColorListHolder.beVisibleIf(config.useColoredContacts)
-            config.needRestart = true
-        }
-    }
+//    private fun setupUseColoredContacts() = binding.apply {
+//        settingsColoredContacts.isChecked = config.useColoredContacts
+//        settingsColoredContactsHolder.setOnClickListener {
+//            settingsColoredContacts.toggle()
+//            config.useColoredContacts = settingsColoredContacts.isChecked
+//            settingsContactColorListHolder.beVisibleIf(config.useColoredContacts)
+//            config.needRestart = true
+//        }
+//    }
 
-    private fun setupContactsColorList() = binding.apply {
-        settingsContactColorListHolder.beVisibleIf(config.useColoredContacts)
-        settingsContactColorListIcon.setImageResource(getContactsColorListIcon(config.contactColorList))
-        settingsContactColorListHolder.setOnClickListener {
-            val items = arrayListOf(
-                com.goodwy.commons.R.drawable.ic_color_list,
-                com.goodwy.commons.R.drawable.ic_color_list_android,
-                com.goodwy.commons.R.drawable.ic_color_list_ios,
-                com.goodwy.commons.R.drawable.ic_color_list_arc
-            )
-
-            IconListDialog(
-                activity = this@SettingsActivity,
-                items = items,
-                checkedItemId = config.contactColorList,
-                defaultItemId = LBC_ANDROID,
-                titleId = com.goodwy.strings.R.string.overflow_icon,
-                blurTarget = blurTarget
-            ) { wasPositivePressed, newValue ->
-                if (wasPositivePressed) {
-                    if (config.contactColorList != newValue) {
-                        config.contactColorList = newValue
-                        settingsContactColorListIcon.setImageResource(getContactsColorListIcon(config.contactColorList))
-                        config.needRestart = true
-                    }
-                }
-            }
-        }
-    }
+//    private fun setupContactsColorList() = binding.apply {
+//        settingsContactColorListHolder.beVisibleIf(config.useColoredContacts)
+//        settingsContactColorListIcon.setImageResource(getContactsColorListIcon(config.contactColorList))
+//        settingsContactColorListHolder.setOnClickListener {
+//            val items = arrayListOf(
+//                com.goodwy.commons.R.drawable.ic_color_list,
+//                com.goodwy.commons.R.drawable.ic_color_list_android,
+//                com.goodwy.commons.R.drawable.ic_color_list_ios,
+//                com.goodwy.commons.R.drawable.ic_color_list_arc
+//            )
+//
+//            IconListDialog(
+//                activity = this@SettingsActivity,
+//                items = items,
+//                checkedItemId = config.contactColorList,
+//                defaultItemId = LBC_ANDROID,
+//                titleId = com.goodwy.strings.R.string.overflow_icon,
+//                blurTarget = blurTarget
+//            ) { wasPositivePressed, newValue ->
+//                if (wasPositivePressed) {
+//                    if (config.contactColorList != newValue) {
+//                        config.contactColorList = newValue
+//                        settingsContactColorListIcon.setImageResource(getContactsColorListIcon(config.contactColorList))
+//                        config.needRestart = true
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     private fun setupBackgroundCallScreen() {
         val pro = checkPro()
@@ -1737,42 +1737,42 @@ class SettingsActivity : SimpleActivity() {
 //        }
 //    }
 
-    private fun setupFloatingButtonStyle() {
-        binding.apply {
-            settingsFloatingButtonStyle.applyColorFilter(getProperTextColor())
-            settingsFloatingButtonStyle.setImageResource(
-                if (baseConfig.materialDesign3) R.drawable.squircle_bg else R.drawable.ic_circle_filled
-            )
-            settingsFloatingButtonStyleHolder.setOnClickListener {
-                val items = arrayListOf(
-                    R.drawable.ic_circle_filled,
-                    R.drawable.squircle_bg
-                )
-
-                    ?: throw IllegalStateException("mainBlurTarget not found")
-                IconListDialog(
-                    activity = this@SettingsActivity,
-                    items = items,
-                    checkedItemId = if (baseConfig.materialDesign3) 2 else 1,
-                    defaultItemId = 1,
-                    titleId = com.goodwy.strings.R.string.floating_button_style,
-                    size = pixels(com.goodwy.commons.R.dimen.normal_icon_size).toInt(),
-                    color = getProperTextColor(),
-                    blurTarget = blurTarget
-                ) { wasPositivePressed, newValue ->
-                    if (wasPositivePressed) {
-                        if (newValue != if (baseConfig.materialDesign3) 2 else 1) {
-                            baseConfig.materialDesign3 = newValue == 2
-                            settingsFloatingButtonStyle.setImageResource(
-                                if (newValue == 2) R.drawable.squircle_bg else R.drawable.ic_circle_filled
-                            )
-                            config.needRestart = true
-                        }
-                    }
-                }
-            }
-        }
-    }
+//    private fun setupFloatingButtonStyle() {
+//        binding.apply {
+//            settingsFloatingButtonStyle.applyColorFilter(getProperTextColor())
+//            settingsFloatingButtonStyle.setImageResource(
+//                if (baseConfig.materialDesign3) R.drawable.squircle_bg else R.drawable.ic_circle_filled
+//            )
+//            settingsFloatingButtonStyleHolder.setOnClickListener {
+//                val items = arrayListOf(
+//                    R.drawable.ic_circle_filled,
+//                    R.drawable.squircle_bg
+//                )
+//
+//                    ?: throw IllegalStateException("mainBlurTarget not found")
+//                IconListDialog(
+//                    activity = this@SettingsActivity,
+//                    items = items,
+//                    checkedItemId = if (baseConfig.materialDesign3) 2 else 1,
+//                    defaultItemId = 1,
+//                    titleId = com.goodwy.strings.R.string.floating_button_style,
+//                    size = pixels(com.goodwy.commons.R.dimen.normal_icon_size).toInt(),
+//                    color = getProperTextColor(),
+//                    blurTarget = blurTarget
+//                ) { wasPositivePressed, newValue ->
+//                    if (wasPositivePressed) {
+//                        if (newValue != if (baseConfig.materialDesign3) 2 else 1) {
+//                            baseConfig.materialDesign3 = newValue == 2
+//                            settingsFloatingButtonStyle.setImageResource(
+//                                if (newValue == 2) R.drawable.squircle_bg else R.drawable.ic_circle_filled
+//                            )
+//                            config.needRestart = true
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     private fun setupColorSimIcons() {
         binding.apply {

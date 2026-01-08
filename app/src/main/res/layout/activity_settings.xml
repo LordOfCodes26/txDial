@@ -102,67 +102,67 @@
                         <!--                            android:src="@drawable/ic_more_horiz" />-->
                         <!--                    </RelativeLayout>-->
 
-                        <RelativeLayout
-                            android:id="@+id/settingsFloatingButtonStyleHolder"
-                            style="@style/SettingsHolderStyle">
+<!--                        <RelativeLayout-->
+<!--                            android:id="@+id/settingsFloatingButtonStyleHolder"-->
+<!--                            style="@style/SettingsHolderStyle">-->
 
-                            <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settingsFloatingButtonStyleLabel"
-                                style="@style/SettingsTextLabelStyle"
-                                android:layout_alignParentStart="true"
-                                android:layout_centerVertical="true"
-                                android:layout_marginEnd="@dimen/normal_margin"
-                                android:layout_toStartOf="@+id/settingsFloatingButtonStyle"
-                                android:text="@string/floating_button_style" />
+<!--                            <com.goodwy.commons.views.MyTextView-->
+<!--                                android:id="@+id/settingsFloatingButtonStyleLabel"-->
+<!--                                style="@style/SettingsTextLabelStyle"-->
+<!--                                android:layout_alignParentStart="true"-->
+<!--                                android:layout_centerVertical="true"-->
+<!--                                android:layout_marginEnd="@dimen/normal_margin"-->
+<!--                                android:layout_toStartOf="@+id/settingsFloatingButtonStyle"-->
+<!--                                android:text="@string/floating_button_style" />-->
 
-                            <ImageView
-                                android:id="@+id/settingsFloatingButtonStyle"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentEnd="true"
-                                android:layout_centerVertical="true"
-                                android:layout_marginEnd="@dimen/settings_margin"
-                                android:clickable="false"
-                                android:contentDescription="@string/floating_button_style"
-                                android:src="@drawable/ic_circle_filled" />
-                        </RelativeLayout>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/settingsFloatingButtonStyle"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:layout_alignParentEnd="true"-->
+<!--                                android:layout_centerVertical="true"-->
+<!--                                android:layout_marginEnd="@dimen/settings_margin"-->
+<!--                                android:clickable="false"-->
+<!--                                android:contentDescription="@string/floating_button_style"-->
+<!--                                android:src="@drawable/ic_circle_filled" />-->
+<!--                        </RelativeLayout>-->
 
-                        <RelativeLayout
-                            android:id="@+id/settings_colored_contacts_holder"
-                            style="@style/SettingsHolderSwitchStyle">
+<!--                        <RelativeLayout-->
+<!--                            android:id="@+id/settings_colored_contacts_holder"-->
+<!--                            style="@style/SettingsHolderSwitchStyle">-->
+<!---->
+<!--                            <com.goodwy.commons.views.MyLiquidSwitch-->
+<!--                                android:id="@+id/settings_colored_contacts"-->
+<!--                                style="@style/SettingsSwitchStyle"-->
+<!--                                android:text="@string/colored_contacts"-->
+<!--                                app:switchPadding="@dimen/bigger_margin" />-->
+<!--                        </RelativeLayout>-->
 
-                            <com.goodwy.commons.views.MyLiquidSwitch
-                                android:id="@+id/settings_colored_contacts"
-                                style="@style/SettingsSwitchStyle"
-                                android:text="@string/colored_contacts"
-                                app:switchPadding="@dimen/bigger_margin" />
-                        </RelativeLayout>
+<!--                        <RelativeLayout-->
+<!--                            android:id="@+id/settingsContactColorListHolder"-->
+<!--                            style="@style/SettingsHolderStyle"-->
+<!--                            android:paddingEnd="@dimen/medium_margin">-->
 
-                        <RelativeLayout
-                            android:id="@+id/settingsContactColorListHolder"
-                            style="@style/SettingsHolderStyle"
-                            android:paddingEnd="@dimen/medium_margin">
+<!--                            <com.goodwy.commons.views.MyTextView-->
+<!--                                android:id="@+id/settings_contact_color_list_label"-->
+<!--                                style="@style/SettingsTextLabelStyle"-->
+<!--                                android:layout_alignParentStart="true"-->
+<!--                                android:layout_centerVertical="true"-->
+<!--                                android:layout_toStartOf="@+id/settings_contact_color_list_icon"-->
+<!--                                android:text="@string/contact_color_list" />-->
 
-                            <com.goodwy.commons.views.MyTextView
-                                android:id="@+id/settings_contact_color_list_label"
-                                style="@style/SettingsTextLabelStyle"
-                                android:layout_alignParentStart="true"
-                                android:layout_centerVertical="true"
-                                android:layout_toStartOf="@+id/settings_contact_color_list_icon"
-                                android:text="@string/contact_color_list" />
-
-                            <ImageView
-                                android:id="@+id/settings_contact_color_list_icon"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentEnd="true"
-                                android:layout_centerVertical="true"
-                                android:layout_marginEnd="@dimen/settings_margin"
-                                android:clickable="false"
-                                android:contentDescription="@string/contact_color_list"
-                                android:paddingEnd="@dimen/small_margin"
-                                android:src="@drawable/ic_color_list_android" />
-                        </RelativeLayout>
+<!--                            <ImageView-->
+<!--                                android:id="@+id/settings_contact_color_list_icon"-->
+<!--                                android:layout_width="wrap_content"-->
+<!--                                android:layout_height="wrap_content"-->
+<!--                                android:layout_alignParentEnd="true"-->
+<!--                                android:layout_centerVertical="true"-->
+<!--                                android:layout_marginEnd="@dimen/settings_margin"-->
+<!--                                android:clickable="false"-->
+<!--                                android:contentDescription="@string/contact_color_list"-->
+<!--                                android:paddingEnd="@dimen/small_margin"-->
+<!--                                android:src="@drawable/ic_color_list_android" />-->
+<!--                        </RelativeLayout>-->
 
                         <RelativeLayout
                             android:id="@+id/settings_color_sim_card_icons_holder"
@@ -1074,6 +1074,7 @@
                                     android:layout_centerVertical="true"
                                     android:layout_marginStart="@dimen/small_margin"
                                     android:layout_marginEnd="@dimen/small_margin"
+                                    android:visibility="gone"
                                     android:layout_toStartOf="@+id/settingsKeepCallsInPopUp"
                                     android:background="?attr/selectableItemBackgroundBorderless"
                                     android:contentDescription="@string/keep_calls_in_popup"
