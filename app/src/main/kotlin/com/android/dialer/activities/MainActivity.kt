@@ -495,17 +495,27 @@ class MainActivity : SimpleActivity() {
         handleCurrentFragment()
         checkShortcuts()
         
-        // Initialize full menu height if not set and not on dialpad
+        // Initialize full menu height using ViewTreeObserver for accurate measurement
         if (fullMenuHeight == -1) {
             val currentFragment = getCurrentFragment()
-            if (currentFragment !is DialpadFragment) {
-                binding.mainMenu.post {
-                    // Measure menu height when it's visible
-                    binding.mainMenu.measure(
-                        View.MeasureSpec.makeMeasureSpec(binding.mainMenu.width, View.MeasureSpec.EXACTLY),
-                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                    )
-                    fullMenuHeight = binding.mainMenu.measuredHeight.coerceAtLeast(0)
+            if (currentFragment !is DialpadFragment && binding.mainMenu.height == 0) {
+                // Wait for layout to complete
+                binding.mainMenu.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                    override fun onGlobalLayout() {
+                        binding.mainMenu.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                        if (fullMenuHeight == -1 && binding.mainMenu.height > 0) {
+                            fullMenuHeight = binding.mainMenu.height
+                            if (currentMenuHeight == -1) {
+                                currentMenuHeight = fullMenuHeight
+                            }
+                        }
+                    }
+                })
+            } else if (binding.mainMenu.height > 0) {
+                // Already laid out, use current height
+                fullMenuHeight = binding.mainMenu.height
+                if (currentMenuHeight == -1) {
+                    currentMenuHeight = fullMenuHeight
                 }
             }
         }
@@ -590,64 +600,73 @@ class MainActivity : SimpleActivity() {
 
     private fun setMainMenuHeight(height: Int?, animated: Boolean = true) {
         binding.mainMenu.apply {
-            // Initialize current height if needed
-            if (currentMenuHeight == -1) {
-                currentMenuHeight = if (layoutParams.height > 0) {
+            // Get the actual current height from the view
+            val actualCurrentHeight = if (this.height > 0) this.height else {
+                if (layoutParams.height > 0 && layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
                     layoutParams.height
                 } else {
-                    measuredHeight.takeIf { it > 0 } ?: (height ?: 0)
+                    -1
                 }
             }
             
-            // Store full menu height when it's visible (wrap_content)
-            if (height == null && fullMenuHeight == -1) {
-                // Measure wrap_content height
-                post {
-                    measure(
-                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                    )
-                    fullMenuHeight = measuredHeight
-                    if (currentMenuHeight == -1 || currentMenuHeight == 0) {
-                        currentMenuHeight = fullMenuHeight
-                    }
-                }
+            // Initialize current height tracking
+            if (currentMenuHeight == -1 && actualCurrentHeight > 0) {
+                currentMenuHeight = actualCurrentHeight
             }
             
+            // Determine target height
             val targetHeight = if (height != null) {
                 height
             } else {
-                // Use stored full height or measure if not available
+                // For wrap_content, use stored full height or get it from the view
                 if (fullMenuHeight > 0) {
                     fullMenuHeight
+                } else if (actualCurrentHeight > 0) {
+                    // Use current height if available
+                    actualCurrentHeight.also { fullMenuHeight = it }
                 } else {
-                    // Fallback: measure now
-                    measure(
-                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                    )
-                    measuredHeight.also { fullMenuHeight = it }
+                    // Fallback: use a reasonable default or measure after layout
+                    post {
+                        if (fullMenuHeight == -1) {
+                            // Wait for layout to complete
+                            viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                                override fun onGlobalLayout() {
+                                    viewTreeObserver.removeOnGlobalLayoutListener(this)
+                                    if (fullMenuHeight == -1 && this@apply.height > 0) {
+                                        fullMenuHeight = this@apply.height
+                                        if (currentMenuHeight == -1) {
+                                            currentMenuHeight = fullMenuHeight
+                                        }
+                                    }
+                                }
+                            })
+                        }
+                    }
+                    // Return current height or 0 as fallback
+                    actualCurrentHeight.takeIf { it > 0 } ?: 0
                 }
             }
             
-            if (currentMenuHeight == targetHeight && currentMenuHeight != -1) {
+            // Skip if already at target height
+            if (currentMenuHeight == targetHeight && currentMenuHeight > 0) {
                 return
             }
             
             // Cancel any ongoing animation
             menuHeightAnimator?.cancel()
             
-            if (animated) {
+            if (animated && targetHeight > 0) {
                 // Animate smoothly
                 beVisible()
-                val startHeight = if (currentMenuHeight > 0) currentMenuHeight else targetHeight
+                val menuView = this // Capture view reference for nested lambdas
+                val startHeight = if (currentMenuHeight > 0) currentMenuHeight else actualCurrentHeight.takeIf { it > 0 } ?: targetHeight
                 menuHeightAnimator = android.animation.ValueAnimator.ofInt(startHeight, targetHeight).apply {
                     duration = 300
                     interpolator = android.view.animation.DecelerateInterpolator(1.5f)
                     addUpdateListener { animator ->
                         val animatedHeight = animator.animatedValue as Int
                         currentMenuHeight = animatedHeight
-                        updateLayoutParams<ViewGroup.LayoutParams> {
+                        menuView.updateLayoutParams<ViewGroup.LayoutParams> {
                             this.height = animatedHeight.coerceAtLeast(0)
                         }
                     }
@@ -655,18 +674,18 @@ class MainActivity : SimpleActivity() {
                         override fun onAnimationEnd(animation: android.animation.Animator) {
                             currentMenuHeight = targetHeight
                             if (height == null) {
-                                // Reset to wrap_content after animation
-                                updateLayoutParams<ViewGroup.LayoutParams> {
-                                    this.height = ViewGroup.LayoutParams.WRAP_CONTENT
-                                }
-                                // Re-measure to get actual height
-                                post {
-                                    measure(
-                                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                                    )
-                                    fullMenuHeight = measuredHeight
-                                    currentMenuHeight = fullMenuHeight
+                                // Reset to wrap_content after animation completes
+                                menuView.post {
+                                    menuView.updateLayoutParams<ViewGroup.LayoutParams> {
+                                        this.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                                    }
+                                    // Update stored height after layout
+                                    menuView.post {
+                                        if (menuView.height > 0) {
+                                            fullMenuHeight = menuView.height
+                                            currentMenuHeight = fullMenuHeight
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -674,22 +693,21 @@ class MainActivity : SimpleActivity() {
                     start()
                 }
             } else {
-                // Set directly without animation (for initial setup)
+                // Set directly without animation (for initial setup or immediate changes)
                 beVisible()
-                currentMenuHeight = targetHeight
                 updateLayoutParams<ViewGroup.LayoutParams> {
                     this.height = if (height != null) height else ViewGroup.LayoutParams.WRAP_CONTENT
                 }
+                // Update tracking after layout
                 if (height == null) {
-                    // Store full height
                     post {
-                        measure(
-                            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                        )
-                        fullMenuHeight = measuredHeight
-                        currentMenuHeight = fullMenuHeight
+                        if (this.height > 0) {
+                            fullMenuHeight = this.height
+                            currentMenuHeight = fullMenuHeight
+                        }
                     }
+                } else {
+                    currentMenuHeight = height
                 }
             }
         }
@@ -1150,29 +1168,21 @@ class MainActivity : SimpleActivity() {
                     // Cancel any ongoing animation to avoid conflicts
                     menuHeightAnimator?.cancel()
                     
-                    // Get full menu height if not stored
+                    // Get full menu height if not stored - use actual view height
                     if (fullMenuHeight == -1) {
-                        // Try to get from current height if menu is visible
+                        // Try to get from current height if menu is visible and not on dialpad
                         val currentHeight = binding.mainMenu.height
                         if (currentHeight > 0 && !currentIsDialpad) {
                             fullMenuHeight = currentHeight
                         } else {
-                            // Temporarily set to wrap_content to measure
-                            binding.mainMenu.beVisible()
-                            val layoutParams = binding.mainMenu.layoutParams
-                            val savedHeight = layoutParams.height
-                            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
-                            binding.mainMenu.layoutParams = layoutParams
-                            
-                            binding.mainMenu.measure(
-                                View.MeasureSpec.makeMeasureSpec(binding.mainMenu.width, View.MeasureSpec.EXACTLY),
-                                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                            )
-                            fullMenuHeight = binding.mainMenu.measuredHeight.coerceAtLeast(0)
-                            
-                            // Restore original height
-                            layoutParams.height = savedHeight
-                            binding.mainMenu.layoutParams = layoutParams
+                            // If we're transitioning from dialpad, we need to get the natural height
+                            // Use the stored currentMenuHeight if available, otherwise skip interpolation
+                            if (currentMenuHeight > 0) {
+                                fullMenuHeight = currentMenuHeight
+                            } else {
+                                // Can't interpolate without knowing the full height, skip
+                                return@onPageScrolled
+                            }
                         }
                     }
                     
