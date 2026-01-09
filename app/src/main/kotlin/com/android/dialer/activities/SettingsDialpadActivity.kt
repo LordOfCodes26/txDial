@@ -145,6 +145,10 @@ class SettingsDialpadActivity : SimpleActivity() {
         val properBackgroundColor = if (isDynamicTheme() && !isSystemInDarkMode()) getSurfaceColor() else getProperBackgroundColor()
         setupTopAppBar(binding.dialpadAppbar, NavigationIcon.Arrow, topBarColor = properBackgroundColor)
         
+        // Hide navigation icon and search icon in SettingsDialpadActivity
+        binding.dialpadToolbar.navigationIcon = null
+        binding.dialpadToolbar.setSearchIconVisible(false)
+        
         val properTextColor = getProperTextColor()
         val surfaceColor = getSurfaceColor()
 

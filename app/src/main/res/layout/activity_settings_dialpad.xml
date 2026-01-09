@@ -16,12 +16,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <com.google.android.material.appbar.MaterialToolbar
+        <com.goodwy.commons.views.CustomToolbar
             android:id="@+id/dialpad_toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="@string/dialpad_preferences"
-            app:titleTextAppearance="@style/AppTheme.ActionBar.TitleTextStyle" />
+            android:title="@string/dialpad_preferences" />
     </com.goodwy.commons.views.MyAppBarLayout>
 
     <androidx.core.widget.NestedScrollView

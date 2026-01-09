@@ -78,7 +78,6 @@ class MainActivity : SimpleActivity() {
 
     private var launchedDialer = false
     private var isSearchOpen = false
-    private var mSearchMenuItem: MenuItem? = null
     private var storedShowTabs = 0
     private var storedFontSize = 0
     private var searchQuery = ""
@@ -89,7 +88,6 @@ class MainActivity : SimpleActivity() {
     private var cachedFavorites = mutableListOf<Contact>()
     private var storedContactShortcuts = mutableListOf<Contact>()
     private var isSpeechToTextAvailable = false
-    private var mSearchView: SearchView? = null
     
     // Cached fragment references to avoid repeated findViewById calls
     private var cachedContactsFragment: ContactsFragment? = null
@@ -461,6 +459,7 @@ class MainActivity : SimpleActivity() {
             background = getStartRequiredStatusBarColor(),
             scrollOffset = scrollingView?.computeVerticalScrollOffset() ?: 0
         )
+        binding.mainMenu.requireCustomToolbar().updateSearchColors()
 
         // Handle name with surname change
         handleStartNameWithSurnameChange()
@@ -757,8 +756,14 @@ class MainActivity : SimpleActivity() {
                 true
             }
 
-            isSearchOpen && mSearchMenuItem != null -> {
-                mSearchMenuItem!!.collapseActionView()
+            isSearchOpen -> {
+                val customToolbar = binding.mainMenu.requireCustomToolbar()
+                if (customToolbar.isSearchExpanded) {
+                    customToolbar.collapseSearch()
+                    isSearchOpen = false
+                    getCurrentFragment()?.onSearchClosed()
+                    searchQuery = ""
+                }
                 true
             }
 
@@ -784,7 +789,6 @@ class MainActivity : SimpleActivity() {
         val getFavoritesFragment = getFavoritesFragment()
         val dialpadFragment = getDialpadFragment()
         binding.mainMenu.requireCustomToolbar().menu.apply {
-            findItem(R.id.search).isVisible = /*!config.bottomNavigationBar*/ true // always show the search menu icon
             findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment && currentFragment != dialpadFragment
             findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment && currentFragment != dialpadFragment
@@ -824,7 +828,7 @@ class MainActivity : SimpleActivity() {
                     getCurrentFragment()?.onSearchQueryChanged(text)
                     clearSearch()
                 }
-            } else*/ setupSearch(requireCustomToolbar().menu)
+            } else*/ setupCustomSearch(requireCustomToolbar().menu)
 
             requireCustomToolbar().setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
@@ -888,117 +892,42 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-    private fun setupSearch(menu: Menu) {
+    private fun setupCustomSearch(menu: Menu) {
         updateMenuItemColors(menu)
-        val searchManager = getSystemService(SEARCH_SERVICE) as SearchManager
-        mSearchMenuItem = menu.findItem(R.id.search)
+
+        val customToolbar = binding.mainMenu.requireCustomToolbar()
         
-        // If actionView is null (CustomToolbar doesn't auto-create action views), create it
-        if (mSearchMenuItem!!.actionView == null) {
-            val searchView = SearchView(this)
-            mSearchMenuItem!!.actionView = searchView
+        // Update search colors to match theme
+        customToolbar.updateSearchColors()
+        
+        // Setup search text change listener
+        customToolbar.setOnSearchTextChangedListener { newText ->
+            if (customToolbar.isSearchExpanded) {
+                searchQuery = newText
+                getCurrentFragment()?.onSearchQueryChanged(newText)
+            }
         }
         
-        mSearchView = (mSearchMenuItem!!.actionView as SearchView).apply {
-            val textColor = getProperTextColor()
-            findViewById<TextView>(androidx.appcompat.R.id.search_src_text).apply {
-                setTextColor(textColor)
-                setHintTextColor(textColor)
-                // Reduce left padding to a small value
-                val smallPadding = resources.getDimensionPixelSize(com.goodwy.commons.R.dimen.small_margin)
-                setPadding(smallPadding, paddingTop, paddingRight, paddingBottom)
-            }
-            findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn).apply {
-                setImageResource(com.goodwy.commons.R.drawable.ic_clear_round)
-                setColorFilter(textColor)
-            }
-            findViewById<View>(androidx.appcompat.R.id.search_plate)?.apply { // search underline
-                background.setColorFilter(Color.TRANSPARENT, PorterDuff.Mode.MULTIPLY)
-                // Reduce left padding on the search plate to a small value
-                val smallPadding = resources.getDimensionPixelSize(com.goodwy.commons.R.dimen.small_margin)
-                setPadding(smallPadding, paddingTop, paddingRight, paddingBottom)
-            }
-            setIconifiedByDefault(false)
-            findViewById<ImageView>(androidx.appcompat.R.id.search_mag_icon).apply {
-                setColorFilter(textColor)
-            }
-
-            setSearchableInfo(searchManager.getSearchableInfo(componentName))
-            isSubmitButtonEnabled = false
-            queryHint = getString(R.string.search)
-            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(query: String) = false
-
-                override fun onQueryTextChange(newText: String): Boolean {
-                    if (isSearchOpen) {
-                        searchQuery = newText
-                        getCurrentFragment()?.onSearchQueryChanged(newText)
-                    }
-                    return true
-                }
-            })
+        // Setup search back button click listener
+        customToolbar.setOnSearchBackClickListener {
+            // Search collapse is handled by CustomToolbar, just update our state
+            isSearchOpen = false
+            getCurrentFragment()?.onSearchClosed()
+            searchQuery = ""
         }
-
-        @Suppress("DEPRECATION")
-        MenuItemCompat.setOnActionExpandListener(mSearchMenuItem, object : MenuItemCompat.OnActionExpandListener {
-            override fun onMenuItemActionExpand(item: MenuItem?): Boolean {
-                isSearchOpen = true
-                // Keep dialpad button visible when search is opened
-                
-                // Animate search bar appearance with smooth translation (slide in from right)
-                mSearchView?.let { searchView ->
-                    searchView.post {
-                        // Get the parent toolbar width for smooth slide-in
-                        val toolbar = binding.mainMenu.requireCustomToolbar()
-                        val slideDistance = toolbar.width.toFloat()
-                        
-                        // Start from right side
-                        searchView.translationX = slideDistance
-                        searchView.alpha = 0f
-                        
-                        // Animate to center with smooth deceleration
-                        searchView.animate()
-                            .translationX(0f)
-                            .alpha(1f)
-                            .setDuration(350)
-                            .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
-                            .start()
-                    }
-                }
-                
-                return true
-            }
-
-            override fun onMenuItemActionCollapse(item: MenuItem?): Boolean {
-                if (isSearchOpen) {
-                    getCurrentFragment()?.onSearchClosed()
-                }
-
-                isSearchOpen = false
-                
-                // Animate search bar disappearance with smooth translation (slide out to right)
-                mSearchView?.let { searchView ->
-                    val toolbar = binding.mainMenu.requireCustomToolbar()
-                    val slideDistance = toolbar.width.toFloat()
-                    
-                    searchView.animate()
-                        .translationX(slideDistance)
-                        .alpha(0f)
-                        .setDuration(300)
-                        .setInterpolator(android.view.animation.AccelerateInterpolator(1.2f))
-                        .withEndAction {
-                            searchView.translationX = 0f
-                            searchView.alpha = 1f
-                            binding.mainDialpadButton.beGone() // Always hide the dialpad button
-                        }
-                        .start()
-                } ?: run {
-                    binding.mainDialpadButton.beGone() // Always hide the dialpad button
-                }
-                
-                return true
-            }
-        })
+    }
+    
+    private fun toggleCustomSearchBar() {
+        val customToolbar = binding.mainMenu.requireCustomToolbar()
+        if (customToolbar.isSearchExpanded) {
+            customToolbar.collapseSearch()
+            isSearchOpen = false
+            getCurrentFragment()?.onSearchClosed()
+            searchQuery = ""
+        } else {
+            customToolbar.expandSearch()
+            isSearchOpen = true
+        }
     }
 
     private fun showBlockedNumbers() {
@@ -1235,14 +1164,17 @@ class MainActivity : SimpleActivity() {
                         }
                     }
                     
-                    // Close search if switching to dialpad
-                    if (currentFragment is DialpadFragment) {
-                        if (binding.mainMenu.isSearchOpen) {
-                            binding.mainMenu.closeSearch()
-                        }
-                        if (isSearchOpen && mSearchMenuItem != null) {
-                            mSearchMenuItem!!.collapseActionView()
+                    // Close search when switching fragments
+                    if (binding.mainMenu.isSearchOpen) {
+                        binding.mainMenu.closeSearch()
+                    }
+                    if (isSearchOpen) {
+                        val customToolbar = binding.mainMenu.requireCustomToolbar()
+                        if (customToolbar.isSearchExpanded) {
+                            customToolbar.collapseSearch()
                             isSearchOpen = false
+                            getCurrentFragment()?.onSearchClosed()
+                            searchQuery = ""
                         }
                     }
                     
@@ -1312,6 +1244,7 @@ class MainActivity : SimpleActivity() {
         val statusBarColor = if (config.changeColourTopBar) getRequiredStatusBarColor(useSurfaceColor) else backgroundColor
 
         binding.mainMenu.updateColors(statusBarColor, scrollingViewOffset)
+        binding.mainMenu.requireCustomToolbar().updateSearchColors()
         setupSearchMenuScrollListener(
             scrollingView = myRecyclerView,
             searchMenu = binding.mainMenu,
@@ -1390,6 +1323,13 @@ class MainActivity : SimpleActivity() {
                     // Update menu visibility based on initial fragment
                     val currentFragment = getCurrentFragment()
                     setMainMenuHeight(if (currentFragment is DialpadFragment) 0 else null, animated = false)
+                    // Ensure onFragmentResume is called for the initial fragment
+                    // This is needed because onPageSelected is not called for the initial page
+                    when (currentFragment) {
+                        is ContactsFragment -> currentFragment.onFragmentResume()
+                        is FavoritesFragment -> currentFragment.onFragmentResume()
+                        is DialpadFragment -> currentFragment.onFragmentResume()
+                    }
                 }
             } else {
                 refreshFragments()
@@ -1598,7 +1538,13 @@ class MainActivity : SimpleActivity() {
             allFragments.forEach {
                 it?.onSearchQueryChanged("")
             }
-            mSearchMenuItem?.collapseActionView()
+            val customToolbar = binding.mainMenu.requireCustomToolbar()
+            if (customToolbar.isSearchExpanded) {
+                customToolbar.collapseSearch()
+                isSearchOpen = false
+                getCurrentFragment()?.onSearchClosed()
+                searchQuery = ""
+            }
         }
     }
 

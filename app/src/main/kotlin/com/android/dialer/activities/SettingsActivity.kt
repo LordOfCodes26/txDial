@@ -120,6 +120,10 @@ class SettingsActivity : SimpleActivity() {
         super.onResume()
         val properBackgroundColor = if (isDynamicTheme() && !isSystemInDarkMode()) getSurfaceColor() else getProperBackgroundColor()
         setupTopAppBar(binding.settingsAppbar, NavigationIcon.Arrow, topBarColor = properBackgroundColor)
+        
+        // Hide navigation icon and search icon in SettingsActivity
+        binding.settingsToolbar.navigationIcon = null
+        binding.settingsToolbar.setSearchIconVisible(false)
 
 //        setupPurchaseThankYou()
 

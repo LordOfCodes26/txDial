@@ -252,6 +252,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
         }
         // Explicitly set toolbar background color to match appbar
         binding.dialpadToolbar.setBackgroundColor(appbarBackgroundColor)
+        // Hide search icon in dialpad toolbar
+        binding.dialpadToolbar.setSearchIconVisible(false)
         setupOptionsMenu()
 
 
@@ -2321,6 +2323,8 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
             findItem(R.id.show_blocked_numbers).title =
                 if (context.config.showBlockedNumbers) context.getString(R.string.hide_blocked_numbers) else context.getString(R.string.show_blocked_numbers)
         }
+        // Invalidate menu to refresh display after changes
+        binding.dialpadToolbar.invalidateMenu()
     }
 
     override fun onDetachedFromWindow() {

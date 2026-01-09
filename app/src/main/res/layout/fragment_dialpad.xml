@@ -34,14 +34,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="top">
 
-            <com.google.android.material.appbar.MaterialToolbar
+            <com.goodwy.commons.views.CustomToolbar
                 android:id="@+id/dialpadToolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 android:layout_marginEnd="@dimen/small_margin"
                 android:background="@color/default_background_color"
                 app:menu="@menu/menu_dialpad"
-                app:titleTextAppearance="@style/AppTheme.ActionBar.TitleTextStyle"
                 tools:background="@color/md_grey_black" />
         </com.goodwy.commons.views.MyAppBarLayout>
 
