@@ -947,7 +947,10 @@ class MainActivity : SimpleActivity() {
         ConfirmationDialog(this, confirmationText, blurTarget = blurTarget) {
             RecentsHelper(this).removeAllRecentCalls(this) {
                 mainHandler.post {
-                    getRecentsFragment()?.refreshItems(invalidate = true)
+                    // Force refresh with needUpdate to ensure UI updates immediately
+                    getRecentsFragment()?.refreshItems(invalidate = true, needUpdate = true)
+                    // Also update the dialpad fragment if it exists
+                    getDialpadFragment()?.refreshItems(needUpdate = true)
                 }
             }
         }

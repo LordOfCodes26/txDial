@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.provider.CallLog.Calls
 import android.util.TypedValue
 import android.view.*
-import android.widget.PopupMenu
+import com.goodwy.commons.views.BlurPopupMenu
 import com.goodwy.commons.adapters.MyRecyclerViewListAdapter
 import com.goodwy.commons.dialogs.ConfirmationDialog
 import eightbitlab.com.blurview.BlurTarget
@@ -149,10 +149,8 @@ class CallHistoryAdapter(
 
     private fun showPopupMenu(view: View, call: RecentCall) {
         finishActMode()
-        val theme = activity.getPopupMenuTheme()
-        val contextTheme = ContextThemeWrapper(activity, theme)
 
-        PopupMenu(contextTheme, view, Gravity.END).apply {
+        BlurPopupMenu(activity, view, Gravity.END).apply {
             inflate(R.menu.menu_call_history_item_options)
             setOnMenuItemClickListener { item ->
                 val callId = call.id

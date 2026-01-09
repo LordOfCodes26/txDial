@@ -16,7 +16,7 @@ import android.util.TypedValue
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.PopupMenu
+import com.goodwy.commons.views.BlurPopupMenu
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -190,6 +190,7 @@ class ContactsAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val contact = contacts[position]
         var lastTouchX: Float = -1f
+        var lastTouchY: Float = -1f
 
         holder.bindView(contact, true, false) { itemView, _ ->  // Disable default action mode, we'll show popup menu instead
             val viewType = getItemViewType(position)
@@ -201,8 +202,9 @@ class ContactsAdapter(
                     if (event.action == android.view.MotionEvent.ACTION_DOWN ||
                         event.action == android.view.MotionEvent.ACTION_MOVE) {
                         lastTouchX = event.x
-                        // Store in view tag
-                        view.tag = lastTouchX
+                        lastTouchY = event.y
+                        // Store in view tag as Pair
+                        view.tag = Pair(lastTouchX, lastTouchY)
                     }
                     false  // Don't consume the event
                 }
@@ -211,8 +213,10 @@ class ContactsAdapter(
         // Set long click listener AFTER bindView to override the default behavior
         if (allowLongClick) {
             holder.itemView.setOnLongClickListener { view ->
-                val touchX = (view.tag as? Float) ?: lastTouchX
-                showPopupMenu(holder.itemView, contact, touchX)
+                val touchPos = (view.tag as? Pair<Float, Float>)
+                val touchX = touchPos?.first ?: lastTouchX
+                val touchY = touchPos?.second ?: lastTouchY
+                showPopupMenu(holder.itemView, contact, touchX, touchY)
                 true
             }
         }
@@ -517,15 +521,17 @@ class ContactsAdapter(
                     }
                     // Track touch position for popup menu positioning
                     var imageTouchX: Float = -1f
+                    var imageTouchY: Float = -1f
                     setOnTouchListener { view, event ->
                         if (event.action == android.view.MotionEvent.ACTION_DOWN ||
                             event.action == android.view.MotionEvent.ACTION_MOVE) {
                             imageTouchX = event.x
+                            imageTouchY = event.y
                         }
                         false  // Don't consume the event
                     }
                     setOnLongClickListener {
-                        showPopupMenu(holder.itemView, contact, imageTouchX)
+                        showPopupMenu(holder.itemView, contact, imageTouchX, imageTouchY)
                         true
                     }
                 }
@@ -932,21 +938,26 @@ class ContactsAdapter(
         activity.startContactDetailsIntentRecommendation(contact)
     }
 
-    private fun showPopupMenu(view: View, contact: Contact, touchX: Float = -1f) {
+    private fun showPopupMenu(view: View, contact: Contact, touchX: Float = -1f, touchY: Float = -1f) {
+        // Safety checks to prevent crashes
+        if (activity.isDestroyed || activity.isFinishing) {
+            return
+        }
+        
         finishActMode()
-        val theme = activity.getPopupMenuTheme()
-        val contextTheme = android.view.ContextThemeWrapper(activity, theme)
         val hasMultipleSIMs = activity.areMultipleSIMsAvailable()
         val selectedNumber = getContactPhoneNumber(contact)?.replace("+","%2B") ?: ""
 
         // Determine gravity based on touch position: left side = START, right side = END
-        val gravity = if (touchX >= 0 && touchX < view.width / 2) {
+        // Use view.width only if it's been measured (width > 0)
+        val gravity = if (touchX >= 0 && view.width > 0 && touchX < view.width / 2) {
             Gravity.START
         } else {
             Gravity.END
         }
 
-        PopupMenu(contextTheme, view, gravity).apply {
+        try {
+            BlurPopupMenu(activity, view, gravity, touchX, touchY).apply {
             inflate(R.menu.cab_contacts)
             menu.apply {
                 findItem(R.id.cab_call).isVisible = !hasMultipleSIMs
@@ -959,14 +970,23 @@ class ContactsAdapter(
                 findItem(R.id.cab_block_unblock_contact).isVisible = true
                 findItem(R.id.cab_select_all).isVisible = false  // Hide select all in popup menu
                 
-                // Show encrypt/decrypt menu items only in MainActivity
-                val isInSecureBox = if (activity is MainActivity) {
-                    (activity as MainActivity).isContactInSecureBox(contact.id)
-                } else {
-                    false
+                // Initially hide encrypt/decrypt menu items - will be updated asynchronously
+                findItem(R.id.cab_encrypt_contact).isVisible = false
+                findItem(R.id.cab_decrypt_contact).isVisible = false
+                
+                // Check secure box status asynchronously to avoid main thread database access
+                if (activity is MainActivity) {
+                    val encryptItem = findItem(R.id.cab_encrypt_contact)
+                    val decryptItem = findItem(R.id.cab_decrypt_contact)
+                    ensureBackgroundThread {
+                        val secureBoxHelper = com.goodwy.commons.securebox.SecureBoxHelper(activity)
+                        val isInSecureBox = secureBoxHelper.isContactInSecureBox(contact.id)
+                        activity.runOnUiThread {
+                            encryptItem?.isVisible = !isInSecureBox
+                            decryptItem?.isVisible = isInSecureBox
+                        }
+                    }
                 }
-                findItem(R.id.cab_encrypt_contact).isVisible = !isInSecureBox && activity is MainActivity
-                findItem(R.id.cab_decrypt_contact).isVisible = isInSecureBox && activity is MainActivity
 
                 // Update block/unblock title asynchronously
                 activity.isContactBlocked(contact) { blocked ->
@@ -1043,57 +1063,10 @@ class ContactsAdapter(
                 menu.findItem(R.id.cab_delete)?.isVisible = true
                 show()
             }
-
-            // Adjust X position based on touch location using reflection
-            if (touchX >= 0) {
-                try {
-                    // Access PopupMenu's internal PopupWindow to adjust X position
-                    val popupField = PopupMenu::class.java.getDeclaredField("mPopup")
-                    popupField.isAccessible = true
-                    val menuPopup = popupField.get(this)
-
-                    val popupWindowField = menuPopup.javaClass.getDeclaredField("mPopup")
-                    popupWindowField.isAccessible = true
-                    val popupWindow = popupWindowField.get(menuPopup) as android.widget.PopupWindow
-
-                    // Calculate X offset: center menu on touch point
-                    view.post {
-                        val location = IntArray(2)
-                        view.getLocationOnScreen(location)
-                        val viewX = location[0]
-                        val screenWidth = activity.resources.displayMetrics.widthPixels
-
-                        // Get menu width (approximate or measure)
-                        val menuWidth = (screenWidth * 0.6).toInt()
-                        val offset = activity.resources.getDimensionPixelSize(com.goodwy.commons.R.dimen.smaller_margin)
-
-                        // Calculate desired X position based on touch location
-                        val touchXInt = touchX.toInt()
-                        val isLeftSide = touchXInt < view.width / 2
-                        var menuX: Int = if (isLeftSide) {
-                            // Menu starts at touchX with offset
-                            viewX + touchXInt + offset
-                        } else {
-                            // Menu ends at touchX with offset
-                            viewX + touchXInt - menuWidth - offset
-                        }
-
-                        // Keep within screen bounds
-                        if (menuX < 0) menuX = 0
-                        if (menuX + menuWidth > screenWidth) menuX = screenWidth - menuWidth
-
-                        // Get current Y position
-                        val yLocation = IntArray(2)
-                        view.getLocationOnScreen(yLocation)
-                        val yOffset = yLocation[1] + view.height
-
-                        // Update popup position
-                        popupWindow.update(menuX, yOffset, -1, -1)
-                    }
-                } catch (e: Exception) {
-                    // If reflection fails, use default positioning
-                }
-            }
+        }
+        } catch (e: Exception) {
+            // Log and silently handle any exceptions during popup menu creation/showing
+            android.util.Log.e("ContactsAdapter", "Error showing popup menu", e)
         }
     }
 

@@ -1397,9 +1397,9 @@ class DialpadFragment(context: Context, attributeSet: AttributeSet) : MyViewPage
                 RecentsHelper(context).removeAllRecentCalls(currentActivity) {
                     allRecentCalls = emptyList()
                     activity?.runOnUiThread {
-                        refreshItems(invalidate = true)
+                        refreshItems(invalidate = true, needUpdate = true)
                     } ?: fragmentScope.launch(Dispatchers.Main) {
-                        refreshItems(invalidate = true)
+                        refreshItems(invalidate = true, needUpdate = true)
                     }
                 }
             }
