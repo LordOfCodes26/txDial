@@ -5,10 +5,41 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <LinearLayout
+        android:id="@+id/recents_filter_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/normal_margin"
+        android:paddingTop="@dimen/small_margin"
+        android:paddingEnd="@dimen/normal_margin"
+        android:paddingBottom="@dimen/small_margin"
+        android:visibility="gone">
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/recents_filter_all"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/all_g" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/recents_filter_other"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/small_margin"
+            android:text="@string/other" />
+    </LinearLayout>
+
     <com.goodwy.commons.views.MyTextView
         android:id="@+id/recents_placeholder"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@+id/recents_filter_bar"
         android:layout_centerHorizontal="true"
         android:alpha="0.8"
         android:gravity="center"
@@ -37,6 +68,7 @@
         android:id="@+id/recents_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@+id/recents_filter_bar"
         android:clipToPadding="false"
         android:layoutAnimation="@anim/layout_animation"
         android:scrollbarThumbVertical="@drawable/fastscroller_handle_vertical_gray"

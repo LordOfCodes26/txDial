@@ -791,7 +791,7 @@ class MainActivity : SimpleActivity() {
         binding.mainMenu.requireCustomToolbar().menu.apply {
             findItem(R.id.clear_call_history).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.sort).isVisible = currentFragment != getRecentsFragment && currentFragment != dialpadFragment
-            findItem(R.id.filter).isVisible = currentFragment != getRecentsFragment && currentFragment != dialpadFragment
+            findItem(R.id.filter).isVisible = currentFragment != dialpadFragment
             findItem(R.id.create_new_contact).isVisible = currentFragment == getContactsFragment()
             findItem(R.id.change_view_type).isVisible = currentFragment == getFavoritesFragment
             findItem(R.id.column_count).isVisible = currentFragment == getFavoritesFragment && config.viewType == VIEW_TYPE_GRID
@@ -862,7 +862,14 @@ class MainActivity : SimpleActivity() {
                     }
                     R.id.create_new_contact -> launchCreateNewContactIntent()
                     R.id.sort -> showSortingDialog(showCustomSorting = getCurrentFragment() is FavoritesFragment)
-                    R.id.filter -> showFilterDialog()
+                    R.id.filter -> {
+                        val recentsFragment = getRecentsFragment()
+                        if (getCurrentFragment() == recentsFragment) {
+                            recentsFragment?.showCallTypeFilterDialog()
+                        } else {
+                            showFilterDialog()
+                        }
+                    }
                     R.id.settings -> launchSettings()
 //                    R.id.about -> launchAbout()
                     R.id.change_view_type -> changeViewType()

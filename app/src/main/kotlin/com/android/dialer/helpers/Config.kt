@@ -361,6 +361,19 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getInt(ON_RECENT_CLICK, SWIPE_ACTION_CALL)
         set(onRecentClick) = prefs.edit { putInt(ON_RECENT_CLICK, onRecentClick) }
 
+    var recentCallsFilterType: Int?
+        get() {
+            val value = prefs.getInt(RECENT_CALLS_FILTER_TYPE, -1)
+            return if (value == -1) null else value
+        }
+        set(recentCallsFilterType) = prefs.edit {
+            if (recentCallsFilterType == null) {
+                putInt(RECENT_CALLS_FILTER_TYPE, -1)
+            } else {
+                putInt(RECENT_CALLS_FILTER_TYPE, recentCallsFilterType)
+            }
+        }
+
     var onContactClick: Int
         get() = prefs.getInt(ON_CONTACT_CLICK, SWIPE_ACTION_CALL)
         set(onContactClick) = prefs.edit { putInt(ON_CONTACT_CLICK, onContactClick) }

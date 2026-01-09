@@ -2,6 +2,7 @@ package com.android.dialer.fragments
 
 import android.content.Context
 import android.content.Intent
+import android.content.Context.MODE_PRIVATE
 import android.graphics.Color
 import android.graphics.Rect
 import android.provider.CallLog.Calls
@@ -14,7 +15,11 @@ import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.extensions.beGone
 import com.goodwy.commons.extensions.beGoneIf
 import com.goodwy.commons.extensions.beVisible
+import com.goodwy.commons.extensions.beVisibleIf
 import com.goodwy.commons.extensions.getProperBackgroundColor
+import com.goodwy.commons.extensions.getProperPrimaryColor
+import com.goodwy.commons.extensions.getProperTextColor
+import com.goodwy.commons.extensions.getSharedPrefs
 import com.goodwy.commons.extensions.getSurfaceColor
 import com.goodwy.commons.extensions.hasPermission
 import com.goodwy.commons.extensions.hideKeyboard
@@ -62,6 +67,10 @@ import com.android.dialer.models.RecentCall
 import com.goodwy.commons.extensions.getIntValue
 import com.goodwy.commons.helpers.PERMISSION_READ_CONTACTS
 import com.android.dialer.helpers.sharedGson
+import com.android.dialer.helpers.RECENT_CALLS_FILTER_TYPE
+import com.android.dialer.dialogs.FilterCallTypesDialog
+import com.goodwy.commons.views.BlurPopupMenu
+import android.view.Gravity
 
 class RecentsFragment(
     context: Context, attributeSet: AttributeSet,
@@ -98,11 +107,106 @@ class RecentsFragment(
                 requestCallLogPermission()
             }
         }
+
+        setupFilterBar()
+    }
+
+    private fun setupFilterBar() {
+        // Ensure default is null (All selected)
+        // The Config already defaults to null, but if user had previously set it to MISSED_TYPE
+        // and wants "All" as default, we can reset it here
+        // For now, we'll respect the user's previous choice, but ensure null is the default
+        val currentFilter = context.config.recentCallsFilterType
+        val prefs = context.getSharedPrefs()
+        if (!prefs.contains(RECENT_CALLS_FILTER_TYPE)) {
+            // First time - explicitly set to null to show "All"
+            context.config.recentCallsFilterType = null
+        }
+        
+        updateFilterBar()
+        
+        binding.recentsFilterAll.setOnClickListener {
+            context.config.recentCallsFilterType = null
+            updateFilterBar()
+            refreshItems()
+        }
+
+        binding.recentsFilterOther.setOnClickListener { view ->
+            showCallTypePopupMenu(view)
+        }
+    }
+
+    private fun updateFilterBar() {
+        val filterType = context.config.recentCallsFilterType
+        val hasPermission = context.hasPermission(PERMISSION_READ_CALL_LOG)
+        
+        binding.recentsFilterBar.beVisibleIf(hasPermission)
+        
+        if (hasPermission) {
+            // Update "All" chip - checked when filter is null
+            binding.recentsFilterAll.isChecked = filterType == null
+            
+            // Update "Other" chip - default to MISSED_TYPE if null
+            val otherText = when (filterType ?: Calls.MISSED_TYPE) {
+                Calls.INCOMING_TYPE -> context.getString(R.string.incoming_call)
+                Calls.OUTGOING_TYPE -> context.getString(R.string.outgoing_call)
+                Calls.MISSED_TYPE -> context.getString(R.string.missed_call)
+                else -> context.getString(R.string.missed_call)
+            }
+            binding.recentsFilterOther.text = otherText
+            binding.recentsFilterOther.isChecked = filterType != null
+            
+            // Update colors
+            val textColor = context.getProperTextColor()
+            val primaryColor = context.getProperPrimaryColor()
+            updateFilterBarColors(textColor, primaryColor)
+        }
+    }
+
+    private fun showCallTypePopupMenu(anchorView: View) {
+        val menu = BlurPopupMenu(context, anchorView, Gravity.START)
+        menu.inflate(R.menu.menu_call_type_filter)
+        
+        menu.menu.apply {
+            findItem(R.id.filter_all).isVisible = true
+            findItem(R.id.filter_incoming).isVisible = true
+            findItem(R.id.filter_outgoing).isVisible = true
+            findItem(R.id.filter_missed).isVisible = true
+            
+            // Check current selection
+            val currentFilter = context.config.recentCallsFilterType
+            findItem(R.id.filter_all).isChecked = currentFilter == null
+            findItem(R.id.filter_incoming).isChecked = currentFilter == Calls.INCOMING_TYPE
+            findItem(R.id.filter_outgoing).isChecked = currentFilter == Calls.OUTGOING_TYPE
+            findItem(R.id.filter_missed).isChecked = currentFilter == Calls.MISSED_TYPE
+        }
+        
+        menu.setOnMenuItemClickListener { item ->
+            val newFilterType = when (item.itemId) {
+                R.id.filter_all -> null
+                R.id.filter_incoming -> Calls.INCOMING_TYPE
+                R.id.filter_outgoing -> Calls.OUTGOING_TYPE
+                R.id.filter_missed -> Calls.MISSED_TYPE
+                else -> null
+            }
+            
+            if (context.config.recentCallsFilterType != newFilterType) {
+                context.config.recentCallsFilterType = newFilterType
+                updateFilterBar()
+                refreshItems()
+            }
+            true
+        }
+        
+        menu.show()
     }
 
     override fun setupColors(textColor: Int, primaryColor: Int, accentColor: Int) {
         binding.recentsPlaceholder.setTextColor(textColor)
         binding.recentsPlaceholder2.setTextColor(primaryColor)
+
+        // Update filter bar chips colors
+        updateFilterBarColors(textColor, primaryColor)
 
         recentsAdapter?.apply {
             updatePrimaryColor()
@@ -110,6 +214,12 @@ class RecentsFragment(
             updateTextColor(textColor)
             initDrawables(textColor)
         }
+    }
+
+    private fun updateFilterBarColors(textColor: Int, primaryColor: Int) {
+        binding.recentsFilterAll.setTextColor(textColor)
+        binding.recentsFilterOther.setTextColor(textColor)
+        // Chips will handle their own background colors based on checked state
     }
 
     override fun refreshItems(invalidate: Boolean, needUpdate: Boolean, callback: (() -> Unit)?) {
@@ -157,8 +267,9 @@ class RecentsFragment(
 
     override fun onSearchClosed() {
         searchQuery = null
-        showOrHidePlaceholder(allRecentCalls.isEmpty())
-        recentsAdapter?.updateItems(allRecentCalls)
+        val filteredCalls = applyCallTypeFilter(allRecentCalls.filterIsInstance<RecentCall>())
+        showOrHidePlaceholder(filteredCalls.isEmpty())
+        recentsAdapter?.updateItems(filteredCalls)
     }
 
     override fun onSearchQueryChanged(text: String) {
@@ -185,9 +296,10 @@ class RecentsFragment(
                         .thenByDescending { it.startTS }
                 )
 
-            prepareCallLog(recentCalls) {
+            val filteredCalls = applyCallTypeFilter(recentCalls)
+            prepareCallLog(filteredCalls) {
                 activity?.runOnUiThread {
-                    showOrHidePlaceholder(recentCalls.isEmpty())
+                    showOrHidePlaceholder(filteredCalls.isEmpty())
                     recentsAdapter?.updateItems(it, fixedText)
                 }
             }
@@ -199,6 +311,7 @@ class RecentsFragment(
             if (it) {
                 binding.recentsPlaceholder.text = context.getString(R.string.no_previous_calls)
                 binding.recentsPlaceholder2.beGone()
+                updateFilterBar()
                 refreshCallLog()
             }
         }
@@ -212,23 +325,44 @@ class RecentsFragment(
         }
     }
 
+    fun showCallTypeFilterDialog() {
+        val blurTarget = activity?.findViewById<BlurTarget>(R.id.mainBlurTarget)
+            ?: throw IllegalStateException("mainBlurTarget not found")
+        val recentCalls = allRecentCalls.filterIsInstance<RecentCall>()
+        FilterCallTypesDialog(activity as SimpleActivity, blurTarget, recentCalls) {
+            refreshItems()
+        }
+    }
+
+    private fun applyCallTypeFilter(calls: List<RecentCall>): List<RecentCall> {
+        val filterType = context.config.recentCallsFilterType
+        return if (filterType == null) {
+            calls
+        } else {
+            calls.filter { it.type == filterType }
+        }
+    }
+
     private fun gotRecents(recents: List<CallLogItem>) {
 //        binding.progressIndicator.hide()
-        if (recents.isEmpty()) {
+        val recentCalls = recents.filterIsInstance<RecentCall>()
+        val filteredRecents = applyCallTypeFilter(recentCalls)
+        val filteredRecentsAsItems: List<CallLogItem> = filteredRecents
+        if (filteredRecentsAsItems.isEmpty()) {
             binding.apply {
                 showOrHidePlaceholder(true)
                 recentsPlaceholder2.beGoneIf(context.hasPermission(PERMISSION_READ_CALL_LOG))
                 recentsList.beGone()
             }
         } else {
-            binding.apply {
+                binding.apply {
                 showOrHidePlaceholder(false)
                 recentsPlaceholder2.beGone()
                 recentsList.beVisible()
 
                 // Optimize RecyclerView for large lists
                 recentsList.setHasFixedSize(true)
-                if (recents.size > 2000) {
+                if (filteredRecents.size > 2000) {
                     recentsList.itemAnimator = null
                 }
 
@@ -272,9 +406,9 @@ class RecentsFragment(
                 recentsAdapter?.addBottomPadding(64)
 
                 binding.recentsList.adapter = recentsAdapter
-                recentsAdapter?.updateItems(recents)
+                recentsAdapter?.updateItems(filteredRecentsAsItems)
             } else {
-                recentsAdapter?.updateItems(recents)
+                recentsAdapter?.updateItems(filteredRecentsAsItems)
             }
         }
     }
@@ -325,7 +459,9 @@ class RecentsFragment(
     }
 
     private fun refreshCallLogFromCache(cache: List<RecentCall>, callback: (() -> Unit)? = null) {
-        gotRecents(cache)
+        val filteredCache = applyCallTypeFilter(cache)
+        val filteredCacheAsItems: List<CallLogItem> = filteredCache
+        gotRecents(filteredCacheAsItems)
         callback?.invoke()
     }
 

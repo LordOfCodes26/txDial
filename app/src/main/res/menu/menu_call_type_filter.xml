@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/filter_all"
+        android:title="@string/all_g"
+        app:showAsAction="never"
+        android:checkable="true" />
+    <item
+        android:id="@+id/filter_incoming"
+        android:title="@string/incoming_call"
+        app:showAsAction="never"
+        android:checkable="true" />
+    <item
+        android:id="@+id/filter_outgoing"
+        android:title="@string/outgoing_call"
+        app:showAsAction="never"
+        android:checkable="true" />
+    <item
+        android:id="@+id/filter_missed"
+        android:title="@string/missed_call"
+        app:showAsAction="never"
+        android:checkable="true" />
+</menu>
