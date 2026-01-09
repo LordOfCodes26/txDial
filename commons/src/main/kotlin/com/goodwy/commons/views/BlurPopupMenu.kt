@@ -28,13 +28,17 @@ class BlurPopupMenu(
     anchor: View,
     gravity: Int = Gravity.NO_GRAVITY,
     touchX: Float = -1f,
-    touchY: Float = -1f
+    touchY: Float = -1f,
+    xThreshold: Float = 0.5f, // Threshold ratio for X direction (0.0 to 1.0, default 0.5 = half screen)
+    yThreshold: Float = 0.5f  // Threshold ratio for Y direction (0.0 to 1.0, default 0.5 = half screen)
 ) {
     private val context: Context = context
     private val anchor: View = anchor
     private val gravity: Int = gravity
     private val touchX: Float = touchX
     private val touchY: Float = touchY
+    private val xThreshold: Float = xThreshold.coerceIn(0f, 1f)
+    private val yThreshold: Float = yThreshold.coerceIn(0f, 1f)
     val menu: Menu = MenuBuilder(context)
     private val menuInflater: MenuInflater = MenuInflater(context)
     private var onMenuItemClickListener: MenuItem.OnMenuItemClickListener? = null
@@ -114,30 +118,68 @@ class BlurPopupMenu(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
 
+        // Ensure anchor is measured before using its dimensions
+        if (anchor.width == 0 && anchor.height == 0) {
+            anchor.measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+        }
+        
+        // Use measured dimensions for more reliable results
+        val anchorWidth = if (anchor.width > 0) anchor.width else anchor.measuredWidth
+        val anchorHeight = if (anchor.height > 0) anchor.height else anchor.measuredHeight
+        
         // Calculate position based on touch position or gravity
+        // getLocationOnScreen already accounts for translations, so we get the current position
         val location = IntArray(2)
-        anchor.getLocationOnScreen(location)
         val rootLocation = IntArray(2)
+        
+        // Get current screen locations (this accounts for any translations/animations)
+        anchor.getLocationOnScreen(location)
         activity.window.decorView.rootView.getLocationOnScreen(rootLocation)
 
         val x: Int
         val y: Int
-
+        
         // If touchX is provided and valid, position menu based on touch position
-        if (touchX >= 0 && anchor.width > 0) {
+        if (touchX >= 0 && anchorWidth > 0) {
             val screenWidth = activity.resources.displayMetrics.widthPixels
             val screenHeight = activity.resources.displayMetrics.heightPixels
             val menuWidth = popupBinding.root.measuredWidth
             val menuHeight = popupBinding.root.measuredHeight
             val offset = activity.resources.getDimensionPixelSize(R.dimen.smaller_margin)
+            val isRtl = anchor.layoutDirection == View.LAYOUT_DIRECTION_RTL
             
-            // Calculate X position: center menu on touch point, or align to touch point
+            // Calculate X position: adjust direction based on which half of screen touch is in
             val touchXInt = touchX.toInt()
             val anchorX = location[0]
             val touchScreenX = anchorX + touchXInt
             
-            // Try to center menu on touch point, but keep within screen bounds
-            var menuX = touchScreenX - menuWidth / 2
+            // Determine if touch is beyond the X threshold
+            val isInRightHalf = touchScreenX > screenWidth * xThreshold
+            
+            // Position menu based on screen half and RTL
+            // If in right half, show to the left; if in left half, show to the right
+            // In RTL, reverse the logic
+            var menuX = when {
+                isRtl -> {
+                    // In RTL: right half = show to right, left half = show to left
+                    if (isInRightHalf) {
+                        touchScreenX + offset // Position to the right in RTL
+                    } else {
+                        touchScreenX - menuWidth - offset // Position to the left in RTL
+                    }
+                }
+                else -> {
+                    // In LTR: right half = show to left, left half = show to right
+                    if (isInRightHalf) {
+                        touchScreenX - menuWidth - offset // Position to the left
+                    } else {
+                        touchScreenX + offset // Position to the right
+                    }
+                }
+            }
             
             // Keep within screen bounds
             if (menuX < offset) {
@@ -149,45 +191,58 @@ class BlurPopupMenu(
             x = menuX - rootLocation[0]
             
             // Calculate Y position based on touchY if provided
-            if (touchY >= 0 && anchor.height > 0) {
+            // Adjust direction based on which half of screen touch is in
+            if (touchY >= 0 && anchorHeight > 0) {
                 val touchYInt = touchY.toInt()
                 val anchorY = location[1]
                 val touchScreenY = anchorY + touchYInt
                 
-                // Try to position menu centered on touch point vertically
-                var menuY = touchScreenY - menuHeight / 2
+                // Determine if touch is beyond the Y threshold
+                val isInBottomHalf = touchScreenY > screenHeight * yThreshold
                 
-                // Keep within screen bounds - prefer below touch point if near top
+                // Position menu based on screen half
+                // If in bottom half, show above; if in top half, show below
+                var menuY = if (isInBottomHalf) {
+                    touchScreenY - menuHeight - offset // Show above touch point
+                } else {
+                    touchScreenY + offset // Show below touch point
+                }
+                
+                // Keep within screen bounds - adjust if needed
                 if (menuY < offset) {
-                    menuY = touchScreenY + offset // Show below touch point
+                    menuY = offset
                 } else if (menuY + menuHeight > screenHeight - offset) {
-                    menuY = touchScreenY - menuHeight - offset // Show above touch point
+                    menuY = screenHeight - menuHeight - offset
                 }
                 
                 y = menuY - rootLocation[1]
             } else {
                 // Fall back to below anchor if touchY not provided
-                y = location[1] + anchor.height - rootLocation[1]
+                y = location[1] + anchorHeight - rootLocation[1]
             }
         } else {
             // Fall back to gravity-based positioning
+            // Use measured dimensions for consistency
+            val anchorWidth = if (anchor.width > 0) anchor.width else anchor.measuredWidth
+            val anchorHeight = if (anchor.height > 0) anchor.height else anchor.measuredHeight
+            
             when (gravity) {
                 Gravity.START, Gravity.LEFT -> {
                     x = location[0] - rootLocation[0]
-                    y = location[1] + anchor.height - rootLocation[1]
+                    y = location[1] + anchorHeight - rootLocation[1]
                 }
                 Gravity.END, Gravity.RIGHT -> {
-                    x = location[0] + anchor.width - popupBinding.root.measuredWidth - rootLocation[0]
-                    y = location[1] + anchor.height - rootLocation[1]
+                    x = location[0] + anchorWidth - popupBinding.root.measuredWidth - rootLocation[0]
+                    y = location[1] + anchorHeight - rootLocation[1]
                 }
                 Gravity.CENTER -> {
-                    x = location[0] + (anchor.width - popupBinding.root.measuredWidth) / 2 - rootLocation[0]
-                    y = location[1] + anchor.height - rootLocation[1]
+                    x = location[0] + (anchorWidth - popupBinding.root.measuredWidth) / 2 - rootLocation[0]
+                    y = location[1] + anchorHeight - rootLocation[1]
                 }
                 else -> {
                     // Default: align to end (right in LTR, left in RTL)
-                    x = location[0] + anchor.width - popupBinding.root.measuredWidth - rootLocation[0]
-                    y = location[1] + anchor.height - rootLocation[1]
+                    x = location[0] + anchorWidth - popupBinding.root.measuredWidth - rootLocation[0]
+                    y = location[1] + anchorHeight - rootLocation[1]
                 }
             }
         }

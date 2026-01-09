@@ -798,7 +798,19 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.show_blocked_numbers).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.show_blocked_numbers).title =
                 if (config.showBlockedNumbers) getString(R.string.hide_blocked_numbers) else getString(R.string.show_blocked_numbers)
-            findItem(R.id.select).isVisible = currentFragment != null && currentFragment != dialpadFragment
+            // Show select menu item only for non-dialpad fragments that have items
+            val contactsFragment = getContactsFragment()
+            val hasItems = when (currentFragment) {
+                getRecentsFragment -> {
+                    currentFragment?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recents_list)?.adapter?.itemCount ?: 0 > 0
+                }
+                getFavoritesFragment, contactsFragment -> {
+                    currentFragment?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.fragment_list)?.adapter?.itemCount ?: 0 > 0
+                }
+                else -> false
+            }
+            findItem(R.id.select).isVisible = currentFragment != null && 
+                currentFragment != dialpadFragment && hasItems
         }
     }
 

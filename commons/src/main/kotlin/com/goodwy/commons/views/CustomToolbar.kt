@@ -641,7 +641,13 @@ class CustomToolbar @JvmOverloads constructor(
             val rootLocation = IntArray(2)
             (context as? Activity)?.window?.decorView?.rootView?.getLocationOnScreen(rootLocation)
             
-            val x = location[0] + anchor.width - popupBinding.root.measuredWidth
+            // Add right margin (16dp converted to pixels)
+            val rightMargin = (16 * resources.displayMetrics.density + 0.5f).toInt()
+            val screenWidth = resources.displayMetrics.widthPixels
+            val popupWidth = popupBinding.root.measuredWidth
+            
+            // Calculate x position with right margin from screen edge
+            val x = screenWidth - popupWidth - rightMargin
             val y = location[1] + anchor.height
             
             showAtLocation(

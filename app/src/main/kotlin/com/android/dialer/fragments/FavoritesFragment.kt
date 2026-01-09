@@ -133,12 +133,18 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
                             if (isResumed) {
                                 refreshItems(needUpdate = true)
                             }
-                        }, 500) // 500ms debounce
+                        }, 200) // 200ms debounce for faster updates
                     }
                 }
             }
+            // Observe both Contacts and Data URIs to catch favorite (starred) changes immediately
             context.contentResolver.registerContentObserver(
                 ContactsContract.Contacts.CONTENT_URI,
+                true,
+                contactObserver!!
+            )
+            context.contentResolver.registerContentObserver(
+                ContactsContract.Data.CONTENT_URI,
                 true,
                 contactObserver!!
             )
@@ -148,6 +154,7 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
     private fun unregisterContactObserver() {
         contactObserver?.let {
             context.contentResolver.unregisterContentObserver(it)
+            // Note: unregisterContentObserver automatically unregisters all URIs for this observer
             contactObserver = null
         }
     }
