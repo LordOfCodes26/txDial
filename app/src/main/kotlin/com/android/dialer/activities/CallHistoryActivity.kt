@@ -84,6 +84,11 @@ class CallHistoryActivity : SimpleActivity() {
             gotRecents(it)
             initShowAll()
         }
+        
+        // Apply gradient background immediately if we have a contact name
+        currentRecentCall?.let {
+            applyGradientBackground(it.name)
+        }
     }
 
     override fun onResume() {
@@ -216,21 +221,14 @@ class CallHistoryActivity : SimpleActivity() {
             }
             callHistoryNumber.text = formatterUnicodeWrap(phoneNumber)
             callHistoryNumber.setTextColor(properPrimaryColor)
+        }
 
-            if (isLightTheme() && !isDynamicTheme()) {
-                val colorToWhite = getSurfaceColor()
-                supportActionBar?.setBackgroundDrawable(colorToWhite.toDrawable())
-                window.decorView.setBackgroundColor(colorToWhite)
-                window.statusBarColor = colorToWhite
-                //window.navigationBarColor = colorToWhite
-                contactActionsHolder.setBackgroundColor(colorToWhite)
-                collapsingToolbar.setBackgroundColor(colorToWhite)
-            } else {
-                val properBackgroundColor = getProperBackgroundColor()
-                window.decorView.setBackgroundColor(properBackgroundColor)
-                contactActionsHolder.setBackgroundColor(properBackgroundColor)
-                collapsingToolbar.setBackgroundColor(properBackgroundColor)
-            }
+        // Apply gradient background based on avatar color
+        currentRecentCall?.let {
+            applyGradientBackground(it.name)
+        }
+
+        binding.apply {
 
             arrayOf(
                 oneButton, twoButton, threeButton, fourButton,
@@ -1424,6 +1422,15 @@ class CallHistoryActivity : SimpleActivity() {
             val uri = getContactPublicUri(contact!!)
             launchViewContactIntent(uri)
         }
+    }
+
+    /**
+     * Applies gradient background to the activity based on avatar color
+     */
+    private fun applyGradientBackground(contactName: String) {
+        val avatarColor = getAvatarColorForName(contactName)
+        val gradientDrawable = createAvatarGradientDrawable(avatarColor)
+        window.decorView.background = gradientDrawable
     }
 }
 
