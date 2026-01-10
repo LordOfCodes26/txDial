@@ -14,6 +14,7 @@ import com.google.gson.reflect.TypeToken
 import com.goodwy.commons.helpers.BaseConfig
 import com.android.dialer.extensions.getPhoneAccountHandleModel
 import com.android.dialer.extensions.putPhoneAccountHandle
+import android.provider.CallLog.Calls
 import com.android.dialer.models.CallerNote
 import com.android.dialer.models.RecentCall
 import com.android.dialer.models.SpeedDial
@@ -371,7 +372,18 @@ class Config(context: Context) : BaseConfig(context) {
                 putInt(RECENT_CALLS_FILTER_TYPE, -1)
             } else {
                 putInt(RECENT_CALLS_FILTER_TYPE, recentCallsFilterType)
+                // Save the last selected filter type
+                putInt(RECENT_CALLS_LAST_FILTER_TYPE, recentCallsFilterType)
             }
+        }
+
+    var recentCallsLastFilterType: Int
+        get() {
+            val value = prefs.getInt(RECENT_CALLS_LAST_FILTER_TYPE, Calls.MISSED_TYPE)
+            return if (value == -1) Calls.MISSED_TYPE else value
+        }
+        set(recentCallsLastFilterType) = prefs.edit {
+            putInt(RECENT_CALLS_LAST_FILTER_TYPE, recentCallsLastFilterType)
         }
 
     var onContactClick: Int

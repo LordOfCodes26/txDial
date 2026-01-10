@@ -3,6 +3,7 @@ package com.android.dialer.fragments
 import android.content.Context
 import android.content.Intent
 import android.content.Context.MODE_PRIVATE
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Rect
 import android.provider.CallLog.Calls
@@ -16,11 +17,14 @@ import com.goodwy.commons.extensions.beGone
 import com.goodwy.commons.extensions.beGoneIf
 import com.goodwy.commons.extensions.beVisible
 import com.goodwy.commons.extensions.beVisibleIf
+import com.goodwy.commons.extensions.adjustAlpha
+import com.goodwy.commons.extensions.adjustAlpha
 import com.goodwy.commons.extensions.getProperBackgroundColor
 import com.goodwy.commons.extensions.getProperPrimaryColor
 import com.goodwy.commons.extensions.getProperTextColor
 import com.goodwy.commons.extensions.getSharedPrefs
 import com.goodwy.commons.extensions.getSurfaceColor
+import androidx.core.content.ContextCompat
 import com.goodwy.commons.extensions.hasPermission
 import com.goodwy.commons.extensions.hideKeyboard
 import com.goodwy.commons.extensions.isDynamicTheme
@@ -82,6 +86,12 @@ class RecentsFragment(
 
     private var searchQuery: String? = null
     private val recentsHelper = RecentsHelper(context)
+    
+    // Scroll-based filter bar visibility
+    private var isFilterBarVisible = false
+    private var lastScrollY = 0
+    private var isAnimating = false
+    private val scrollThreshold = 15 // Minimum scroll delta to trigger show/hide (prevents flickering)
 
     override fun onFinishInflate() {
         super.onFinishInflate()
@@ -123,7 +133,25 @@ class RecentsFragment(
             context.config.recentCallsFilterType = null
         }
         
+        // Initially show the filter bar - it will hide on scroll down, show on scroll up
+        val hasPermission = context.hasPermission(PERMISSION_READ_CALL_LOG)
         updateFilterBar()
+        
+        if (hasPermission) {
+            // Ensure filter bar is visible initially
+            binding.recentsFilterBar.apply {
+                beVisible()
+                alpha = 1f
+                translationY = 0f
+            }
+            isFilterBarVisible = true
+        } else {
+            // Hide if no permission
+            binding.recentsFilterBar.beGone()
+            isFilterBarVisible = false
+        }
+        
+        setupScrollListener()
         
         binding.recentsFilterAll.setOnClickListener {
             context.config.recentCallsFilterType = null
@@ -132,34 +160,199 @@ class RecentsFragment(
         }
 
         binding.recentsFilterOther.setOnClickListener { view ->
-            showCallTypePopupMenu(view)
+            // If no filter is set, apply the last selected filter type
+            if (context.config.recentCallsFilterType == null) {
+                val lastFilterType = context.config.recentCallsLastFilterType
+                context.config.recentCallsFilterType = lastFilterType
+                updateFilterBar()
+                refreshItems()
+            } else {
+                showCallTypePopupMenu(view)
+            }
         }
     }
 
+    private fun setupScrollListener() {
+        binding.recentsList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                
+                val hasPermission = context.hasPermission(PERMISSION_READ_CALL_LOG)
+                if (!hasPermission) return
+                
+                val currentScrollY = recyclerView.computeVerticalScrollOffset()
+                
+                // Always show when at the top of the list
+                if (currentScrollY <= 0) {
+                    if (!isFilterBarVisible) {
+                        showFilterBarAnimated()
+                    }
+                    lastScrollY = 0
+                    return
+                }
+                
+                // Calculate actual scroll position change (more reliable than dy alone)
+                val scrollDelta = currentScrollY - lastScrollY
+                
+                // Only process if there's meaningful scroll movement
+                if (Math.abs(scrollDelta) < scrollThreshold && Math.abs(dy) < scrollThreshold) {
+                    return
+                }
+                
+                // Use both scrollDelta and dy for more reliable direction detection
+                // scrollDelta is based on position (more stable), dy is immediate (more responsive)
+                val isScrollingDown = scrollDelta > 0 || (scrollDelta == 0 && dy > 0)
+                val isScrollingUp = scrollDelta < 0 || (scrollDelta == 0 && dy < 0)
+                
+                // Check if we're at the bottom to handle bounce effect
+                val range = recyclerView.computeVerticalScrollRange()
+                val extent = recyclerView.computeVerticalScrollExtent()
+                val maxScrollY = (range - extent).coerceAtLeast(0)
+                val isAtBottom = currentScrollY >= maxScrollY - 5
+                
+                // Handle scroll direction - only trigger if not already animating
+                if (!isAnimating) {
+                    when {
+                        isScrollingDown -> {
+                            // Scrolling down - hide filter bar
+                            if (isFilterBarVisible) {
+                                hideFilterBarAnimated()
+                            }
+                        }
+                        isScrollingUp -> {
+                            // Scrolling up - show filter bar
+                            // Only show if we're not at bottom (to avoid bounce issues)
+                            if (!isFilterBarVisible && !isAtBottom) {
+                                showFilterBarAnimated()
+                            }
+                        }
+                    }
+                }
+                
+                lastScrollY = currentScrollY
+            }
+            
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    // When scrolling stops, ensure correct state
+                    val currentScrollY = recyclerView.computeVerticalScrollOffset()
+                    
+                    // Always show at top
+                    if (currentScrollY <= 0 && !isFilterBarVisible) {
+                        showFilterBarAnimated()
+                    }
+                    
+                    // Reset last scroll position
+                    lastScrollY = currentScrollY
+                }
+            }
+        })
+    }
+    
+    private fun showFilterBarAnimated() {
+        if (isFilterBarVisible || isAnimating) return
+        
+        isAnimating = true
+        binding.recentsFilterBar.apply {
+            // Cancel any ongoing animation
+            animate().cancel()
+            
+            beVisible()
+            alpha = 0f
+            // Use post to ensure view is measured before animating
+            post {
+                val height = if (this.height > 0) this.height else 80 // fallback height
+                translationY = -height.toFloat()
+                
+                animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(250)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .setListener(object : android.animation.AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: android.animation.Animator) {
+                            isAnimating = false
+                        }
+                        override fun onAnimationCancel(animation: android.animation.Animator) {
+                            isAnimating = false
+                        }
+                    })
+                    .start()
+            }
+        }
+        isFilterBarVisible = true
+    }
+    
+    private fun hideFilterBarAnimated() {
+        if (!isFilterBarVisible || isAnimating) return
+        
+        isAnimating = true
+        binding.recentsFilterBar.apply {
+            // Cancel any ongoing animation
+            animate().cancel()
+            
+            animate()
+                .alpha(0f)
+                .translationY(-height.toFloat())
+                .setDuration(200)
+                .setInterpolator(android.view.animation.AccelerateInterpolator())
+                .setListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        beGone()
+                        translationY = 0f
+                        isAnimating = false
+                    }
+                    override fun onAnimationCancel(animation: android.animation.Animator) {
+                        isAnimating = false
+                    }
+                })
+                .start()
+        }
+        isFilterBarVisible = false
+    }
+    
     private fun updateFilterBar() {
         val filterType = context.config.recentCallsFilterType
         val hasPermission = context.hasPermission(PERMISSION_READ_CALL_LOG)
         
-        binding.recentsFilterBar.beVisibleIf(hasPermission)
+        // Don't change visibility here - it's controlled by scroll
+        // binding.recentsFilterBar.beVisibleIf(hasPermission)
         
         if (hasPermission) {
-            // Update "All" chip - checked when filter is null
-            binding.recentsFilterAll.isChecked = filterType == null
-            
-            // Update "Other" chip - default to MISSED_TYPE if null
-            val otherText = when (filterType ?: Calls.MISSED_TYPE) {
+            // Update "Other" chip text - use last selected filter type when filter is null
+            val displayType = filterType ?: context.config.recentCallsLastFilterType
+            val otherText = when (displayType) {
                 Calls.INCOMING_TYPE -> context.getString(R.string.incoming_call)
                 Calls.OUTGOING_TYPE -> context.getString(R.string.outgoing_call)
                 Calls.MISSED_TYPE -> context.getString(R.string.missed_call)
                 else -> context.getString(R.string.missed_call)
             }
             binding.recentsFilterOther.text = otherText
-            binding.recentsFilterOther.isChecked = filterType != null
             
-            // Update colors
+            // Update colors with selection state
             val textColor = context.getProperTextColor()
             val primaryColor = context.getProperPrimaryColor()
-            updateFilterBarColors(textColor, primaryColor)
+            val backgroundColor = context.getProperBackgroundColor()
+            
+            // "All" chip - highlight when filter is null
+            if (filterType == null) {
+                binding.recentsFilterAll.setChipBackgroundColor(ColorStateList.valueOf(primaryColor.adjustAlpha(0.2f)))
+                binding.recentsFilterAll.setTextColor(ColorStateList.valueOf(primaryColor))
+            } else {
+                binding.recentsFilterAll.setChipBackgroundColor(ColorStateList.valueOf(backgroundColor))
+                binding.recentsFilterAll.setTextColor(ColorStateList.valueOf(textColor))
+            }
+            
+            // "Other" chip - highlight when filter is not null
+            if (filterType != null) {
+                binding.recentsFilterOther.setChipBackgroundColor(ColorStateList.valueOf(primaryColor.adjustAlpha(0.2f)))
+                binding.recentsFilterOther.setTextColor(ColorStateList.valueOf(primaryColor))
+            } else {
+                binding.recentsFilterOther.setChipBackgroundColor(ColorStateList.valueOf(backgroundColor))
+                binding.recentsFilterOther.setTextColor(ColorStateList.valueOf(textColor))
+            }
         }
     }
 
@@ -311,6 +504,13 @@ class RecentsFragment(
             if (it) {
                 binding.recentsPlaceholder.text = context.getString(R.string.no_previous_calls)
                 binding.recentsPlaceholder2.beGone()
+                // Show filter bar when permission is granted
+                binding.recentsFilterBar.apply {
+                    beVisible()
+                    alpha = 1f
+                    translationY = 0f
+                }
+                isFilterBarVisible = true
                 updateFilterBar()
                 refreshCallLog()
             }
