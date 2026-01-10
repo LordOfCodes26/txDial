@@ -212,8 +212,13 @@ class ContactsFragment(context: Context, attributeSet: AttributeSet) : MyViewPag
                 if (context.areSystemAnimationsEnabled) {
                     binding.fragmentList.scheduleLayoutAnimation()
                 }
+                
+                // Refresh menu items after adapter is set up
+                (activity as? MainActivity)?.refreshMenuItems()
             } else {
                 (binding.fragmentList.adapter as ContactsAdapter).updateItems(contacts)
+                // Refresh menu items after items are updated
+                (activity as? MainActivity)?.refreshMenuItems()
             }
 
             try {

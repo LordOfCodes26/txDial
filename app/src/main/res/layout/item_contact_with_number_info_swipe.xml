@@ -123,6 +123,14 @@
                     android:layout_gravity="center_vertical|end"
                     android:layout_marginEnd="@dimen/activity_margin"
                     android:src="@drawable/ic_info" />
+
+                <com.goodwy.commons.views.MyAppCompatCheckbox
+                    android:id="@+id/item_contact_checkbox"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="@dimen/activity_margin"
+                    android:visibility="visible" />
             </FrameLayout>
 
             <ImageView

@@ -228,10 +228,16 @@ class FavoritesFragment(context: Context, attributeSet: AttributeSet) : MyViewPa
                 binding.fragmentList.scheduleLayoutAnimation()
             }
             (activity as MainActivity).cacheFavorites(allContacts)
+            
+            // Refresh menu items after adapter is set up
+            (activity as? MainActivity)?.refreshMenuItems()
         } else {
             currAdapter.viewType = viewType
             currAdapter.updateItems(allContacts)
             (activity as MainActivity).cacheFavorites(allContacts)
+            
+            // Refresh menu items after items are updated
+            (activity as? MainActivity)?.refreshMenuItems()
         }
     }
 

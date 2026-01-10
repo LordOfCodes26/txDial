@@ -25,6 +25,7 @@ import com.goodwy.commons.dialogs.ConfirmationAdvancedDialog
 import com.goodwy.commons.extensions.*
 import eightbitlab.com.blurview.BlurTarget
 import com.goodwy.commons.helpers.*
+import com.goodwy.commons.models.RecyclerSelectionPayload
 import com.goodwy.commons.models.contacts.Contact
 import com.goodwy.commons.views.MyRecyclerView
 import com.android.dialer.BuildConfig
@@ -236,6 +237,30 @@ class RecentCallsAdapter(
         }
 
         bindViewHolder(holder)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
+        val any = payloads.firstOrNull()
+        if (any is RecyclerSelectionPayload) {
+            // Update selection state on the correct view
+            when (holder) {
+                is RecentCallViewHolder -> {
+                    // Update checkbox state instead of highlighting
+                    holder.binding.itemRecentsInfoHolder?.findViewById<com.goodwy.commons.views.MyAppCompatCheckbox>(R.id.item_recents_checkbox)?.isChecked = any.selected
+                }
+                is RecentCallSwipeViewHolder -> {
+                    // Update checkbox state instead of highlighting
+                    holder.binding.itemRecentsInfoHolder?.findViewById<com.goodwy.commons.views.MyAppCompatCheckbox>(R.id.item_recents_checkbox)?.isChecked = any.selected
+                }
+                else -> {
+                    // For date headers, just update itemView
+                    holder.itemView.isSelected = any.selected
+                    holder.itemView.refreshDrawableState()
+                }
+            }
+        } else {
+            super.onBindViewHolder(holder, position, payloads)
+        }
     }
 
     override fun onViewRecycled(holder: ViewHolder) {
@@ -802,8 +827,20 @@ class RecentCallsAdapter(
                         }
                     }
                     val currentFontSize = fontSize
-                    itemRecentsHolder.isSelected = selectedKeys.contains(call.id)
+                    // Remove highlighting - no longer using isSelected
                     itemRecentsHolder.setupViewBackground(activity)
+                    
+                    // Show checkbox in action mode, hide detail button
+                    val isInActionMode = selectedKeys.isNotEmpty()
+                    itemRecentsInfo?.beVisibleIf(!isInActionMode)
+                    // Keep holder visible so checkbox can be shown, but hide the clickable area when not in action mode
+                    itemRecentsInfoHolder?.isClickable = !isInActionMode
+                    // Access checkbox via findViewById since binding might not be regenerated yet
+                    itemRecentsInfoHolder?.findViewById<com.goodwy.commons.views.MyAppCompatCheckbox>(R.id.item_recents_checkbox)?.apply {
+                        beVisibleIf(isInActionMode)
+                        isChecked = selectedKeys.contains(call.id)
+                        setColors(textColor, properPrimaryColor, backgroundColor)
+                    }
 
                     divider.setBackgroundColor(textColor)
                     if (getLastItem() == call || !activity.config.useDividers) divider.visibility = View.INVISIBLE else divider.visibility = View.VISIBLE
@@ -1027,7 +1064,20 @@ class RecentCallsAdapter(
                     } else itemRecentsFrame.setBackgroundColor(backgroundColor)
 
                     val currentFontSize = fontSize
-                    itemRecentsHolder.isSelected = selectedKeys.contains(call.id)
+                    // Remove highlighting - no longer using isSelected
+                    
+                    // Show checkbox in action mode, hide detail button
+                    val isInActionMode = selectedKeys.isNotEmpty()
+                    itemRecentsInfo?.apply {
+                        beVisibleIf(showOverflowMenu && !isInActionMode)
+                        applyColorFilter(accentColor)
+                    }
+                    itemRecentsInfoHolder?.beVisibleIf(!isInActionMode)
+                    itemRecentsInfoHolder?.findViewById<com.goodwy.commons.views.MyAppCompatCheckbox>(R.id.item_recents_checkbox)?.apply {
+                        beVisibleIf(isInActionMode)
+                        isChecked = selectedKeys.contains(call.id)
+                        setColors(textColor, properPrimaryColor, backgroundColor)
+                    }
 
                     divider.setBackgroundColor(textColor)
                     if (getLastItem() == call || !cachedUseDividers) divider.visibility = View.INVISIBLE else divider.visibility = View.VISIBLE
@@ -1176,8 +1226,10 @@ class RecentCallsAdapter(
                     }
                     itemRecentsType.setImageDrawable(drawable)
 
+                    // Show checkbox in action mode, hide detail button
+                    val isInActionModeSwipe = selectedKeys.isNotEmpty()
                     itemRecentsInfo.apply {
-                        beVisibleIf(showOverflowMenu)
+                        beVisibleIf(showOverflowMenu && !isInActionModeSwipe)
                         applyColorFilter(accentColor)
                         if (profileInfoClick != null) {
                             setOnClickListener {
@@ -1195,6 +1247,8 @@ class RecentCallsAdapter(
                     }
                     //In order not to miss the icon item_recents_info
                     itemRecentsInfoHolder.apply {
+                        // Keep holder visible so checkbox can be shown
+                        isClickable = !isInActionModeSwipe
                         if (profileInfoClick != null) {
                             setOnClickListener {
                                 if (!actModeCallback.isSelectable) {
@@ -1208,6 +1262,11 @@ class RecentCallsAdapter(
                             showPopupMenu(overflowMenuAnchor, call, -1f)
                             true
                         }
+                    }
+                    itemRecentsInfoHolder?.findViewById<com.goodwy.commons.views.MyAppCompatCheckbox>(R.id.item_recents_checkbox)?.apply {
+                        beVisibleIf(isInActionModeSwipe)
+                        isChecked = selectedKeys.contains(call.id)
+                        setColors(textColor, properPrimaryColor, backgroundColor)
                     }
 
                     //swipe

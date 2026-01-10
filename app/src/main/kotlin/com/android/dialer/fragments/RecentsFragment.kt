@@ -610,6 +610,9 @@ class RecentsFragment(
             } else {
                 recentsAdapter?.updateItems(filteredRecentsAsItems)
             }
+            
+            // Refresh menu items after adapter is set up
+            (activity as? MainActivity)?.refreshMenuItems()
         }
     }
 

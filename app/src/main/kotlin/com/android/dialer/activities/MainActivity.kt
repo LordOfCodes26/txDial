@@ -783,7 +783,7 @@ class MainActivity : SimpleActivity() {
         menuHeightAnimator = null
     }
 
-    private fun refreshMenuItems() {
+    fun refreshMenuItems() {
         val currentFragment = getCurrentFragment()
         val getRecentsFragment = getRecentsFragment()
         val getFavoritesFragment = getFavoritesFragment()
@@ -798,19 +798,24 @@ class MainActivity : SimpleActivity() {
             findItem(R.id.show_blocked_numbers).isVisible = currentFragment == getRecentsFragment
             findItem(R.id.show_blocked_numbers).title =
                 if (config.showBlockedNumbers) getString(R.string.hide_blocked_numbers) else getString(R.string.show_blocked_numbers)
-            // Show select menu item only for non-dialpad fragments that have items
+            // Show select menu item only for non-dialpad fragments that have items or adapter is ready
             val contactsFragment = getContactsFragment()
-            val hasItems = when (currentFragment) {
+            val recyclerView = when (currentFragment) {
                 getRecentsFragment -> {
-                    currentFragment?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recents_list)?.adapter?.itemCount ?: 0 > 0
+                    currentFragment?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recents_list)
                 }
                 getFavoritesFragment, contactsFragment -> {
-                    currentFragment?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.fragment_list)?.adapter?.itemCount ?: 0 > 0
+                    currentFragment?.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.fragment_list)
                 }
-                else -> false
+                else -> null
             }
+            val adapter = recyclerView?.adapter
+            // Show select menu if adapter exists (fragment is ready) and either has items or is still loading
+            // This ensures the menu shows even when data is loading
+            val hasAdapter = adapter != null
+            val hasItems = (adapter?.itemCount ?: 0) > 0
             findItem(R.id.select).isVisible = currentFragment != null && 
-                currentFragment != dialpadFragment && hasItems
+                currentFragment != dialpadFragment && (hasAdapter || hasItems)
         }
     }
 

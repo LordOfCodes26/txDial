@@ -508,7 +508,7 @@ class ContactsAdapter(
     private fun setupView(binding: ItemViewBinding, contact: Contact, holder: ViewHolder) {
         binding.apply {
             root.setupViewBackground(activity)
-            itemContactFrame.isSelected = selectedKeys.contains(contact.rawId)
+            // Remove highlighting - no longer using isSelected
 
             itemContactImage.apply {
                 if (profileIconClick != null && viewType != VIEW_TYPE_GRID) {
@@ -587,12 +587,26 @@ class ContactsAdapter(
                     ignoreCharsBetweenDigits = true
                 )
             }
-            itemContactInfo?.applyColorFilter(accentColor)
+            // Show checkbox in action mode, hide detail button
+            val isInActionMode = selectedKeys.isNotEmpty()
+            itemContactInfo?.apply {
+                beVisibleIf(showIcon && !isInActionMode)
+                applyColorFilter(accentColor)
+            }
             itemContactInfoHolder?.apply {
-                beVisibleIf(showIcon && selectedKeys.isEmpty())
+                // Keep holder visible so checkbox can be shown, but disable click when in action mode
+                beVisibleIf(showIcon)
+                isClickable = !isInActionMode
                 setOnClickListener {
-                    viewContactInfo(contact)
+                    if (!isInActionMode) {
+                        viewContactInfo(contact)
+                    }
                 }
+            }
+            itemContactCheckbox?.apply {
+                beVisibleIf(isInActionMode)
+                isChecked = selectedKeys.contains(contact.rawId)
+                setColors(textColor, properPrimaryColor, backgroundColor)
             }
 
             if (enableDrag && textToHighlight.isEmpty()) {
@@ -850,6 +864,7 @@ class ContactsAdapter(
         val dragHandleIcon: ImageView
         val itemContactInfo: ImageView?
         val itemContactInfoHolder: FrameLayout?
+        val itemContactCheckbox: com.goodwy.commons.views.MyAppCompatCheckbox?
         val divider: ImageView?
         val itemContactSwipe: SwipeActionView?
         val itemContactFrameSelect: ConstraintLayout?
@@ -867,6 +882,7 @@ class ContactsAdapter(
         override val dragHandleIcon = binding.dragHandleIcon
         override val itemContactInfo = null
         override val itemContactInfoHolder = null
+        override val itemContactCheckbox = null
         override val divider = null
         override val itemContactSwipe = null
         override val itemContactFrameSelect = null
@@ -886,6 +902,7 @@ class ContactsAdapter(
         override val dragHandleIcon = binding.dragHandleIcon
         override val itemContactInfo = binding.itemContactInfo
         override val itemContactInfoHolder = binding.itemContactInfoHolder
+        override val itemContactCheckbox = binding.itemContactCheckbox
         override val divider = binding.divider
         override val itemContactSwipe = null
         override val itemContactFrameSelect = null
@@ -905,6 +922,7 @@ class ContactsAdapter(
         override val dragHandleIcon = binding.dragHandleIcon
         override val itemContactInfo = null
         override val itemContactInfoHolder = null
+        override val itemContactCheckbox = null
         override val divider = null
         override val itemContactSwipe = binding.itemContactSwipe
         override val itemContactFrameSelect = binding.itemContactFrameSelect
@@ -924,6 +942,7 @@ class ContactsAdapter(
         override val dragHandleIcon = binding.dragHandleIcon
         override val itemContactInfo = binding.itemContactInfo
         override val itemContactInfoHolder = binding.itemContactInfoHolder
+        override val itemContactCheckbox = binding.itemContactCheckbox
         override val divider = binding.divider
         override val itemContactSwipe = binding.itemContactSwipe
         override val itemContactFrameSelect = binding.itemContactFrameSelect
